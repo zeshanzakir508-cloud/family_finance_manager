@@ -1,0 +1,52 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: 'stable'
+
+      - name: Generate Android folder
+        run: flutter create --platforms=android .
+
+      - name: Copy Firebase config
+        run: |
+          if [ -f google-services-backup.json ]; then
+            cp google-services-backup.json android/app/google-services.json
+          fi
+
+      - name: Fix compileSdkVersion
+        run: |
+          if [ -f android/app/build.gradle.kts ]; then
+            sed -i 's/compileSdk = 33/compileSdk = 34/g' android/app/build.gradle.kts || true
+          fi
+          if [ -f android/app/build.gradle ]; then
+            sed -i 's/compileSdkVersion 33/compileSdkVersion 34/g' android/app/build.gradle || true
+          fi
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: family-finance-app
+          path: build/app/outputs/flutter-apk/app-release.apk
+          compression-level: 0
+          if-no-files-found: error
