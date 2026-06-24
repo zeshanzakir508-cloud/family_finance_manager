@@ -28,14 +28,31 @@ jobs:
             cp google-services.json android/app/google-services.json
           fi
 
+      - name: Get Flutter SDK path
+        id: flutter_path
+        run: |
+          FLUTTER_PATH=$(which flutter | sed 's/\/bin\/flutter//')
+          echo "path=$FLUTTER_PATH" >> $GITHUB_OUTPUT
+
       - name: Create local.properties
         run: |
-          echo "flutter.sdk=${{ runner.tool_cache }}/flutter" > android/local.properties
+          echo "flutter.sdk=${{ steps.flutter_path.outputs.path }}" > android/local.properties
 
       - name: Create settings.gradle.kts
         run: |
           cat > android/settings.gradle.kts << 'EOF'
           pluginManagement {
+              def flutterSdkPath = {
+                  def properties = new Properties()
+                  file("local.properties").withInputStream { properties.load(it) }
+                  def flutterSdkPath = properties.getProperty("flutter.sdk")
+                  assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
+                  return flutterSdkPath
+              }
+              settings.ext.flutterSdkPath = flutterSdkPath()
+
+              includeBuild("${settings.ext.flutterSdkPath}/packages/flutter_tools/gradle")
+
               repositories {
                   google()
                   mavenCentral()
@@ -44,10 +61,10 @@ jobs:
           }
 
           plugins {
-              id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-              id("com.android.application") version "8.2.0" apply false
-              id("org.jetbrains.kotlin.android") version "1.9.22" apply false
-              id("com.google.gms.google-services") version "4.4.2" apply false
+              id "dev.flutter.flutter-plugin-loader" version "1.0.0"
+              id "com.android.application" version "8.2.0" apply false
+              id "org.jetbrains.kotlin.android" version "1.9.22" apply false
+              id "com.google.gms.google-services" version "4.4.2" apply false
           }
 
           include(":app")
