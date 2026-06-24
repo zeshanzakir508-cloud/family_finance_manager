@@ -178,21 +178,59 @@ jobs:
         run: |
           keytool -genkey -v -keystore android/app/debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug, O=Android, C=US"
 
-      - name: Create AndroidManifest.xml
+      - name: Create AndroidManifest.xml with all permissions
         run: |
           mkdir -p android/app/src/main
           cat > android/app/src/main/AndroidManifest.xml << 'EOF'
           <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:tools="http://schemas.android.com/tools"
               package="com.example.family_finance_manager">
-              
+
+              <!-- Internet Permission -->
+              <uses-permission android:name="android.permission.INTERNET" />
+
+              <!-- Storage Permissions -->
+              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+              <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+                  android:maxSdkVersion="28" />
+              <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+                  tools:ignore="ScopedStorage" />
+
+              <!-- Camera Permission -->
+              <uses-permission android:name="android.permission.CAMERA" />
+
+              <!-- Biometric/Fingerprint Permission -->
+              <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+              <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+
+              <!-- Device Info Permission -->
+              <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
+              <!-- Notification Permission (Android 13+) -->
+              <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+              <!-- Location Permission -->
+              <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+              <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+              <!-- Foreground Service Permission -->
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+              <!-- Vibration Permission -->
+              <uses-permission android:name="android.permission.VIBRATE" />
+
               <application
                   android:label="Family Finance Manager"
                   android:name="${applicationName}"
                   android:icon="@mipmap/ic_launcher"
                   android:allowBackup="true"
                   android:theme="@style/LaunchTheme"
-                  android:supportsRtl="true">
-                  
+                  android:supportsRtl="true"
+                  android:requestLegacyExternalStorage="true"
+                  android:usesCleartextTraffic="true"
+                  android:networkSecurityConfig="@xml/network_security_config"
+                  tools:targetApi="31">
+
                   <activity
                       android:name=".MainActivity"
                       android:exported="true"
@@ -201,22 +239,52 @@ jobs:
                       android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
                       android:hardwareAccelerated="true"
                       android:windowSoftInputMode="adjustResize">
-                      
+
                       <meta-data
                           android:name="io.flutter.embedding.android.NormalTheme"
                           android:resource="@style/NormalTheme" />
-                          
+
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
                           <category android:name="android.intent.category.LAUNCHER" />
                       </intent-filter>
                   </activity>
-                  
+
                   <meta-data
                       android:name="flutterEmbedding"
                       android:value="2" />
+
+                  <!-- Firebase Performance Monitoring -->
+                  <meta-data
+                      android:name="firebase_performance_logcat_enabled"
+                      android:value="false" />
+
+                  <!-- File Provider for Image Sharing -->
+                  <provider
+                      android:name="androidx.core.content.FileProvider"
+                      android:authorities="${applicationId}.fileprovider"
+                      android:exported="false"
+                      android:grantUriPermissions="true">
+                      <meta-data
+                          android:name="android.support.FILE_PROVIDER_PATHS"
+                          android:resource="@xml/file_paths" />
+                  </provider>
               </application>
           </manifest>
+          EOF
+
+      - name: Create network_security_config.xml
+        run: |
+          mkdir -p android/app/src/main/res/xml
+          cat > android/app/src/main/res/xml/network_security_config.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <network-security-config>
+              <base-config cleartextTrafficPermitted="true">
+                  <trust-anchors>
+                      <certificates src="system" />
+                  </trust-anchors>
+              </base-config>
+          </network-security-config>
           EOF
 
       - name: Create MainActivity.kt
@@ -253,6 +321,20 @@ jobs:
           <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
               <item android:drawable="@android:color/white" />
           </layer-list>
+          EOF
+
+      - name: Create file_paths.xml
+        run: |
+          mkdir -p android/app/src/main/res/xml
+          cat > android/app/src/main/res/xml/file_paths.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <paths>
+              <external-path name="external" path="." />
+              <external-files-path name="external_files" path="." />
+              <cache-path name="cache" path="." />
+              <external-cache-path name="external_cache" path="." />
+              <files-path name="files" path="." />
+          </paths>
           EOF
 
       - name: Install dependencies
