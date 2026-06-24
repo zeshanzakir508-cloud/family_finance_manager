@@ -1,130 +1,109 @@
 import 'package:hive/hive.dart';
 
-part 'family_model.g.dart';
+part 'family_member_model.g.dart';
 
-@HiveType(typeId: 4)
-class FamilyModel extends HiveObject {
+@HiveType(typeId: 7)
+class FamilyMemberModel extends HiveObject {
   @HiveField(0)
   String? id;
 
   @HiveField(1)
-  String? name;
+  String? familyId;
 
   @HiveField(2)
-  String? createdBy;
+  String? userId;
 
   @HiveField(3)
-  List<String>? memberIds;
+  String? fullName;
 
   @HiveField(4)
-  String? description;
+  String? email;
 
   @HiveField(5)
-  String? familyImageUrl;
+  String? phoneNumber;
 
   @HiveField(6)
-  DateTime? createdAt;
+  String? role;
 
   @HiveField(7)
-  DateTime? updatedAt;
-
-  @HiveField(8)
   bool? isActive;
 
+  @HiveField(8)
+  DateTime? joinedAt;
+
   @HiveField(9)
-  String? currency;
+  String? relation;
 
-  @HiveField(10)
-  double? monthlyBudget;
-
-  @HiveField(11)
-  String? inviteCode;
-
-  FamilyModel({
+  FamilyMemberModel({
     this.id,
-    this.name,
-    this.createdBy,
-    this.memberIds,
-    this.description,
-    this.familyImageUrl,
-    this.createdAt,
-    this.updatedAt,
+    this.familyId,
+    this.userId,
+    this.fullName,
+    this.email,
+    this.phoneNumber,
+    this.role,
     this.isActive = true,
-    this.currency = 'USD',
-    this.monthlyBudget,
-    this.inviteCode,
+    this.joinedAt,
+    this.relation,
   });
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'name': name,
-      'createdBy': createdBy,
-      'memberIds': memberIds,
-      'description': description,
-      'familyImageUrl': familyImageUrl,
-      'createdAt': createdAt?.toIso8601String(),
-      'updatedAt': updatedAt?.toIso8601String(),
+      'familyId': familyId,
+      'userId': userId,
+      'fullName': fullName,
+      'email': email,
+      'phoneNumber': phoneNumber,
+      'role': role,
       'isActive': isActive,
-      'currency': currency,
-      'monthlyBudget': monthlyBudget,
-      'inviteCode': inviteCode,
+      'joinedAt': joinedAt?.toIso8601String(),
+      'relation': relation,
     };
   }
 
-  factory FamilyModel.fromJson(Map<String, dynamic> json) {
-    return FamilyModel(
+  factory FamilyMemberModel.fromJson(Map<String, dynamic> json) {
+    return FamilyMemberModel(
       id: json['id'],
-      name: json['name'],
-      createdBy: json['createdBy'],
-      memberIds: json['memberIds'] != null 
-          ? List<String>.from(json['memberIds']) 
-          : null,
-      description: json['description'],
-      familyImageUrl: json['familyImageUrl'],
-      createdAt: json['createdAt'] != null 
-          ? DateTime.parse(json['createdAt']) 
-          : null,
-      updatedAt: json['updatedAt'] != null 
-          ? DateTime.parse(json['updatedAt']) 
-          : null,
+      familyId: json['familyId'],
+      userId: json['userId'],
+      fullName: json['fullName'],
+      email: json['email'],
+      phoneNumber: json['phoneNumber'],
+      role: json['role'],
       isActive: json['isActive'],
-      currency: json['currency'],
-      monthlyBudget: json['monthlyBudget'],
-      inviteCode: json['inviteCode'],
+      joinedAt: json['joinedAt'] != null 
+          ? DateTime.parse(json['joinedAt']) 
+          : null,
+      relation: json['relation'],
     );
   }
 
-  FamilyModel copyWith({
+  FamilyMemberModel copyWith({
     String? id,
-    String? name,
-    String? createdBy,
-    List<String>? memberIds,
-    String? description,
-    String? familyImageUrl,
-    DateTime? createdAt,
-    DateTime? updatedAt,
+    String? familyId,
+    String? userId,
+    String? fullName,
+    String? email,
+    String? phoneNumber,
+    String? role,
     bool? isActive,
-    String? currency,
-    double? monthlyBudget,
-    String? inviteCode,
+    DateTime? joinedAt,
+    String? relation,
   }) {
-    return FamilyModel(
+    return FamilyMemberModel(
       id: id ?? this.id,
-      name: name ?? this.name,
-      createdBy: createdBy ?? this.createdBy,
-      memberIds: memberIds ?? this.memberIds,
-      description: description ?? this.description,
-      familyImageUrl: familyImageUrl ?? this.familyImageUrl,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
+      familyId: familyId ?? this.familyId,
+      userId: userId ?? this.userId,
+      fullName: fullName ?? this.fullName,
+      email: email ?? this.email,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      role: role ?? this.role,
       isActive: isActive ?? this.isActive,
-      currency: currency ?? this.currency,
-      monthlyBudget: monthlyBudget ?? this.monthlyBudget,
-      inviteCode: inviteCode ?? this.inviteCode,
+      joinedAt: joinedAt ?? this.joinedAt,
+      relation: relation ?? this.relation,
     );
   }
 
-  String get displayName => name ?? 'Family';
-  int get memberCount => memberIds?.length ?? 0;
+  String get displayName => fullName ?? email?.split('@').first ?? 'Member';
 }
