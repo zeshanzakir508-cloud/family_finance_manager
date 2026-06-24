@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../../models/user_profile.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import '../../services/auth_service.dart';
 import '../../models/transaction_model.dart';
+import '../../models/user_profile.dart';
 import '../../utils/app_theme.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -14,271 +16,316 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
+  String? _userName;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userId = authService.userId;
+    
+    if (userId != null) {
+      final box = Hive.box<UserProfile>('userProfile');
+      final user = box.get(userId);
+      if (user != null) {
+        setState(() {
+          _userName = user.displayName;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final authService = Provider.of<AuthService>(context);
+    final userEmail = authService.userEmail ?? 'User';
+
     return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 20),
-              _buildStatsCards(),
-              const SizedBox(height: 24),
-              _buildQuickActions(),
-              const SizedBox(height: 24),
-              _buildRecentTransactions(),
+      appBar: AppBar(
+        title: Text(
+          'Family Finance',
+          style: AppTheme.headingStyle.copyWith(fontSize: 20),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () {
+              // Navigate to notifications
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Notifications coming soon!'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              switch (value) {
+                case 'profile':
+                  // Navigate to profile
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Profile coming soon!'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                  break;
+                case 'settings':
+                  // Navigate to settings
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Settings coming soon!'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                  break;
+                case 'logout':
+                  _logout(authService);
+                  break;
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              const PopupMenuItem<String>(
+                value: 'profile',
+                child: Row(
+                  children: [
+                    Icon(Icons.person_outline, size: 20),
+                    SizedBox(width: 12),
+                    Text('Profile'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'settings',
+                child: Row(
+                  children: [
+                    Icon(Icons.settings_outlined, size: 20),
+                    SizedBox(width: 12),
+                    Text('Settings'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, size: 20, color: AppTheme.errorColor),
+                    SizedBox(width: 12),
+                    Text('Logout', style: TextStyle(color: AppTheme.errorColor)),
+                  ],
+                ),
+              ),
             ],
           ),
-        ),
+        ],
       ),
-      bottomNavigationBar: _buildBottomNavBar(),
+      body: _buildBody(),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: _selectedIndex,
+        onTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.add_circle_outline),
+            activeIcon: Icon(Icons.add_circle),
+            label: 'Add',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.pie_chart_outline),
+            activeIcon: Icon(Icons.pie_chart),
+            label: 'Reports',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people_outline),
+            activeIcon: Icon(Icons.people),
+            label: 'Family',
+          ),
+        ],
+      ),
+      floatingActionButton: _selectedIndex == 1
+          ? FloatingActionButton(
+              onPressed: () {
+                // Navigate to add transaction
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Add Transaction coming soon!'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+              backgroundColor: AppTheme.primaryColor,
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
     );
   }
 
-  Widget _buildHeader() {
-    return ValueListenableBuilder(
-      valueListenable: Hive.box<UserProfile>('userProfile').listenable(),
-      builder: (context, Box<UserProfile> box, _) {
-        final profile = box.get('profile');
-        final userName = profile?.name ?? 'User';
-        final today = DateFormat('EEEE, MMM d').format(DateTime.now());
+  Widget _buildBody() {
+    switch (_selectedIndex) {
+      case 0:
+        return _buildHomeTab();
+      case 1:
+        return _buildAddTab();
+      case 2:
+        return _buildReportsTab();
+      case 3:
+        return _buildFamilyTab();
+      default:
+        return _buildHomeTab();
+    }
+  }
 
-        return Row(
-          children: [
-            CircleAvatar(
-              radius: 28,
-              backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
-              child: Text(
-                userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primary,
-                ),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Welcome back,',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                  Text(
-                    userName,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
+  // Home Tab
+  Widget _buildHomeTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Welcome Message
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.primaryColor,
+                  AppTheme.primaryColor.withOpacity(0.8),
                 ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
+              borderRadius: BorderRadius.circular(16),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: const Icon(Icons.notifications_outlined,
-                      color: AppTheme.textSecondary),
-                  onPressed: () {},
-                ),
                 Text(
-                  today,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textLight,
+                  'Welcome back!',
+                  style: AppTheme.bodyStyle.copyWith(
+                    color: Colors.white70,
+                    fontSize: 14,
                   ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _userName ?? 'Family Member',
+                  style: AppTheme.headingStyle.copyWith(
+                    color: Colors.white,
+                    fontSize: 24,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.account_balance_wallet,
+                      color: Colors.white70,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Balance: \$0.00',
+                      style: AppTheme.bodyStyle.copyWith(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildStatsCards() {
-    return ValueListenableBuilder(
-      valueListenable: Hive.box<TransactionModel>('transactions').listenable(),
-      builder: (context, Box<TransactionModel> box, _) {
-        final transactions = box.values.toList();
-
-        double totalIncome = 0;
-        double totalExpense = 0;
-
-        for (var t in transactions) {
-          if (t.type == TransactionType.income) {
-            totalIncome += t.amount;
-          } else {
-            totalExpense += t.amount;
-          }
-        }
-
-        final balance = totalIncome - totalExpense;
-
-        return Row(
-          children: [
-            _buildStatCard(
-              title: 'Balance',
-              value: balance,
-              icon: Icons.account_balance_wallet,
-              color: balance >= 0 ? AppTheme.success : AppTheme.error,
-            ),
-            const SizedBox(width: 12),
-            _buildStatCard(
-              title: 'Income',
-              value: totalIncome,
-              icon: Icons.trending_up,
-              color: AppTheme.success,
-            ),
-            const SizedBox(width: 12),
-            _buildStatCard(
-              title: 'Expense',
-              value: totalExpense,
-              icon: Icons.trending_down,
-              color: AppTheme.error,
-            ),
-          ],
-        );
-      },
+          ),
+          const SizedBox(height: 24),
+          
+          // Quick Stats
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  title: 'Income',
+                  amount: '\$0.00',
+                  icon: Icons.arrow_upward,
+                  color: Colors.green,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  title: 'Expenses',
+                  amount: '\$0.00',
+                  icon: Icons.arrow_downward,
+                  color: Colors.red,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // Recent Transactions
+          _buildRecentTransactions(),
+        ],
+      ),
     );
   }
 
   Widget _buildStatCard({
     required String title,
-    required double value,
+    required String amount,
     required IconData icon,
     required Color color,
   }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [color.withValues(alpha: 0.08), Colors.white],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: color.withValues(alpha: 0.15),
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 22),
-            const SizedBox(height: 6),
-            Text(
-              NumberFormat('#,##0.00').format(value),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                color: AppTheme.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.dividerColor),
       ),
-    );
-  }
-
-  Widget _buildQuickActions() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Quick Actions',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            _buildActionButton(
-              icon: Icons.add_circle_outline,
-              label: 'Add',
-              color: AppTheme.primary,
-              onTap: () {},
-            ),
-            _buildActionButton(
-              icon: Icons.list_alt,
-              label: 'History',
-              color: const Color(0xFF1ABC9C),
-              onTap: () {},
-            ),
-            _buildActionButton(
-              icon: Icons.people_outline,
-              label: 'Family',
-              color: const Color(0xFFFF6B6B),
-              onTap: () {},
-            ),
-            _buildActionButton(
-              icon: Icons.pie_chart_outline,
-              label: 'Reports',
-              color: AppTheme.primary,
-              onTap: () {},
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 16),
+              ),
+              const SizedBox(width: 8),
               Text(
-                label,
-                style: TextStyle(
+                title,
+                style: AppTheme.bodyStyle.copyWith(
+                  color: AppTheme.textSecondaryColor,
                   fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: color,
                 ),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 8),
+          Text(
+            amount,
+            style: AppTheme.headingStyle.copyWith(fontSize: 18),
+          ),
+        ],
       ),
     );
   }
@@ -288,8 +335,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       valueListenable: Hive.box<TransactionModel>('transactions').listenable(),
       builder: (context, Box<TransactionModel> box, _) {
         final transactions = box.values.toList();
-        transactions.sort((a, b) => b.date.compareTo(a.date));
-        final recentTransactions = transactions.take(4).toList();
+        transactions.sort((a, b) => b.date!.compareTo(a.date!));
+        final recentTransactions = transactions.take(5).toList();
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -297,197 +344,243 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Recent Transactions',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimary,
-                  ),
+                  style: AppTheme.subheadingStyle,
                 ),
                 TextButton(
-                  onPressed: () {},
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppTheme.primary,
+                  onPressed: () {
+                    // Navigate to all transactions
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('All Transactions coming soon!'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                  child: Text(
+                    'See All',
+                    style: AppTheme.bodyStyle.copyWith(
+                      color: AppTheme.primaryColor,
+                    ),
                   ),
-                  child: const Text('See All →'),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             if (recentTransactions.isEmpty)
-              _buildEmptyState()
+              Container(
+                padding: const EdgeInsets.all(32),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.dividerColor),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.receipt_long_outlined,
+                      size: 48,
+                      color: AppTheme.textSecondaryColor,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'No transactions yet',
+                      style: AppTheme.bodyStyle.copyWith(
+                        color: AppTheme.textSecondaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Start adding your first transaction!',
+                      style: AppTheme.captionStyle,
+                    ),
+                  ],
+                ),
+              )
             else
-              ...recentTransactions.map((t) => _buildTransactionTile(t)),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: recentTransactions.length,
+                separatorBuilder: (context, index) => const Divider(),
+                itemBuilder: (context, index) {
+                  final transaction = recentTransactions[index];
+                  return _buildTransactionTile(transaction);
+                },
+              ),
           ],
         );
       },
     );
   }
 
-  Widget _buildEmptyState() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 40),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.textLight.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        children: [
-          Icon(Icons.receipt_long, size: 48, color: AppTheme.textLight),
-          const SizedBox(height: 12),
-          Text(
-            'No transactions yet',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Tap + to add your first transaction',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.textLight,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildTransactionTile(TransactionModel transaction) {
-    final isIncome = transaction.type == TransactionType.income;
-    final color = isIncome ? AppTheme.success : AppTheme.error;
-    final icon = isIncome ? Icons.trending_up : Icons.trending_down;
-    final sign = isIncome ? '+' : '-';
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppTheme.textLight.withValues(alpha: 0.2),
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: transaction.typeColor.withOpacity(0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          transaction.categoryIcon,
+          color: transaction.typeColor,
+          size: 20,
         ),
       ),
-      child: Row(
+      title: Text(
+        transaction.description ?? 'Transaction',
+        style: AppTheme.bodyStyle,
+      ),
+      subtitle: Text(
+        '${transaction.formattedDate} • ${transaction.categoryDisplayName}',
+        style: AppTheme.captionStyle,
+      ),
+      trailing: Text(
+        '${transaction.type == TransactionType.income ? '+' : '-'}${transaction.formattedAmount}',
+        style: AppTheme.bodyStyle.copyWith(
+          color: transaction.typeColor,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      onTap: () {
+        // Navigate to transaction details
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Transaction details for ${transaction.description}'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      },
+    );
+  }
+
+  // Add Tab
+  Widget _buildAddTab() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: color.withValues(alpha: 0.1),
-            child: Icon(icon, color: color, size: 20),
+          Icon(
+            Icons.add_circle_outline,
+            size: 64,
+            color: AppTheme.textSecondaryColor,
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  transaction.description,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-                Row(
-                  children: [
-                    Text(
-                      transaction.category,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '•',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      DateFormat('dd MMM').format(transaction.date),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+          SizedBox(height: 16),
           Text(
-            '$sign ${NumberFormat('#,##0.00').format(transaction.amount)}',
+            'Tap the + button to add a transaction',
             style: TextStyle(
+              color: AppTheme.textSecondaryColor,
               fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: color,
             ),
           ),
-          if (transaction.isImportant)
-            const Padding(
-              padding: EdgeInsets.only(left: 8),
-              child: Icon(Icons.star, color: AppTheme.warning, size: 16),
+          SizedBox(height: 8),
+          Text(
+            'Or use the button below',
+            style: TextStyle(
+              color: AppTheme.textSecondaryColor,
+              fontSize: 14,
             ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildBottomNavBar() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      currentIndex: _selectedIndex,
-      backgroundColor: Colors.white,
-      selectedItemColor: AppTheme.primary,
-      unselectedItemColor: AppTheme.textLight,
-      elevation: 8,
-      onTap: (index) {
-        setState(() => _selectedIndex = index);
-        switch (index) {
-          case 0:
-            break;
-          case 1:
-            // Navigate to Add Transaction
-            break;
-          case 2:
-            // Navigate to Family Members
-            break;
-          case 3:
-            // Navigate to Settings
-            break;
-        }
-      },
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.dashboard_outlined),
-          activeIcon: Icon(Icons.dashboard),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.add_circle_outline),
-          activeIcon: Icon(Icons.add_circle),
-          label: 'Add',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.people_outline),
-          activeIcon: Icon(Icons.people),
-          label: 'Family',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.settings_outlined),
-          activeIcon: Icon(Icons.settings),
-          label: 'Settings',
-        ),
-      ],
+  // Reports Tab
+  Widget _buildReportsTab() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.pie_chart_outline,
+            size: 64,
+            color: AppTheme.textSecondaryColor,
+          ),
+          SizedBox(height: 16),
+          Text(
+            'Reports & Analytics',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Coming soon!',
+            style: TextStyle(
+              color: AppTheme.textSecondaryColor,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  // Family Tab
+  Widget _buildFamilyTab() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.people_outline,
+            size: 64,
+            color: AppTheme.textSecondaryColor,
+          ),
+          SizedBox(height: 16),
+          Text(
+            'Family Management',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Coming soon!',
+            style: TextStyle(
+              color: AppTheme.textSecondaryColor,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Logout Method
+  Future<void> _logout(AuthService authService) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.errorColor,
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await authService.signOut();
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    }
   }
 }
