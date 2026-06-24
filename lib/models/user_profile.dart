@@ -67,6 +67,9 @@ class UserProfile extends HiveObject {
   @HiveField(20)
   String? notificationPreference;
 
+  @HiveField(21)
+  String? currency;  // ADD THIS FIELD
+
   UserProfile({
     this.id,
     this.email,
@@ -89,6 +92,7 @@ class UserProfile extends HiveObject {
     this.preferredLanguage = 'en',
     this.isDarkMode = false,
     this.notificationPreference = 'all',
+    this.currency = 'USD',  // ADD THIS
   });
 
   // Convert to JSON for Firebase/Firestore
@@ -115,6 +119,7 @@ class UserProfile extends HiveObject {
       'preferredLanguage': preferredLanguage,
       'isDarkMode': isDarkMode,
       'notificationPreference': notificationPreference,
+      'currency': currency,  // ADD THIS
     };
   }
 
@@ -146,6 +151,7 @@ class UserProfile extends HiveObject {
       preferredLanguage: json['preferredLanguage'],
       isDarkMode: json['isDarkMode'],
       notificationPreference: json['notificationPreference'],
+      currency: json['currency'] ?? 'USD',  // ADD THIS
     );
   }
 
@@ -172,6 +178,7 @@ class UserProfile extends HiveObject {
     String? preferredLanguage,
     bool? isDarkMode,
     String? notificationPreference,
+    String? currency,  // ADD THIS
   }) {
     return UserProfile(
       id: id ?? this.id,
@@ -195,6 +202,7 @@ class UserProfile extends HiveObject {
       preferredLanguage: preferredLanguage ?? this.preferredLanguage,
       isDarkMode: isDarkMode ?? this.isDarkMode,
       notificationPreference: notificationPreference ?? this.notificationPreference,
+      currency: currency ?? this.currency,  // ADD THIS
     );
   }
 
