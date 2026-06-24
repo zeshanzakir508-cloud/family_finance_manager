@@ -24,18 +24,15 @@ jobs:
 
       - name: Copy Firebase config
         run: |
-          if [ -f google-services-backup.json ]; then
-            cp google-services-backup.json android/app/google-services.json
+          if [ -f google-services.json ]; then
+            cp google-services.json android/app/google-services.json
           fi
 
-      - name: Fix compileSdkVersion
+      - name: Set compileSdk to 36
         run: |
-          if [ -f android/app/build.gradle.kts ]; then
-            sed -i 's/compileSdk = 33/compileSdk = 34/g' android/app/build.gradle.kts || true
-          fi
-          if [ -f android/app/build.gradle ]; then
-            sed -i 's/compileSdkVersion 33/compileSdkVersion 34/g' android/app/build.gradle || true
-          fi
+          sed -i 's/compileSdk = 33/compileSdk = 36/g' android/app/build.gradle.kts || true
+          sed -i 's/compileSdk = 34/compileSdk = 36/g' android/app/build.gradle.kts || true
+          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/g' android/app/build.gradle.kts || true
 
       - name: Install dependencies
         run: flutter pub get
