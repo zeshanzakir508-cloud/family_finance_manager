@@ -16,9 +16,9 @@ dependencies:
   flutter_svg: ^2.0.10
   shimmer: ^3.0.0
 
-  # Firebase (Auth only - NO Firestore)
-  firebase_core: ^2.32.0
-  firebase_auth: ^4.20.0
+  # Firebase
+  firebase_core: ^2.24.0
+  firebase_auth: ^4.16.0
 
   # Local Storage
   hive: ^2.2.3
@@ -36,7 +36,7 @@ dependencies:
   device_info_plus: ^10.1.0
   package_info_plus: ^8.0.0
   share_plus: ^10.0.0
-  file_picker: ^8.1.0
+  file_picker: ^8.0.7
 
   # Charts & Reports
   fl_chart: ^0.68.0
