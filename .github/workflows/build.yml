@@ -140,10 +140,24 @@ jobs:
                   multiDexEnabled = true
               }
 
+              signingConfigs {
+                  create("release") {
+                      storeFile = file("debug.keystore")
+                      storePassword = "android"
+                      keyAlias = "androiddebugkey"
+                      keyPassword = "android"
+                  }
+              }
+
               buildTypes {
                   release {
+                      signingConfig = signingConfigs.getByName("release")
                       isMinifyEnabled = true
                       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+                  }
+                  debug {
+                      signingConfig = signingConfigs.getByName("debug")
+                      isMinifyEnabled = false
                   }
               }
           }
@@ -158,6 +172,87 @@ jobs:
               implementation("com.google.firebase:firebase-auth")
               implementation("androidx.biometric:biometric:1.1.0")
           }
+          EOF
+
+      - name: Create debug.keystore
+        run: |
+          keytool -genkey -v -keystore android/app/debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug, O=Android, C=US"
+
+      - name: Create AndroidManifest.xml
+        run: |
+          mkdir -p android/app/src/main
+          cat > android/app/src/main/AndroidManifest.xml << 'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+              package="com.example.family_finance_manager">
+              
+              <application
+                  android:label="Family Finance Manager"
+                  android:name="${applicationName}"
+                  android:icon="@mipmap/ic_launcher"
+                  android:allowBackup="true"
+                  android:theme="@style/LaunchTheme"
+                  android:supportsRtl="true">
+                  
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:launchMode="singleTop"
+                      android:theme="@style/LaunchTheme"
+                      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+                      android:hardwareAccelerated="true"
+                      android:windowSoftInputMode="adjustResize">
+                      
+                      <meta-data
+                          android:name="io.flutter.embedding.android.NormalTheme"
+                          android:resource="@style/NormalTheme" />
+                          
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+                  
+                  <meta-data
+                      android:name="flutterEmbedding"
+                      android:value="2" />
+              </application>
+          </manifest>
+          EOF
+
+      - name: Create MainActivity.kt
+        run: |
+          mkdir -p android/app/src/main/kotlin/com/example/family_finance_manager
+          cat > android/app/src/main/kotlin/com/example/family_finance_manager/MainActivity.kt << 'EOF'
+          package com.example.family_finance_manager
+
+          import io.flutter.embedding.android.FlutterActivity
+
+          class MainActivity: FlutterActivity()
+          EOF
+
+      - name: Create styles.xml
+        run: |
+          mkdir -p android/app/src/main/res/values
+          cat > android/app/src/main/res/values/styles.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+                  <item name="android:windowBackground">@drawable/launch_background</item>
+              </style>
+              <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
+                  <item name="android:windowBackground">?android:colorBackground</item>
+              </style>
+          </resources>
+          EOF
+
+      - name: Create launch_background.xml
+        run: |
+          mkdir -p android/app/src/main/res/drawable
+          cat > android/app/src/main/res/drawable/launch_background.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+              <item android:drawable="@android:color/white" />
+          </layer-list>
           EOF
 
       - name: Install dependencies
