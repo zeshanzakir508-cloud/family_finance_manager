@@ -10,7 +10,7 @@ import 'screens/dashboard/dashboard_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/transactions/add_transaction_screen.dart';
-import 'screens/transactions/transaction_details_screen.dart';
+import 'screens/transactions/transaction_detail_screen.dart';
 import 'screens/notifications/notifications_screen.dart';
 import 'screens/family/family_management_screen.dart';
 import 'screens/reports/reports_screen.dart';
@@ -24,15 +24,15 @@ import 'utils/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
+  // Initialize Firebase with your actual config from google-services.json
   await Firebase.initializeApp(
     options: const FirebaseOptions(
-      apiKey: "AIzaSyB8kZxPq5l9cG7dE6fH3jK2mN4oP5qR6sT7uV8wX9yZ",
+      apiKey: "AIzaSyC2PqPJ9E1VJj2lPtM06qYwD7xGZ5kR9nQ",
       authDomain: "family-finance-manager.firebaseapp.com",
       projectId: "family-finance-manager",
       storageBucket: "family-finance-manager.appspot.com",
-      messagingSenderId: "123456789012",
-      appId: "1:123456789012:android:abcdef1234567890",
+      messagingSenderId: "808843357815",
+      appId: "1:808843357815:android:8edf9e5b7c6a4d2f",
     ),
   );
 
@@ -84,7 +84,7 @@ class MyApp extends StatelessWidget {
           '/settings': (context) => const SettingsScreen(),
           '/profile': (context) => const ProfileScreen(),
           '/add-transaction': (context) => const AddTransactionScreen(),
-          '/transaction-details': (context) => const TransactionDetailsScreen(),
+          '/transaction-details': (context) => const TransactionDetailScreen(),
           '/notifications': (context) => const NotificationsScreen(),
           '/family-management': (context) => const FamilyManagementScreen(),
           '/reports': (context) => const ReportsScreen(),
