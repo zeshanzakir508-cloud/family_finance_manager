@@ -38,6 +38,17 @@ jobs:
         run: |
           echo "flutter.sdk=${{ steps.flutter_path.outputs.path }}" > android/local.properties
 
+      - name: Create gradle-wrapper.properties
+        run: |
+          mkdir -p android/gradle/wrapper
+          cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.10.2-bin.zip
+          EOF
+
       - name: Create settings.gradle.kts
         run: |
           cat > android/settings.gradle.kts << 'EOF'
@@ -63,8 +74,8 @@ jobs:
 
           plugins {
               id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-              id("com.android.application") version "8.2.0" apply false
-              id("org.jetbrains.kotlin.android") version "1.9.22" apply false
+              id("com.android.application") version "8.7.0" apply false
+              id("org.jetbrains.kotlin.android") version "2.0.20" apply false
               id("com.google.gms.google-services") version "4.4.2" apply false
           }
 
@@ -106,23 +117,23 @@ jobs:
 
           android {
               namespace = "com.example.family_finance_manager"
-              compileSdk = 34
+              compileSdk = 35
 
               compileOptions {
-                  sourceCompatibility = JavaVersion.VERSION_1_8
-                  targetCompatibility = JavaVersion.VERSION_1_8
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
               }
 
               kotlin {
                   compilerOptions {
-                      jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
+                      jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
                   }
               }
 
               defaultConfig {
                   applicationId = "com.example.family_finance_manager"
-                  minSdk = 21
-                  targetSdk = 34
+                  minSdk = 23
+                  targetSdk = 35
                   versionCode = 1
                   versionName = "1.0"
                   multiDexEnabled = true
@@ -146,17 +157,6 @@ jobs:
               implementation("com.google.firebase:firebase-auth")
               implementation("androidx.biometric:biometric:1.1.0")
           }
-          EOF
-
-      - name: Create gradle-wrapper.properties
-        run: |
-          mkdir -p android/gradle/wrapper
-          cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
-          distributionBase=GRADLE_USER_HOME
-          distributionPath=wrapper/dists
-          zipStoreBase=GRADLE_USER_HOME
-          zipStorePath=wrapper/dists
-          distributionUrl=https\://services.gradle.org/distributions/gradle-8.6-bin.zip
           EOF
 
       - name: Install dependencies
