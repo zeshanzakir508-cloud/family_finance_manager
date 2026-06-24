@@ -42,7 +42,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   void _applyFilters() {
-    final now = DateTime.now();
     final dateRange = _getDateRange();
 
     _filteredTransactions = _allTransactions.where((transaction) {
@@ -101,7 +100,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
         final end = DateTime(_selectedYear.year, 12, 31);
         return {'start': start, 'end': end};
       case 'custom':
-        // Custom range - you can implement date pickers
         return null;
       default:
         return null;
@@ -290,58 +288,60 @@ class _ReportsScreenState extends State<ReportsScreen> {
       runSpacing: 8,
       children: [
         // Type Filter
-        DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: _selectedType ?? 'all',
-            items: const [
-              DropdownMenuItem(value: 'all', child: Text('All Types')),
-              DropdownMenuItem(value: 'income', child: Text('Income')),
-              DropdownMenuItem(value: 'expense', child: Text('Expense')),
-            ],
-            onChanged: (value) {
-              setState(() {
-                _selectedType = value;
-                _applyFilters();
-              });
-            },
-            style: AppTheme.bodyStyle,
-            icon: Icon(Icons.arrow_drop_down, color: AppTheme.primaryColor),
-            decoration: InputDecoration(
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: AppTheme.dividerColor),
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(color: AppTheme.dividerColor),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: DropdownButton<String>(
+              value: _selectedType ?? 'all',
+              items: const [
+                DropdownMenuItem(value: 'all', child: Text('All Types')),
+                DropdownMenuItem(value: 'income', child: Text('Income')),
+                DropdownMenuItem(value: 'expense', child: Text('Expense')),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  _selectedType = value;
+                  _applyFilters();
+                });
+              },
+              style: AppTheme.bodyStyle,
+              icon: Icon(Icons.arrow_drop_down, color: AppTheme.primaryColor),
+              underline: const SizedBox(),
             ),
           ),
         ),
         // Category Filter
-        DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: _selectedCategory ?? 'all',
-            items: [
-              const DropdownMenuItem(value: 'all', child: Text('All Categories')),
-              ..._getUniqueCategories().map((category) {
-                return DropdownMenuItem(
-                  value: category,
-                  child: Text(_getCategoryDisplayName(category)),
-                );
-              }),
-            ],
-            onChanged: (value) {
-              setState(() {
-                _selectedCategory = value;
-                _applyFilters();
-              });
-            },
-            style: AppTheme.bodyStyle,
-            icon: Icon(Icons.arrow_drop_down, color: AppTheme.primaryColor),
-            decoration: InputDecoration(
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: AppTheme.dividerColor),
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(color: AppTheme.dividerColor),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: DropdownButton<String>(
+              value: _selectedCategory ?? 'all',
+              items: [
+                const DropdownMenuItem(value: 'all', child: Text('All Categories')),
+                ..._getUniqueCategories().map((category) {
+                  return DropdownMenuItem(
+                    value: category,
+                    child: Text(_getCategoryDisplayName(category)),
+                  );
+                }),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  _selectedCategory = value;
+                  _applyFilters();
+                });
+              },
+              style: AppTheme.bodyStyle,
+              icon: Icon(Icons.arrow_drop_down, color: AppTheme.primaryColor),
+              underline: const SizedBox(),
             ),
           ),
         ),
