@@ -1,59 +1,188 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 
-class AuthService {
+class AuthService extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  User? _user;
 
+  AuthService() {
+    _auth.authStateChanges().listen((User? user) {
+      _user = user;
+      notifyListeners();
+    });
+  }
+
+  // Stream of auth state changes
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  User? get currentUser => _auth.currentUser;
+  // Get current user
+  User? get currentUser => _user;
 
-  String? get userId => _auth.currentUser?.uid;
+  // Get user ID
+  String? get userId => _user?.uid;
 
-  String? get userEmail => _auth.currentUser?.email;
+  // Get user email
+  String? get userEmail => _user?.email;
 
+  // Check if user is authenticated
+  bool get isAuthenticated => _user != null;
+
+  // Sign in with email and password
   Future<User?> signInWithEmail(String email, String password) async {
     try {
       UserCredential result = await _auth.signInWithEmailAndPassword(
-        email: email,
+        email: email.trim(),
         password: password,
       );
+      _user = result.user;
+      notifyListeners();
       return result.user;
     } on FirebaseAuthException catch (e) {
-      print('Sign in error: ${e.message}');
+      _handleAuthError(e);
       return null;
     } catch (e) {
-      print('Sign in error: $e');
+      debugPrint('Sign in error: $e');
       return null;
     }
   }
 
+  // Sign up with email and password
   Future<User?> signUpWithEmail(String email, String password) async {
     try {
       UserCredential result = await _auth.createUserWithEmailAndPassword(
-        email: email,
+        email: email.trim(),
         password: password,
       );
+      _user = result.user;
+      notifyListeners();
+      
+      // Send email verification
+      await result.user?.sendEmailVerification();
+      
       return result.user;
     } on FirebaseAuthException catch (e) {
-      print('Sign up error: ${e.message}');
+      _handleAuthError(e);
       return null;
     } catch (e) {
-      print('Sign up error: $e');
+      debugPrint('Sign up error: $e');
       return null;
     }
   }
 
+  // Send password reset email
   Future<bool> sendPasswordResetEmail(String email) async {
     try {
-      await _auth.sendPasswordResetEmail(email: email);
+      await _auth.sendPasswordResetEmail(email: email.trim());
       return true;
     } on FirebaseAuthException catch (e) {
-      print('Password reset error: ${e.message}');
+      _handleAuthError(e);
+      return false;
+    } catch (e) {
+      debugPrint('Password reset error: $e');
       return false;
     }
   }
 
+  // Sign out
   Future<void> signOut() async {
-    await _auth.signOut();
+    try {
+      await _auth.signOut();
+      _user = null;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Sign out error: $e');
+    }
+  }
+
+  // Delete account
+  Future<bool> deleteAccount() async {
+    try {
+      await _user?.delete();
+      _user = null;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('Delete account error: $e');
+      return false;
+    }
+  }
+
+  // Re-authenticate user
+  Future<bool> reauthenticate(String password) async {
+    try {
+      AuthCredential credential = EmailAuthProvider.credential(
+        email: _user?.email ?? '',
+        password: password,
+      );
+      await _user?.reauthenticateWithCredential(credential);
+      return true;
+    } catch (e) {
+      debugPrint('Re-authentication error: $e');
+      return false;
+    }
+  }
+
+  // Update password
+  Future<bool> updatePassword(String newPassword) async {
+    try {
+      await _user?.updatePassword(newPassword);
+      return true;
+    } catch (e) {
+      debugPrint('Update password error: $e');
+      return false;
+    }
+  }
+
+  // Update email
+  Future<bool> updateEmail(String newEmail) async {
+    try {
+      await _user?.updateEmail(newEmail.trim());
+      return true;
+    } catch (e) {
+      debugPrint('Update email error: $e');
+      return false;
+    }
+  }
+
+  // Handle Firebase auth errors
+  void _handleAuthError(FirebaseAuthException e) {
+    String message;
+    switch (e.code) {
+      case 'user-not-found':
+        message = 'No user found with this email.';
+        break;
+      case 'wrong-password':
+        message = 'Incorrect password.';
+        break;
+      case 'email-already-in-use':
+        message = 'This email is already registered.';
+        break;
+      case 'invalid-email':
+        message = 'Please enter a valid email address.';
+        break;
+      case 'weak-password':
+        message = 'Password should be at least 6 characters.';
+        break;
+      case 'too-many-requests':
+        message = 'Too many attempts. Please try again later.';
+        break;
+      case 'user-disabled':
+        message = 'This account has been disabled.';
+        break;
+      case 'operation-not-allowed':
+        message = 'Email/password accounts are not enabled.';
+        break;
+      case 'requires-recent-login':
+        message = 'Please log in again to complete this action.';
+        break;
+      default:
+        message = 'An error occurred. Please try again.';
+    }
+    debugPrint('Auth Error: $message');
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 }
