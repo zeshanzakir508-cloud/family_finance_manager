@@ -48,7 +48,7 @@ jobs:
 
               kotlin {
                   compilerOptions {
-                      jvmTarget = "1.8"
+                      jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
                   }
               }
 
