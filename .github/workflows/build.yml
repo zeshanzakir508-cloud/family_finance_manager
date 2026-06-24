@@ -46,7 +46,7 @@ jobs:
           distributionPath=wrapper/dists
           zipStoreBase=GRADLE_USER_HOME
           zipStorePath=wrapper/dists
-          distributionUrl=https\://services.gradle.org/distributions/gradle-8.10.2-bin.zip
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.14-bin.zip
           EOF
 
       - name: Create settings.gradle.kts
@@ -74,8 +74,8 @@ jobs:
 
           plugins {
               id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-              id("com.android.application") version "8.7.0" apply false
-              id("org.jetbrains.kotlin.android") version "2.0.20" apply false
+              id("com.android.application") version "8.11.1" apply false
+              id("org.jetbrains.kotlin.android") version "2.2.20" apply false
               id("com.google.gms.google-services") version "4.4.2" apply false
           }
 
@@ -117,7 +117,8 @@ jobs:
 
           android {
               namespace = "com.example.family_finance_manager"
-              compileSdk = 35
+              compileSdk = 36
+              ndkVersion = "28.2.13676358"
 
               compileOptions {
                   sourceCompatibility = JavaVersion.VERSION_17
@@ -133,7 +134,7 @@ jobs:
               defaultConfig {
                   applicationId = "com.example.family_finance_manager"
                   minSdk = 23
-                  targetSdk = 35
+                  targetSdk = 36
                   versionCode = 1
                   versionName = "1.0"
                   multiDexEnabled = true
