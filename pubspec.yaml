@@ -16,7 +16,7 @@ dependencies:
   flutter_svg: ^2.0.10
   shimmer: ^3.0.0
 
-  # Firebase (Downgraded for compatibility)
+  # Firebase
   firebase_core: ^2.15.0
   firebase_auth: ^4.10.0
 
