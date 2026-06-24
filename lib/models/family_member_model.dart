@@ -1,168 +1,130 @@
-import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
-part 'family_member_model.g.dart';
-
-@HiveType(typeId: 3)
-enum MemberRelation {
-  @HiveField(0)
-  self,
-  @HiveField(1)
-  spouse,
-  @HiveField(2)
-  son,
-  @HiveField(3)
-  daughter,
-  @HiveField(4)
-  father,
-  @HiveField(5)
-  mother,
-  @HiveField(6)
-  brother,
-  @HiveField(7)
-  sister,
-  @HiveField(8)
-  grandparent,
-  @HiveField(9)
-  uncle,
-  @HiveField(10)
-  aunt,
-  @HiveField(11)
-  cousin,
-  @HiveField(12)
-  other,
-}
+part 'family_model.g.dart';
 
 @HiveType(typeId: 4)
-class FamilyMemberModel extends HiveObject {
+class FamilyModel extends HiveObject {
   @HiveField(0)
-  String id;
+  String? id;
 
   @HiveField(1)
-  String name;
+  String? name;
 
   @HiveField(2)
-  MemberRelation relation;
+  String? createdBy;
 
   @HiveField(3)
-  DateTime? dateOfBirth;
+  List<String>? memberIds;
 
   @HiveField(4)
-  String? phoneNumber;
+  String? description;
 
   @HiveField(5)
-  String? email;
+  String? familyImageUrl;
 
   @HiveField(6)
-  String? notes;
+  DateTime? createdAt;
 
   @HiveField(7)
-  bool isActive;
+  DateTime? updatedAt;
 
   @HiveField(8)
-  DateTime createdAt;
+  bool? isActive;
 
-  FamilyMemberModel({
-    String? id,
-    required this.name,
-    required this.relation,
-    this.dateOfBirth,
-    this.phoneNumber,
-    this.email,
-    this.notes,
+  @HiveField(9)
+  String? currency;
+
+  @HiveField(10)
+  double? monthlyBudget;
+
+  @HiveField(11)
+  String? inviteCode;
+
+  FamilyModel({
+    this.id,
+    this.name,
+    this.createdBy,
+    this.memberIds,
+    this.description,
+    this.familyImageUrl,
+    this.createdAt,
+    this.updatedAt,
     this.isActive = true,
+    this.currency = 'USD',
+    this.monthlyBudget,
+    this.inviteCode,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'createdBy': createdBy,
+      'memberIds': memberIds,
+      'description': description,
+      'familyImageUrl': familyImageUrl,
+      'createdAt': createdAt?.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
+      'isActive': isActive,
+      'currency': currency,
+      'monthlyBudget': monthlyBudget,
+      'inviteCode': inviteCode,
+    };
+  }
+
+  factory FamilyModel.fromJson(Map<String, dynamic> json) {
+    return FamilyModel(
+      id: json['id'],
+      name: json['name'],
+      createdBy: json['createdBy'],
+      memberIds: json['memberIds'] != null 
+          ? List<String>.from(json['memberIds']) 
+          : null,
+      description: json['description'],
+      familyImageUrl: json['familyImageUrl'],
+      createdAt: json['createdAt'] != null 
+          ? DateTime.parse(json['createdAt']) 
+          : null,
+      updatedAt: json['updatedAt'] != null 
+          ? DateTime.parse(json['updatedAt']) 
+          : null,
+      isActive: json['isActive'],
+      currency: json['currency'],
+      monthlyBudget: json['monthlyBudget'],
+      inviteCode: json['inviteCode'],
+    );
+  }
+
+  FamilyModel copyWith({
+    String? id,
+    String? name,
+    String? createdBy,
+    List<String>? memberIds,
+    String? description,
+    String? familyImageUrl,
     DateTime? createdAt,
-  })  : id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
-        createdAt = createdAt ?? DateTime.now();
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'relation': relation.name,
-        'dateOfBirth': dateOfBirth?.toIso8601String(),
-        'phoneNumber': phoneNumber,
-        'email': email,
-        'notes': notes,
-        'isActive': isActive,
-        'createdAt': createdAt.toIso8601String(),
-      };
-
-  factory FamilyMemberModel.fromJson(Map<String, dynamic> json) => FamilyMemberModel(
-        id: json['id'],
-        name: json['name'],
-        relation: MemberRelation.values.firstWhere(
-          (e) => e.name == json['relation'],
-          orElse: () => MemberRelation.other,
-        ),
-        dateOfBirth: json['dateOfBirth'] != null
-            ? DateTime.parse(json['dateOfBirth'])
-            : null,
-        phoneNumber: json['phoneNumber'],
-        email: json['email'],
-        notes: json['notes'],
-        isActive: json['isActive'] ?? true,
-        createdAt: DateTime.parse(json['createdAt']),
-      );
-
-  String get relationDisplayName {
-    switch (relation) {
-      case MemberRelation.self:
-        return 'Self';
-      case MemberRelation.spouse:
-        return 'Spouse';
-      case MemberRelation.son:
-        return 'Son';
-      case MemberRelation.daughter:
-        return 'Daughter';
-      case MemberRelation.father:
-        return 'Father';
-      case MemberRelation.mother:
-        return 'Mother';
-      case MemberRelation.brother:
-        return 'Brother';
-      case MemberRelation.sister:
-        return 'Sister';
-      case MemberRelation.grandparent:
-        return 'Grandparent';
-      case MemberRelation.uncle:
-        return 'Uncle';
-      case MemberRelation.aunt:
-        return 'Aunt';
-      case MemberRelation.cousin:
-        return 'Cousin';
-      case MemberRelation.other:
-        return 'Other';
-    }
+    DateTime? updatedAt,
+    bool? isActive,
+    String? currency,
+    double? monthlyBudget,
+    String? inviteCode,
+  }) {
+    return FamilyModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      createdBy: createdBy ?? this.createdBy,
+      memberIds: memberIds ?? this.memberIds,
+      description: description ?? this.description,
+      familyImageUrl: familyImageUrl ?? this.familyImageUrl,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isActive: isActive ?? this.isActive,
+      currency: currency ?? this.currency,
+      monthlyBudget: monthlyBudget ?? this.monthlyBudget,
+      inviteCode: inviteCode ?? this.inviteCode,
+    );
   }
 
-  IconData get relationIcon {
-    switch (relation) {
-      case MemberRelation.self:
-        return Icons.person;
-      case MemberRelation.spouse:
-        return Icons.favorite;
-      case MemberRelation.son:
-        return Icons.boy;
-      case MemberRelation.daughter:
-        return Icons.girl;
-      case MemberRelation.father:
-        return Icons.man;
-      case MemberRelation.mother:
-        return Icons.woman;
-      case MemberRelation.brother:
-        return Icons.person;
-      case MemberRelation.sister:
-        return Icons.person;
-      case MemberRelation.grandparent:
-        return Icons.elderly;
-      case MemberRelation.uncle:
-        return Icons.person;
-      case MemberRelation.aunt:
-        return Icons.person;
-      case MemberRelation.cousin:
-        return Icons.person;
-      case MemberRelation.other:
-        return Icons.person_add;
-    }
-  }
+  String get displayName => name ?? 'Family';
+  int get memberCount => memberIds?.length ?? 0;
 }
