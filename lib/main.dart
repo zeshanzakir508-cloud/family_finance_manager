@@ -87,10 +87,20 @@ class MyApp extends StatelessWidget {
           '/settings': (context) => const SettingsScreen(),
           '/profile': (context) => const ProfileScreen(),
           '/add-transaction': (context) => const AddTransactionScreen(),
-          '/transaction-details': (context) => const TransactionDetailScreen(),
           '/notifications': (context) => const NotificationsScreen(),
           '/family-management': (context) => const FamilyManagementScreen(),
           '/reports': (context) => const ReportsScreen(),
+        },
+        onGenerateRoute: (settings) {
+          if (settings.name == '/transaction-details') {
+            final transactionId = settings.arguments as String? ?? '';
+            return MaterialPageRoute(
+              builder: (context) => TransactionDetailScreen(
+                transactionId: transactionId,
+              ),
+            );
+          }
+          return null;
         },
       ),
     );
