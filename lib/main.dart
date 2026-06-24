@@ -18,6 +18,7 @@ import 'services/auth_service.dart';
 import 'models/user_profile.dart';
 import 'models/transaction_model.dart';
 import 'models/family_model.dart';
+import 'models/family_member_model.dart';
 import 'models/notification_model.dart';
 import 'utils/app_theme.dart';
 
@@ -45,6 +46,7 @@ void main() async {
   Hive.registerAdapter(TransactionTypeAdapter());
   Hive.registerAdapter(TransactionCategoryAdapter());
   Hive.registerAdapter(FamilyModelAdapter());
+  Hive.registerAdapter(FamilyMemberModelAdapter());
   Hive.registerAdapter(NotificationModelAdapter());
   Hive.registerAdapter(NotificationTypeAdapter());
   
@@ -52,6 +54,7 @@ void main() async {
   await Hive.openBox<UserProfile>('userProfile');
   await Hive.openBox<TransactionModel>('transactions');
   await Hive.openBox<FamilyModel>('families');
+  await Hive.openBox<FamilyMemberModel>('familyMembers');
   await Hive.openBox<NotificationModel>('notifications');
   await Hive.openBox<dynamic>('appSettings');
 
