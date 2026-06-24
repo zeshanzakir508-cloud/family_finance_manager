@@ -28,7 +28,11 @@ jobs:
             cp google-services.json android/app/google-services.json
           fi
 
-      - name: Create simplified settings.gradle.kts
+      - name: Create local.properties
+        run: |
+          echo "flutter.sdk=${{ runner.tool_cache }}/flutter" > android/local.properties
+
+      - name: Create settings.gradle.kts
         run: |
           cat > android/settings.gradle.kts << 'EOF'
           pluginManagement {
@@ -67,7 +71,7 @@ jobs:
               project.evaluationDependsOn(":app")
           }
 
-          tasks.register("clean", Delete) {
+          tasks.register("clean", Delete::class) {
               delete(rootProject.buildDir)
           }
           EOF
