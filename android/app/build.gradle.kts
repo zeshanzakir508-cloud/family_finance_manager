@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.family_finance_manager"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36   // ← CHANGED from flutter.compileSdkVersion to 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
