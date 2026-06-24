@@ -13,10 +13,8 @@ android {
         targetCompatibility = JavaVersion.VERSION_1_8
     }
 
-    kotlin {
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
-        }
+    kotlinOptions {
+        jvmTarget.set("1.8")
     }
 
     defaultConfig {
@@ -31,7 +29,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
-            proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }
