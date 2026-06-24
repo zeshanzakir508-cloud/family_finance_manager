@@ -14,13 +14,12 @@ class ReportsScreen extends StatefulWidget {
 }
 
 class _ReportsScreenState extends State<ReportsScreen> {
-  String _selectedPeriod = 'monthly'; // monthly, yearly, custom
+  String _selectedPeriod = 'monthly';
   DateTime _selectedMonth = DateTime.now();
   DateTime _selectedYear = DateTime.now();
-  int _selectedTab = 0; // 0: Overview, 1: Categories, 2: Trends
+  int _selectedTab = 0;
 
-  // Filters
-  String? _selectedType; // income, expense, all
+  String? _selectedType;
   String? _selectedCategory;
 
   late List<TransactionModel> _allTransactions = [];
@@ -45,7 +44,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final dateRange = _getDateRange();
 
     _filteredTransactions = _allTransactions.where((transaction) {
-      // Date filter
       if (transaction.date == null) return false;
       if (dateRange != null) {
         if (transaction.date!.isBefore(dateRange['start']!) ||
@@ -54,7 +52,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
         }
       }
 
-      // Type filter
       if (_selectedType != null && _selectedType != 'all') {
         final type = _selectedType == 'income'
             ? TransactionType.income
@@ -62,7 +59,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
         if (transaction.type != type) return false;
       }
 
-      // Category filter
       if (_selectedCategory != null && _selectedCategory != 'all') {
         if (transaction.category != _selectedCategory) return false;
       }
@@ -70,7 +66,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
       return true;
     }).toList();
 
-    // Calculate totals
     double income = 0;
     double expense = 0;
 
@@ -99,8 +94,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
         final start = DateTime(_selectedYear.year, 1, 1);
         final end = DateTime(_selectedYear.year, 12, 31);
         return {'start': start, 'end': end};
-      case 'custom':
-        return null;
       default:
         return null;
     }
@@ -125,27 +118,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Period Selector
             _buildPeriodSelector(),
             const SizedBox(height: 16),
-
-            // Date Picker
             _buildDatePicker(),
             const SizedBox(height: 16),
-
-            // Filters
             _buildFilters(),
             const SizedBox(height: 16),
-
-            // Summary Cards
             _buildSummaryCards(),
             const SizedBox(height: 16),
-
-            // Tabs
             _buildTabs(),
             const SizedBox(height: 16),
-
-            // Tab Content
             _buildTabContent(),
           ],
         ),
@@ -165,7 +147,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
         children: [
           _buildPeriodButton('monthly', 'Monthly'),
           _buildPeriodButton('yearly', 'Yearly'),
-          _buildPeriodButton('custom', 'Custom'),
         ],
       ),
     );
@@ -223,47 +204,46 @@ class _ReportsScreenState extends State<ReportsScreen> {
               style: AppTheme.bodyStyle,
             ),
           ),
-          if (_selectedPeriod == 'monthly' || _selectedPeriod == 'yearly')
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_left),
-                  onPressed: () {
-                    setState(() {
-                      if (_selectedPeriod == 'monthly') {
-                        _selectedMonth = DateTime(
-                          _selectedMonth.year,
-                          _selectedMonth.month - 1,
-                        );
-                      } else {
-                        _selectedYear = DateTime(
-                          _selectedYear.year - 1,
-                        );
-                      }
-                      _applyFilters();
-                    });
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right),
-                  onPressed: () {
-                    setState(() {
-                      if (_selectedPeriod == 'monthly') {
-                        _selectedMonth = DateTime(
-                          _selectedMonth.year,
-                          _selectedMonth.month + 1,
-                        );
-                      } else {
-                        _selectedYear = DateTime(
-                          _selectedYear.year + 1,
-                        );
-                      }
-                      _applyFilters();
-                    });
-                  },
-                ),
-              ],
-            ),
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left),
+                onPressed: () {
+                  setState(() {
+                    if (_selectedPeriod == 'monthly') {
+                      _selectedMonth = DateTime(
+                        _selectedMonth.year,
+                        _selectedMonth.month - 1,
+                      );
+                    } else {
+                      _selectedYear = DateTime(
+                        _selectedYear.year - 1,
+                      );
+                    }
+                    _applyFilters();
+                  });
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right),
+                onPressed: () {
+                  setState(() {
+                    if (_selectedPeriod == 'monthly') {
+                      _selectedMonth = DateTime(
+                        _selectedMonth.year,
+                        _selectedMonth.month + 1,
+                      );
+                    } else {
+                      _selectedYear = DateTime(
+                        _selectedYear.year + 1,
+                      );
+                    }
+                    _applyFilters();
+                  });
+                },
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -275,8 +255,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
         return DateFormat('MMMM yyyy').format(_selectedMonth);
       case 'yearly':
         return DateFormat('yyyy').format(_selectedYear);
-      case 'custom':
-        return 'Custom Range';
       default:
         return 'All Time';
     }
@@ -287,7 +265,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
       spacing: 8,
       runSpacing: 8,
       children: [
-        // Type Filter
         DecoratedBox(
           decoration: BoxDecoration(
             border: Border.all(color: AppTheme.dividerColor),
@@ -314,7 +291,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ),
           ),
         ),
-        // Category Filter
         DecoratedBox(
           decoration: BoxDecoration(
             border: Border.all(color: AppTheme.dividerColor),
@@ -345,7 +321,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ),
           ),
         ),
-        // Clear Filters
         if (_selectedType != 'all' || _selectedCategory != 'all')
           TextButton(
             onPressed: () {
@@ -508,7 +483,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Balance
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
@@ -547,8 +521,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ),
         ),
         const SizedBox(height: 16),
-
-        // Recent Transactions
         Text(
           'Recent Transactions',
           style: AppTheme.subheadingStyle.copyWith(fontSize: 16),
@@ -617,7 +589,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
       return _buildEmptyState('No transactions to analyze');
     }
 
-    // Group by category
     final categoryMap = <String, double>{};
     for (var transaction in _filteredTransactions) {
       if (transaction.category != null) {
@@ -631,7 +602,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
     return Column(
       children: [
-        // Pie Chart
         SizedBox(
           height: 200,
           child: PieChart(
@@ -658,8 +628,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ),
         ),
         const SizedBox(height: 16),
-
-        // Category List
         ...entries.map((entry) {
           final total = _totalIncome + _totalExpense;
           final percentage = total > 0 ? (entry.value / total) : 0;
@@ -723,7 +691,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
       return _buildEmptyState('No data available for trends');
     }
 
-    // Group by month
     final monthMap = <String, Map<String, double>>{};
     for (var transaction in _filteredTransactions) {
       if (transaction.date == null) continue;
@@ -758,8 +725,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
           style: AppTheme.subheadingStyle.copyWith(fontSize: 16),
         ),
         const SizedBox(height: 16),
-
-        // Bar Chart
         SizedBox(
           height: 200,
           child: BarChart(
@@ -808,10 +773,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ),
           ),
         ),
-
         const SizedBox(height: 16),
-
-        // Legend
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -860,7 +822,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
               message,
               style: AppTheme.bodyStyle.copyWith(
                 color: AppTheme.textSecondaryColor,
-                textAlign: TextAlign.center,
               ),
             ),
           ],
