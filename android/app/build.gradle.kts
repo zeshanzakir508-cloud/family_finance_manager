@@ -7,7 +7,8 @@ plugins {
 
 android {
     namespace = "com.example.family_finance_manager"
-    compileSdk = 35
+    compileSdk = 36
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -23,7 +24,7 @@ android {
     defaultConfig {
         applicationId = "com.example.family_finance_manager"
         minSdk = 23
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
         multiDexEnabled = true
