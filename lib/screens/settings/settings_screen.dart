@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../utils/app_theme.dart';
 import '../../services/auth_service.dart';
 import '../../models/user_profile.dart';
-import '../../models/transaction_model.dart';
-import '../../models/family_member_model.dart';
+import '../../utils/app_theme.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -15,12 +13,12 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _isLoading = false;
-  bool _darkMode = false;
-  bool _fingerprintEnabled = false;
-  String _currency = 'PKR';
+  bool _isDarkMode = false;
+  bool _notificationsEnabled = true;
+  String _selectedCurrency = 'USD';
+  String? _userName;
 
-  final List<String> _currencies = ['PKR', 'USD', 'EUR', 'GBP', 'AED', 'SAR'];
+  final List<String> _currencies = ['USD', 'EUR', 'GBP', 'PKR', 'INR', 'AED'];
 
   @override
   void initState() {
@@ -29,631 +27,444 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userId = authService.userId;
+
+    if (userId != null) {
+      final box = Hive.box<UserProfile>('userProfile');
+      final user = box.get(userId);
+      if (user != null) {
+        setState(() {
+          _userName = user.displayName;
+          _isDarkMode = user.isDarkMode ?? false;
+        });
+      }
+    }
+
+    // Load settings from shared preferences
+    final settingsBox = Hive.box<dynamic>('appSettings');
     setState(() {
-      _darkMode = prefs.getBool('darkMode') ?? false;
-      _fingerprintEnabled = prefs.getBool('fingerprintEnabled') ?? false;
-      _currency = prefs.getString('currency') ?? 'PKR';
+      _selectedCurrency = settingsBox.get('currency', defaultValue: 'USD');
+      _notificationsEnabled = settingsBox.get('notifications', defaultValue: true);
     });
+  }
+
+  Future<void> _saveSettings() async {
+    final settingsBox = Hive.box<dynamic>('appSettings');
+    await settingsBox.put('currency', _selectedCurrency);
+    await settingsBox.put('notifications', _notificationsEnabled);
+
+    // Update user profile for dark mode
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userId = authService.userId;
+    if (userId != null) {
+      final box = Hive.box<UserProfile>('userProfile');
+      final user = box.get(userId);
+      if (user != null) {
+        final updatedUser = user.copyWith(isDarkMode: _isDarkMode);
+        await box.put(userId, updatedUser);
+      }
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Settings saved!'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: const Text('Settings'),
         backgroundColor: Colors.transparent,
-        foregroundColor: AppTheme.textPrimary,
         elevation: 0,
+        actions: [
+          TextButton(
+            onPressed: _saveSettings,
+            child: Text(
+              'Save',
+              style: AppTheme.bodyStyle.copyWith(
+                color: AppTheme.primaryColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildProfileSection(),
-            const SizedBox(height: 16),
-            _buildPreferencesSection(),
-            const SizedBox(height: 16),
-            _buildAppInfoSection(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfileSection() {
-    return ValueListenableBuilder(
-      valueListenable: Hive.box<UserProfile>('userProfile').listenable(),
-      builder: (context, Box<UserProfile> box, _) {
-        final profile = box.get('profile');
-
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppTheme.divider.withValues(alpha: 0.5)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.person, color: AppTheme.primary),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'Profile',
+            // Profile Section
+            _buildSectionHeader('Profile'),
+            Card(
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                  child: Text(
+                    _userName?.substring(0, 1).toUpperCase() ?? 'U',
                     style: TextStyle(
-                      fontSize: 16,
+                      color: AppTheme.primaryColor,
                       fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
                     ),
                   ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () => _showEditProfileDialog(profile),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppTheme.primary,
+                ),
+                title: Text(
+                  _userName ?? 'User',
+                  style: AppTheme.bodyStyle.copyWith(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  'Tap to edit profile',
+                  style: AppTheme.captionStyle,
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  // Navigate to profile screen
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Profile screen coming soon!'),
+                      duration: Duration(seconds: 2),
                     ),
-                    child: const Text('Edit'),
-                  ),
-                ],
+                  );
+                },
               ),
-              const Divider(),
-              if (profile != null) ...[
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.person_outline, color: AppTheme.textLight),
-                  title: Text(profile.name, style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.textPrimary,
-                  )),
-                  subtitle: Text('Name', style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textSecondary,
-                  )),
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.email_outlined, color: AppTheme.textLight),
-                  title: Text(profile.email, style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.textPrimary,
-                  )),
-                  subtitle: Text('Email', style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textSecondary,
-                  )),
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.phone_outlined, color: AppTheme.textLight),
-                  title: Text(profile.phoneNumber, style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.textPrimary,
-                  )),
-                  subtitle: Text('Phone', style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textSecondary,
-                  )),
-                ),
-              ] else ...[
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Text('No profile found. Please complete your profile.'),
-                ),
-                ElevatedButton(
-                  onPressed: () => _showEditProfileDialog(null),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('Create Profile'),
-                ),
-              ],
-            ],
-          ),
-        );
-      },
-    );
-  }
+            ),
+            const SizedBox(height: 24),
 
-  void _showEditProfileDialog(UserProfile? profile) {
-    final nameController = TextEditingController(text: profile?.name ?? '');
-    final fatherNameController = TextEditingController(text: profile?.fatherName ?? '');
-    final phoneController = TextEditingController(text: profile?.phoneNumber ?? '');
-    final emailController = TextEditingController(text: profile?.email ?? '');
-    final addressController = TextEditingController(text: profile?.address ?? '');
-    final cityController = TextEditingController(text: profile?.city ?? '');
-    final occupationController = TextEditingController(text: profile?.occupation ?? '');
-
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Edit Profile',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      TextField(
-                        controller: nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Full Name *',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: fatherNameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Father/Husband Name *',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: phoneController,
-                        decoration: const InputDecoration(
-                          labelText: 'Phone Number *',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.phone,
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: emailController,
-                        decoration: const InputDecoration(
-                          labelText: 'Email *',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.emailAddress,
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: addressController,
-                        decoration: const InputDecoration(
-                          labelText: 'Address (Optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: cityController,
-                        decoration: const InputDecoration(
-                          labelText: 'City (Optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: occupationController,
-                        decoration: const InputDecoration(
-                          labelText: 'Occupation (Optional)',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
+            // Preferences Section
+            _buildSectionHeader('Preferences'),
+            Card(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
+                  SwitchListTile(
+                    title: Text(
+                      'Dark Mode',
+                      style: AppTheme.bodyStyle,
+                    ),
+                    subtitle: Text(
+                      'Enable dark theme',
+                      style: AppTheme.captionStyle,
+                    ),
+                    value: _isDarkMode,
+                    onChanged: (value) {
+                      setState(() {
+                        _isDarkMode = value;
+                      });
+                    },
+                    secondary: Icon(
+                      _isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                      color: AppTheme.primaryColor,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        final box = Hive.box<UserProfile>('userProfile');
-                        final newProfile = UserProfile(
-                          uid: profile?.uid ?? DateTime.now().millisecondsSinceEpoch.toString(),
-                          name: nameController.text.trim(),
-                          fatherName: fatherNameController.text.trim(),
-                          phoneNumber: phoneController.text.trim(),
-                          email: emailController.text.trim(),
-                          address: addressController.text.trim().isNotEmpty
-                              ? addressController.text.trim()
-                              : null,
-                          city: cityController.text.trim().isNotEmpty
-                              ? cityController.text.trim()
-                              : null,
-                          occupation: occupationController.text.trim().isNotEmpty
-                              ? occupationController.text.trim()
-                              : null,
-                          createdAt: profile?.createdAt ?? DateTime.now(),
-                          isActive: true,
+                  const Divider(height: 1),
+                  ListTile(
+                    title: Text(
+                      'Currency',
+                      style: AppTheme.bodyStyle,
+                    ),
+                    subtitle: Text(
+                      'Select your preferred currency',
+                      style: AppTheme.captionStyle,
+                    ),
+                    trailing: DropdownButton<String>(
+                      value: _selectedCurrency,
+                      items: _currencies.map((currency) {
+                        return DropdownMenuItem<String>(
+                          value: currency,
+                          child: Text(currency),
                         );
-                        await box.put('profile', newProfile);
-                        if (mounted) {
-                          Navigator.pop(context);
-                          setState(() {});
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Profile saved successfully'),
-                              backgroundColor: Colors.green,
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
+                      }).toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            _selectedCurrency = value;
+                          });
                         }
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('Save'),
+                      underline: const SizedBox(),
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 24),
+
+            // Notifications Section
+            _buildSectionHeader('Notifications'),
+            Card(
+              child: SwitchListTile(
+                title: Text(
+                  'Push Notifications',
+                  style: AppTheme.bodyStyle,
+                ),
+                subtitle: Text(
+                  'Receive notifications for important updates',
+                  style: AppTheme.captionStyle,
+                ),
+                value: _notificationsEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    _notificationsEnabled = value;
+                  });
+                },
+                secondary: Icon(
+                  _notificationsEnabled 
+                      ? Icons.notifications_active 
+                      : Icons.notifications_off,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Account Section
+            _buildSectionHeader('Account'),
+            Card(
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(
+                      Icons.lock_outline,
+                      color: AppTheme.primaryColor,
+                    ),
+                    title: Text(
+                      'Change Password',
+                      style: AppTheme.bodyStyle,
+                    ),
+                    subtitle: Text(
+                      'Update your password',
+                      style: AppTheme.captionStyle,
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Change password coming soon!'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.email_outlined,
+                      color: AppTheme.primaryColor,
+                    ),
+                    title: Text(
+                      'Change Email',
+                      style: AppTheme.bodyStyle,
+                    ),
+                    subtitle: Text(
+                      'Update your email address',
+                      style: AppTheme.captionStyle,
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Change email coming soon!'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.delete_outline,
+                      color: AppTheme.errorColor,
+                    ),
+                    title: Text(
+                      'Delete Account',
+                      style: AppTheme.bodyStyle.copyWith(
+                        color: AppTheme.errorColor,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Permanently delete your account',
+                      style: AppTheme.captionStyle,
+                    ),
+                    trailing: const Icon(
+                      Icons.arrow_forward_ios,
+                      size: 16,
+                      color: AppTheme.errorColor,
+                    ),
+                    onTap: () {
+                      _showDeleteAccountDialog();
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // About Section
+            _buildSectionHeader('About'),
+            Card(
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(
+                      Icons.info_outline,
+                      color: AppTheme.primaryColor,
+                    ),
+                    title: Text(
+                      'App Version',
+                      style: AppTheme.bodyStyle,
+                    ),
+                    subtitle: const Text('1.0.0'),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('App version 1.0.0'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.privacy_tip_outlined,
+                      color: AppTheme.primaryColor,
+                    ),
+                    title: Text(
+                      'Privacy Policy',
+                      style: AppTheme.bodyStyle,
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Privacy policy coming soon!'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.description_outlined,
+                      color: AppTheme.primaryColor,
+                    ),
+                    title: Text(
+                      'Terms & Conditions',
+                      style: AppTheme.bodyStyle,
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Terms & Conditions coming soon!'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildPreferencesSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.divider.withValues(alpha: 0.5)),
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        title,
+        style: AppTheme.bodyStyle.copyWith(
+          color: AppTheme.textSecondaryColor,
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.settings, color: AppTheme.primary),
-              const SizedBox(width: 10),
-              const Text(
-                'Preferences',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          const Divider(),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Dark Mode'),
-            subtitle: Text(
-              'Enable dark theme',
+    );
+  }
+
+  Future<void> _showDeleteAccountDialog() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Account'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Are you sure you want to delete your account?',
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'This action cannot be undone. All your data will be permanently deleted.',
               style: TextStyle(
-                fontSize: 12,
-                color: AppTheme.textSecondary,
+                color: AppTheme.textSecondaryColor,
+                fontSize: 14,
               ),
             ),
-            value: _darkMode,
-            onChanged: (value) async {
-              setState(() => _darkMode = value);
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setBool('darkMode', value);
-            },
-            activeColor: AppTheme.primary,
-          ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Fingerprint Login'),
-            subtitle: Text(
-              'Login with fingerprint',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppTheme.textSecondary,
-              ),
+            const SizedBox(height: 16),
+            const Text(
+              'Type "DELETE" to confirm:',
+              style: TextStyle(fontSize: 14),
             ),
-            value: _fingerprintEnabled,
-            onChanged: (value) async {
-              setState(() => _fingerprintEnabled = value);
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setBool('fingerprintEnabled', value);
-            },
-            activeColor: AppTheme.primary,
-          ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
+            const SizedBox(height: 8),
+            TextField(
+              decoration: const InputDecoration(
+                hintText: 'Type DELETE',
+                border: OutlineInputBorder(),
               ),
-              child: const Icon(Icons.currency_exchange, color: AppTheme.primary, size: 20),
-            ),
-            title: const Text('Currency'),
-            subtitle: Text(
-              _currency,
-              style: TextStyle(
-                fontSize: 12,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-            trailing: DropdownButton<String>(
-              value: _currency,
-              dropdownColor: Colors.white,
-              underline: const SizedBox(),
-              items: _currencies.map((currency) {
-                return DropdownMenuItem(
-                  value: currency,
-                  child: Text(currency),
-                );
-              }).toList(),
-              onChanged: (value) async {
-                if (value != null) {
-                  setState(() => _currency = value);
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setString('currency', value);
-                }
+              onChanged: (value) {
+                // Enable confirm button if DELETE is typed
               },
             ),
-          ),
-          const Divider(),
-          Row(
-            children: [
-              Expanded(
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppTheme.info.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.storage, color: AppTheme.info, size: 20),
-                  ),
-                  title: const Text('Transactions'),
-                  subtitle: Text(
-                    '${Hive.box<TransactionModel>('transactions').values.length} entries',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1ABC9C).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.family_restroom, color: Color(0xFF1ABC9C), size: 20),
-                  ),
-                  title: const Text('Family'),
-                  subtitle: Text(
-                    '${Hive.box<FamilyMemberModel>('familyMembers').values.length} members',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAppInfoSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.divider.withValues(alpha: 0.5)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.info, color: AppTheme.info),
-              const SizedBox(width: 10),
-              const Text(
-                'App Info',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          const Divider(),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.apps, color: AppTheme.primary, size: 20),
-            ),
-            title: const Text('App Version'),
-            subtitle: Text(
-              '1.0.0',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-          ),
-          const Divider(),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppTheme.error.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.logout, color: AppTheme.error, size: 20),
-            ),
-            title: const Text(
-              'Logout',
-              style: TextStyle(color: AppTheme.error),
-            ),
-            onTap: _showLogoutDialog,
-          ),
-          const Divider(),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppTheme.error.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.delete_forever, color: AppTheme.error, size: 20),
-            ),
-            title: const Text(
-              'Delete All Data',
-              style: TextStyle(color: AppTheme.error),
-            ),
-            onTap: _showDeleteDataDialog,
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final authService = AuthService();
-              await authService.signOut();
-              if (mounted) {
-                Navigator.pop(context);
-                Navigator.pushReplacementNamed(context, '/login');
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Logged out successfully'),
-                    backgroundColor: Colors.green,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.error,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteDataDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Delete All Data',
-          style: TextStyle(color: AppTheme.error),
-        ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('This will permanently delete ALL your data:'),
-            SizedBox(height: 8),
-            Text('• All transactions'),
-            Text('• Family members'),
-            Text('• Profile information'),
-            Text('• Settings'),
-            SizedBox(height: 8),
-            Text('This action cannot be undone!'),
           ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
-            onPressed: () async {
-              final transactionsBox = Hive.box<TransactionModel>('transactions');
-              final familyBox = Hive.box<FamilyMemberModel>('familyMembers');
-              final profileBox = Hive.box<UserProfile>('userProfile');
-              final settingsBox = Hive.box<Map>('settings');
-
-              await transactionsBox.clear();
-              await familyBox.clear();
-              await profileBox.clear();
-              await settingsBox.clear();
-
-              if (mounted) {
-                Navigator.pop(context);
-                setState(() {});
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('All data deleted'),
-                    backgroundColor: Colors.red,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.error,
-              foregroundColor: Colors.white,
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.errorColor,
             ),
-            child: const Text('Delete Everything'),
+            child: const Text('Delete'),
           ),
         ],
       ),
     );
+
+    if (confirm == true) {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final success = await authService.deleteAccount();
+      
+      if (success && mounted) {
+        // Clear Hive data
+        await Hive.box<UserProfile>('userProfile').clear();
+        await Hive.box<TransactionModel>('transactions').clear();
+        await Hive.box<dynamic>('appSettings').clear();
+        
+        Navigator.pushReplacementNamed(context, '/login');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account deleted successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    }
   }
 }
