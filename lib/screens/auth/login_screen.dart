@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/services.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
-import 'signup_screen.dart';
-import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -272,24 +269,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  
-                  // Biometric Login (Fingerprint)
-                  if (await _checkBiometricSupport()) ...[
-                    TextButton.icon(
-                      onPressed: () => _authenticateWithBiometric(authService),
-                      icon: Icon(
-                        _getBiometricIcon(),
-                        color: AppTheme.primaryColor,
-                      ),
-                      label: Text(
-                        'Login with ${_getBiometricName()}',
-                        style: AppTheme.bodyStyle.copyWith(
-                          color: AppTheme.primaryColor,
-                        ),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -314,7 +293,6 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (user != null) {
-        // Navigate to dashboard
         if (mounted) {
           Navigator.pushReplacementNamed(context, '/dashboard');
           ScaffoldMessenger.of(context).showSnackBar(
@@ -341,33 +319,6 @@ class _LoginScreenState extends State<LoginScreen> {
         });
       }
     }
-  }
-
-  // Biometric Authentication Methods
-  Future<bool> _checkBiometricSupport() async {
-    // This is a placeholder - you'll need to implement actual biometric check
-    // using local_auth package
-    return false;
-  }
-
-  Future<void> _authenticateWithBiometric(AuthService authService) async {
-    // This is a placeholder - you'll need to implement actual biometric auth
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Biometric login coming soon!'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
-
-  IconData _getBiometricIcon() {
-    // Placeholder - return appropriate icon
-    return Icons.fingerprint;
-  }
-
-  String _getBiometricName() {
-    // Placeholder - return appropriate name
-    return 'Fingerprint';
   }
 
   @override
