@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
 import '../../models/user_profile.dart';
@@ -427,6 +428,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           createdAt: DateTime.now(),
           isApproved: false,
           isEmailVerified: false,
+          currency: 'USD',
         );
 
         // Save to Hive
