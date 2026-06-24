@@ -36,7 +36,6 @@ dependencies:
   device_info_plus: ^10.1.0
   package_info_plus: ^8.0.0
   share_plus: ^10.0.0
-  file_picker: ^7.0.0
 
   # Charts & Reports
   fl_chart: ^0.68.0
