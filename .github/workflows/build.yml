@@ -28,11 +28,139 @@ jobs:
             cp google-services.json android/app/google-services.json
           fi
 
-      - name: Set compileSdk to 36
+      - name: Replace Kotlin DSL with Groovy DSL
         run: |
-          sed -i 's/compileSdk = 33/compileSdk = 36/g' android/app/build.gradle.kts || true
-          sed -i 's/compileSdk = 34/compileSdk = 36/g' android/app/build.gradle.kts || true
-          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/g' android/app/build.gradle.kts || true
+          # Delete Kotlin files
+          rm -f android/app/build.gradle.kts
+          rm -f android/build.gradle.kts
+          rm -f android/settings.gradle.kts
+
+          # Create settings.gradle
+          cat > android/settings.gradle << 'EOF'
+          rootProject.name = 'family_finance_manager'
+          include ':app'
+          EOF
+
+          # Create build.gradle (root)
+          cat > android/build.gradle << 'EOF'
+          buildscript {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:7.4.2'
+                  classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0"
+                  classpath 'com.google.gms:google-services:4.3.15'
+              }
+          }
+
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+
+          rootProject.buildDir = '../build'
+          subprojects {
+              project.buildDir = "${rootProject.buildDir}/${project.name}"
+          }
+          subprojects {
+              project.evaluationDependsOn(':app')
+          }
+
+          tasks.register('clean', Delete) {
+              delete rootProject.buildDir
+          }
+          EOF
+
+          # Create app/build.gradle
+          cat > android/app/build.gradle << 'EOF'
+          def localProperties = new Properties()
+          def localPropertiesFile = rootProject.file('local.properties')
+          if (localPropertiesFile.exists()) {
+              localPropertiesFile.withReader('UTF-8') { reader ->
+                  localProperties.load(reader)
+              }
+          }
+
+          def flutterRoot = localProperties.getProperty('flutter.sdk')
+          if (flutterRoot == null) {
+              throw new Exception("Flutter SDK not found.")
+          }
+
+          def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+          if (flutterVersionCode == null) {
+              flutterVersionCode = '1'
+          }
+
+          def flutterVersionName = localProperties.getProperty('flutter.versionName')
+          if (flutterVersionName == null) {
+              flutterVersionName = '1.0'
+          }
+
+          apply plugin: 'com.android.application'
+          apply plugin: 'kotlin-android'
+          apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
+
+          android {
+              compileSdkVersion 36
+              ndkVersion flutter.ndkVersion
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_1_8
+                  targetCompatibility JavaVersion.VERSION_1_8
+              }
+
+              kotlinOptions {
+                  jvmTarget = '1.8'
+              }
+
+              sourceSets {
+                  main.java.srcDirs += 'src/main/kotlin'
+              }
+
+              defaultConfig {
+                  applicationId "com.example.family_finance_manager"
+                  minSdkVersion 21
+                  targetSdkVersion 34
+                  versionCode flutterVersionCode.toInteger()
+                  versionName flutterVersionName
+                  multiDexEnabled true
+              }
+
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.debug
+                      minifyEnabled true
+                      proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+                  }
+              }
+          }
+
+          flutter {
+              source '../..'
+          }
+
+          dependencies {
+              implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.0"
+              implementation 'androidx.multidex:multidex:2.0.1'
+              implementation platform('com.google.firebase:firebase-bom:32.3.1')
+              implementation 'com.google.firebase:firebase-auth'
+              implementation 'androidx.biometric:biometric:1.1.0'
+          }
+          EOF
+
+      - name: Update gradle-wrapper.properties
+        run: |
+          cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.5-all.zip
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
+          EOF
 
       - name: Install dependencies
         run: flutter pub get
