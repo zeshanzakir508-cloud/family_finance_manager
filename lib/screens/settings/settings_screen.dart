@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/auth_service.dart';
 import '../../models/user_profile.dart';
+import '../../models/transaction_model.dart';
 import '../../models/notification_model.dart';
 import '../../utils/app_theme.dart';
 
@@ -155,13 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   color: AppTheme.textSecondaryColor,
                 ),
                 onTap: () {
-                  // Navigate to edit profile
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Edit Profile coming soon!'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
+                  Navigator.pushNamed(context, '/profile');
                 },
               ),
             ),
