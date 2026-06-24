@@ -36,9 +36,15 @@ dependencies:
   device_info_plus: ^10.1.0
   package_info_plus: ^8.0.0
   share_plus: ^10.0.0
+  image_picker: ^1.1.2
+  flutter_local_notifications: ^17.2.3
+  connectivity_plus: ^6.1.0
 
   # Charts & Reports
   fl_chart: ^0.68.0
+
+  # Biometric
+  local_auth: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -52,3 +58,4 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+    - assets/fonts/
