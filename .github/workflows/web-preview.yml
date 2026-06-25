@@ -1,0 +1,47 @@
+name: Web Preview
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: 'stable'
+
+      - name: Enable Web
+        run: flutter config --enable-web
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate Hive adapters
+        run: flutter pub run build_runner build --delete-conflicting-outputs
+
+      - name: Build Web
+        run: flutter build web --release
+
+      - name: Upload Web Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-preview
+          path: build/web/
+          compression-level: 0
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build/web
+          publish_branch: gh-pages
+          force_orphan: true
