@@ -25,40 +25,111 @@ import 'utils/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase with your actual config from google-services.json
-  await Firebase.initializeApp(
-    options: const FirebaseOptions(
-      apiKey: "AIzaSyC2PqPJ9E1VJj2lPtM06qYwD7xGZ5kR9nQ",
-      authDomain: "family-finance-manager.firebaseapp.com",
-      projectId: "family-finance-manager",
-      storageBucket: "family-finance-manager.appspot.com",
-      messagingSenderId: "808843357815",
-      appId: "1:808843357815:android:8edf9e5b7c6a4d2f",
-    ),
-  );
+  try {
+    print('📱 Starting app...');
+    
+    // Initialize Firebase
+    print('🔥 Initializing Firebase...');
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+        apiKey: "AIzaSyC2PqPJ9E1VJj2lPtM06qYwD7xGZ5kR9nQ",
+        authDomain: "family-finance-manager.firebaseapp.com",
+        projectId: "family-finance-manager",
+        storageBucket: "family-finance-manager.appspot.com",
+        messagingSenderId: "808843357815",
+        appId: "1:808843357815:android:8edf9e5b7c6a4d2f",
+      ),
+    );
+    print('✅ Firebase initialized');
 
-  // Initialize Hive
-  await Hive.initFlutter();
-  
-  // Register Hive adapters
-  Hive.registerAdapter(UserProfileAdapter());
-  Hive.registerAdapter(TransactionModelAdapter());
-  Hive.registerAdapter(TransactionTypeAdapter());
-  Hive.registerAdapter(TransactionCategoryAdapter());
-  Hive.registerAdapter(FamilyModelAdapter());
-  Hive.registerAdapter(FamilyMemberModelAdapter());
-  Hive.registerAdapter(NotificationModelAdapter());
-  Hive.registerAdapter(NotificationTypeAdapter());
-  
-  // Open Hive boxes
-  await Hive.openBox<UserProfile>('userProfile');
-  await Hive.openBox<TransactionModel>('transactions');
-  await Hive.openBox<FamilyModel>('families');
-  await Hive.openBox<FamilyMemberModel>('familyMembers');
-  await Hive.openBox<NotificationModel>('notifications');
-  await Hive.openBox<dynamic>('appSettings');
+    // Initialize Hive
+    print('💾 Initializing Hive...');
+    await Hive.initFlutter();
+    print('✅ Hive initialized');
+    
+    // Register Hive adapters
+    print('📦 Registering Hive adapters...');
+    Hive.registerAdapter(UserProfileAdapter());
+    Hive.registerAdapter(TransactionModelAdapter());
+    Hive.registerAdapter(TransactionTypeAdapter());
+    Hive.registerAdapter(TransactionCategoryAdapter());
+    Hive.registerAdapter(FamilyModelAdapter());
+    Hive.registerAdapter(FamilyMemberModelAdapter());
+    Hive.registerAdapter(NotificationModelAdapter());
+    Hive.registerAdapter(NotificationTypeAdapter());
+    print('✅ Hive adapters registered');
+    
+    // Open Hive boxes
+    print('📂 Opening Hive boxes...');
+    await Hive.openBox<UserProfile>('userProfile');
+    await Hive.openBox<TransactionModel>('transactions');
+    await Hive.openBox<FamilyModel>('families');
+    await Hive.openBox<FamilyMemberModel>('familyMembers');
+    await Hive.openBox<NotificationModel>('notifications');
+    await Hive.openBox<dynamic>('appSettings');
+    print('✅ Hive boxes opened');
 
-  runApp(const MyApp());
+    print('🚀 Starting app...');
+    runApp(const MyApp());
+  } catch (e, stack) {
+    print('❌ ERROR: $e');
+    print(stack);
+    
+    // Show error screen
+    runApp(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: Colors.red,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'App Initialization Failed',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Error: $e',
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      // Restart app
+                      main();
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -77,7 +148,7 @@ class MyApp extends StatelessWidget {
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.system,
-        debugShowCheckedModeBanner: false,
+        debugShowCheckedModeBanner: true,
         home: const AuthWrapper(),
         routes: {
           '/login': (context) => const LoginScreen(),
@@ -114,21 +185,74 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
 
-    return StreamBuilder<dynamic>(
+    return StreamBuilder<User?>(
       stream: authService.authStateChanges,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.active) {
-          final user = snapshot.data;
-          if (user != null) {
-            return const DashboardScreen();
-          }
-          return const LoginScreen();
+        // Show loading while checking auth state
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Loading...'),
+                ],
+              ),
+            ),
+          );
         }
-        return const Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(),
-          ),
-        );
+
+        // Show error if any
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: Colors.red,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Authentication Error',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${snapshot.error}',
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () {
+                      authService.signOut();
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // User is logged in
+        if (snapshot.hasData && snapshot.data != null) {
+          return const DashboardScreen();
+        }
+
+        // User is not logged in
+        return const LoginScreen();
       },
     );
   }
