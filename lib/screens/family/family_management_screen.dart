@@ -270,7 +270,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     await _joinFamily(foundFamily);
   }
 
-  void _joinFamily(FamilyModel family) async {
+  Future<void> _joinFamily(FamilyModel family) async {
     final authService = Provider.of<AuthService>(context, listen: false);
     final userId = authService.userId;
     final userBox = Hive.box<UserProfile>('userProfile');
