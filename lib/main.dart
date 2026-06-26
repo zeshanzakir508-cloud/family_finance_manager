@@ -29,19 +29,27 @@ void main() async {
   try {
     print('📱 Starting app...');
     
-    // Initialize Firebase
+    // Initialize Firebase - Check if already initialized
     print('🔥 Initializing Firebase...');
-    await Firebase.initializeApp(
-      options: const FirebaseOptions(
-        apiKey: "AIzaSyC2PqPJ9E1VJj2lPtM06qYwD7xGZ5kR9nQ",
-        authDomain: "family-finance-manager.firebaseapp.com",
-        projectId: "family-finance-manager",
-        storageBucket: "family-finance-manager.appspot.com",
-        messagingSenderId: "808843357815",
-        appId: "1:808843357815:android:8edf9e5b7c6a4d2f",
-      ),
-    );
-    print('✅ Firebase initialized');
+    
+    // Check if Firebase is already initialized
+    FirebaseApp? existingApp = Firebase.apps.isNotEmpty ? Firebase.apps.first : null;
+    
+    if (existingApp == null) {
+      await Firebase.initializeApp(
+        options: const FirebaseOptions(
+          apiKey: "AIzaSyC2PqPJ9E1VJj2lPtM06qYwD7xGZ5kR9nQ",
+          authDomain: "family-finance-manager.firebaseapp.com",
+          projectId: "family-finance-manager",
+          storageBucket: "family-finance-manager.appspot.com",
+          messagingSenderId: "808843357815",
+          appId: "1:808843357815:android:8edf9e5b7c6a4d2f",
+        ),
+      );
+      print('✅ Firebase initialized');
+    } else {
+      print('⚠️ Firebase already initialized, using existing instance');
+    }
 
     // Initialize Hive
     print('💾 Initializing Hive...');
