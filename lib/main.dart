@@ -23,19 +23,18 @@ import 'models/family_member_model.dart';
 import 'models/notification_model.dart';
 import 'utils/app_theme.dart';
 
+bool _firebaseInitialized = false;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
     print('📱 Starting app...');
     
-    // Initialize Firebase - Check if already initialized
+    // Initialize Firebase - ONLY ONCE
     print('🔥 Initializing Firebase...');
     
-    // Check if Firebase is already initialized
-    FirebaseApp? existingApp = Firebase.apps.isNotEmpty ? Firebase.apps.first : null;
-    
-    if (existingApp == null) {
+    if (!_firebaseInitialized) {
       await Firebase.initializeApp(
         options: const FirebaseOptions(
           apiKey: "AIzaSyC2PqPJ9E1VJj2lPtM06qYwD7xGZ5kR9nQ",
@@ -46,9 +45,10 @@ void main() async {
           appId: "1:808843357815:android:8edf9e5b7c6a4d2f",
         ),
       );
+      _firebaseInitialized = true;
       print('✅ Firebase initialized');
     } else {
-      print('⚠️ Firebase already initialized, using existing instance');
+      print('⚠️ Firebase already initialized, skipping');
     }
 
     // Initialize Hive
@@ -58,24 +58,80 @@ void main() async {
     
     // Register Hive adapters
     print('📦 Registering Hive adapters...');
-    Hive.registerAdapter(UserProfileAdapter());
-    Hive.registerAdapter(TransactionModelAdapter());
-    Hive.registerAdapter(TransactionTypeAdapter());
-    Hive.registerAdapter(TransactionCategoryAdapter());
-    Hive.registerAdapter(FamilyModelAdapter());
-    Hive.registerAdapter(FamilyMemberModelAdapter());
-    Hive.registerAdapter(NotificationModelAdapter());
-    Hive.registerAdapter(NotificationTypeAdapter());
+    try {
+      Hive.registerAdapter(UserProfileAdapter());
+    } catch (e) {
+      print('⚠️ UserProfileAdapter already registered');
+    }
+    try {
+      Hive.registerAdapter(TransactionModelAdapter());
+    } catch (e) {
+      print('⚠️ TransactionModelAdapter already registered');
+    }
+    try {
+      Hive.registerAdapter(TransactionTypeAdapter());
+    } catch (e) {
+      print('⚠️ TransactionTypeAdapter already registered');
+    }
+    try {
+      Hive.registerAdapter(TransactionCategoryAdapter());
+    } catch (e) {
+      print('⚠️ TransactionCategoryAdapter already registered');
+    }
+    try {
+      Hive.registerAdapter(FamilyModelAdapter());
+    } catch (e) {
+      print('⚠️ FamilyModelAdapter already registered');
+    }
+    try {
+      Hive.registerAdapter(FamilyMemberModelAdapter());
+    } catch (e) {
+      print('⚠️ FamilyMemberModelAdapter already registered');
+    }
+    try {
+      Hive.registerAdapter(NotificationModelAdapter());
+    } catch (e) {
+      print('⚠️ NotificationModelAdapter already registered');
+    }
+    try {
+      Hive.registerAdapter(NotificationTypeAdapter());
+    } catch (e) {
+      print('⚠️ NotificationTypeAdapter already registered');
+    }
     print('✅ Hive adapters registered');
     
     // Open Hive boxes
     print('📂 Opening Hive boxes...');
-    await Hive.openBox<UserProfile>('userProfile');
-    await Hive.openBox<TransactionModel>('transactions');
-    await Hive.openBox<FamilyModel>('families');
-    await Hive.openBox<FamilyMemberModel>('familyMembers');
-    await Hive.openBox<NotificationModel>('notifications');
-    await Hive.openBox<dynamic>('appSettings');
+    try {
+      await Hive.openBox<UserProfile>('userProfile');
+    } catch (e) {
+      print('⚠️ userProfile box already open');
+    }
+    try {
+      await Hive.openBox<TransactionModel>('transactions');
+    } catch (e) {
+      print('⚠️ transactions box already open');
+    }
+    try {
+      await Hive.openBox<FamilyModel>('families');
+    } catch (e) {
+      print('⚠️ families box already open');
+    }
+    try {
+      await Hive.openBox<FamilyMemberModel>('familyMembers');
+    } catch (e) {
+      print('⚠️ familyMembers box already open');
+    }
+    try {
+      await Hive.openBox<NotificationModel>('notifications');
+    } catch (e) {
+      print('⚠️ notifications box already open');
+    }
+    try {
+      await Hive.openBox<dynamic>('appSettings');
+    } catch (e) {
+      print('⚠️ appSettings box already open');
+    }
     print('✅ Hive boxes opened');
 
     print('🚀 Starting app...');
