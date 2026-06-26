@@ -146,9 +146,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   size: 16,
                   color: AppTheme.textSecondaryColor,
                 ),
-                onTap: () {
-                  // Navigate to profile
-                },
+                onTap: () {},
               ),
             ),
             const SizedBox(height: 24),
@@ -592,4 +590,5 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         actions: [
           TextButton(
- 
+            onPressed: () => Navigator.pop(context),
+      
