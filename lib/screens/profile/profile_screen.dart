@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 import '../../services/auth_service.dart';
 import '../../models/user_profile.dart';
 import '../../utils/app_theme.dart';
