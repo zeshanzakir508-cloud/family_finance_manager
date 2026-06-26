@@ -4,8 +4,8 @@ on:
   push:
     branches: [ main ]
     paths:
-      - '.github/workflows/build.yml'  # Only runs when this file changes
-  workflow_dispatch:  # Manual trigger always available
+      - '.github/workflows/build.yml'
+  workflow_dispatch:
 
 jobs:
   build:
