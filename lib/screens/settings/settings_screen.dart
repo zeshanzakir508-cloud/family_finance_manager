@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/auth_service.dart';
 import '../../models/user_profile.dart';
 import '../../models/transaction_model.dart';
-import '../../models/notification_model.dart';
 import '../../utils/app_theme.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -18,19 +17,11 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isDarkMode = false;
   bool _notificationsEnabled = true;
-  bool _biometricEnabled = false;
   String _selectedCurrency = 'USD';
-  String _selectedLanguage = 'en';
   String? _userName;
   String? _userEmail;
 
   final List<String> _currencies = ['USD', 'EUR', 'GBP', 'PKR', 'INR', 'AED', 'SAR'];
-  final List<Map<String, String>> _languages = [
-    {'code': 'en', 'name': 'English'},
-    {'code': 'ur', 'name': 'Urdu'},
-    {'code': 'ar', 'name': 'Arabic'},
-    {'code': 'hi', 'name': 'Hindi'},
-  ];
 
   @override
   void initState() {
@@ -52,7 +43,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _userEmail = user.email;
           _isDarkMode = user.isDarkMode ?? false;
           _selectedCurrency = user.currency ?? 'USD';
-          _selectedLanguage = user.preferredLanguage ?? 'en';
         });
       }
     }
@@ -61,7 +51,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _notificationsEnabled = prefs.getBool('notifications') ?? true;
-      _biometricEnabled = prefs.getBool('biometric') ?? false;
     });
   }
 
@@ -69,7 +58,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // Save to SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('notifications', _notificationsEnabled);
-    await prefs.setBool('biometric', _biometricEnabled);
 
     // Update user profile
     final authService = Provider.of<AuthService>(context, listen: false);
@@ -81,7 +69,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final updatedUser = user.copyWith(
           isDarkMode: _isDarkMode,
           currency: _selectedCurrency,
-          preferredLanguage: _selectedLanguage,
         );
         await box.put(userId, updatedUser);
       }
@@ -219,38 +206,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
-                  const Divider(height: 1),
-                  ListTile(
-                    title: Text(
-                      'Language',
-                      style: AppTheme.bodyStyle,
-                    ),
-                    subtitle: Text(
-                      'Select your preferred language',
-                      style: AppTheme.captionStyle,
-                    ),
-                    trailing: DropdownButton<String>(
-                      value: _selectedLanguage,
-                      items: _languages.map((lang) {
-                        return DropdownMenuItem<String>(
-                          value: lang['code'],
-                          child: Text(lang['name'] ?? ''),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            _selectedLanguage = value;
-                          });
-                        }
-                      },
-                      underline: const SizedBox(),
-                      icon: Icon(
-                        Icons.arrow_drop_down,
-                        color: AppTheme.primaryColor,
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -259,54 +214,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // Notifications Section
             _buildSectionHeader('Notifications'),
             Card(
-              child: Column(
-                children: [
-                  SwitchListTile(
-                    title: Text(
-                      'Push Notifications',
-                      style: AppTheme.bodyStyle,
-                    ),
-                    subtitle: Text(
-                      'Receive notifications for important updates',
-                      style: AppTheme.captionStyle,
-                    ),
-                    value: _notificationsEnabled,
-                    onChanged: (value) {
-                      setState(() {
-                        _notificationsEnabled = value;
-                      });
-                    },
-                    secondary: Icon(
-                      _notificationsEnabled
-                          ? Icons.notifications_active
-                          : Icons.notifications_off,
-                      color: AppTheme.primaryColor,
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  SwitchListTile(
-                    title: Text(
-                      'Biometric Login',
-                      style: AppTheme.bodyStyle,
-                    ),
-                    subtitle: Text(
-                      'Enable fingerprint or face recognition',
-                      style: AppTheme.captionStyle,
-                    ),
-                    value: _biometricEnabled,
-                    onChanged: (value) {
-                      setState(() {
-                        _biometricEnabled = value;
-                      });
-                    },
-                    secondary: Icon(
-                      _biometricEnabled
-                          ? Icons.fingerprint
-                          : Icons.fingerprint_outlined,
-                      color: AppTheme.primaryColor,
-                    ),
-                  ),
-                ],
+              child: SwitchListTile(
+                title: Text(
+                  'Push Notifications',
+                  style: AppTheme.bodyStyle,
+                ),
+                subtitle: Text(
+                  'Receive notifications for important updates',
+                  style: AppTheme.captionStyle,
+                ),
+                value: _notificationsEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    _notificationsEnabled = value;
+                  });
+                },
+                secondary: Icon(
+                  _notificationsEnabled
+                      ? Icons.notifications_active
+                      : Icons.notifications_off,
+                  color: AppTheme.primaryColor,
+                ),
               ),
             ),
             const SizedBox(height: 24),
@@ -391,174 +319,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Data Section
-            _buildSectionHeader('Data Management'),
-            Card(
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: Icon(
-                      Icons.backup_outlined,
-                      color: AppTheme.primaryColor,
-                    ),
-                    title: Text(
-                      'Backup Data',
-                      style: AppTheme.bodyStyle,
-                    ),
-                    subtitle: Text(
-                      'Backup your data to cloud',
-                      style: AppTheme.captionStyle,
-                    ),
-                    trailing: Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Backup feature coming soon!'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: Icon(
-                      Icons.restore_outlined,
-                      color: AppTheme.primaryColor,
-                    ),
-                    title: Text(
-                      'Restore Data',
-                      style: AppTheme.bodyStyle,
-                    ),
-                    subtitle: Text(
-                      'Restore data from backup',
-                      style: AppTheme.captionStyle,
-                    ),
-                    trailing: Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Restore feature coming soon!'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: Icon(
-                      Icons.clear_all_outlined,
-                      color: AppTheme.errorColor,
-                    ),
-                    title: Text(
-                      'Clear Local Data',
-                      style: AppTheme.bodyStyle.copyWith(
-                        color: AppTheme.errorColor,
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Clear all local data',
-                      style: AppTheme.captionStyle,
-                    ),
-                    trailing: Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: AppTheme.errorColor,
-                    ),
-                    onTap: () {
-                      _showClearDataDialog();
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
             // About Section
             _buildSectionHeader('About'),
             Card(
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: Icon(
-                      Icons.info_outline,
-                      color: AppTheme.primaryColor,
+              child: ListTile(
+                leading: Icon(
+                  Icons.info_outline,
+                  color: AppTheme.primaryColor,
+                ),
+                title: Text(
+                  'App Version',
+                  style: AppTheme.bodyStyle,
+                ),
+                subtitle: const Text('1.0.0'),
+                trailing: Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: AppTheme.textSecondaryColor,
+                ),
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Family Finance Manager v1.0.0'),
+                      duration: Duration(seconds: 2),
                     ),
-                    title: Text(
-                      'App Version',
-                      style: AppTheme.bodyStyle,
-                    ),
-                    subtitle: const Text('1.0.0'),
-                    trailing: Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Family Finance Manager v1.0.0'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: Icon(
-                      Icons.privacy_tip_outlined,
-                      color: AppTheme.primaryColor,
-                    ),
-                    title: Text(
-                      'Privacy Policy',
-                      style: AppTheme.bodyStyle,
-                    ),
-                    trailing: Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Privacy Policy coming soon!'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: Icon(
-                      Icons.description_outlined,
-                      color: AppTheme.primaryColor,
-                    ),
-                    title: Text(
-                      'Terms & Conditions',
-                      style: AppTheme.bodyStyle,
-                    ),
-                    trailing: Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Terms & Conditions coming soon!'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+                  );
+                },
               ),
             ),
             const SizedBox(height: 32),
@@ -629,6 +415,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           TextButton(
             onPressed: () async {
+              final authService = Provider.of<AuthService>(context, listen: false);
+              
               if (newPasswordController.text != confirmPasswordController.text) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -638,14 +426,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 );
                 return;
               }
-              Navigator.pop(context);
-              // Implement password change
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Password change coming soon!'),
-                  duration: Duration(seconds: 2),
-                ),
+
+              if (newPasswordController.text.length < 6) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Password must be at least 6 characters!'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+
+              final success = await authService.updatePassword(
+                newPasswordController.text,
               );
+
+              Navigator.pop(context);
+              
+              if (success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Password updated successfully!'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Failed to update password. Please try again.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             },
             style: TextButton.styleFrom(
               foregroundColor: AppTheme.primaryColor,
@@ -680,14 +492,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context);
-              // Implement email change
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Email change coming soon!'),
-                  duration: Duration(seconds: 2),
-                ),
+              final authService = Provider.of<AuthService>(context, listen: false);
+              final success = await authService.updateEmail(
+                newEmailController.text.trim(),
               );
+
+              Navigator.pop(context);
+              
+              if (success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Email updated successfully!'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Failed to update email. Please try again.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             },
             style: TextButton.styleFrom(
               foregroundColor: AppTheme.primaryColor,
@@ -770,47 +596,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Account deleted successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _showClearDataDialog() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Clear Local Data'),
-        content: const Text(
-          'Are you sure you want to clear all local data? This will not delete your account.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.errorColor,
-            ),
-            child: const Text('Clear'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      // Clear Hive data
-      await Hive.box<UserProfile>('userProfile').clear();
-      await Hive.box<TransactionModel>('transactions').clear();
-      await Hive.box<dynamic>('appSettings').clear();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Local data cleared successfully'),
             backgroundColor: Colors.green,
           ),
         );
