@@ -26,7 +26,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isEditing = false;
   String? _userId;
   UserProfile? _userProfile;
-  File? _selectedImage;
 
   @override
   void initState() {
@@ -52,17 +51,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _dateOfBirthController.text = user.dateOfBirth ?? '';
         });
       }
-    }
-  }
-
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-      });
     }
   }
 
@@ -263,38 +251,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         CircleAvatar(
           radius: 60,
           backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-          child: _selectedImage != null
-              ? ClipOval(
-                  child: Image.file(
-                    _selectedImage!,
-                    width: 120,
-                    height: 120,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              : Text(
-                  _userProfile?.initials ?? 'U',
-                  style: TextStyle(
-                    fontSize: 40,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
-        ),
-        if (_isEditing)
-          Positioned(
-            bottom: 0,
-            right: 0,
-            child: CircleAvatar(
-              backgroundColor: AppTheme.primaryColor,
-              radius: 18,
-              child: IconButton(
-                icon: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
-                onPressed: _pickImage,
-                padding: EdgeInsets.zero,
-              ),
+          child: Text(
+            _userProfile?.initials ?? 'U',
+            style: TextStyle(
+              fontSize: 40,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.primaryColor,
             ),
           ),
+        ),
       ],
     );
   }
