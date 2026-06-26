@@ -38,11 +38,9 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
 
     if (family != null) {
       _family = family;
-      // Load family transactions
       _familyTransactions = DatabaseService.getFamilyTransactions(family.id!);
       _familyTransactions.sort((a, b) => b.date!.compareTo(a.date!));
 
-      // Calculate totals
       double income = 0;
       double expense = 0;
       for (var t in _familyTransactions) {
@@ -66,7 +64,6 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
     final modeProvider = Provider.of<ModeProvider>(context);
     final familyProvider = Provider.of<FamilyProvider>(context);
 
-    // Show empty state if no family
     if (_family == null) {
       return _buildNoFamilyState();
     }
@@ -101,23 +98,14 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Mode Switch
               _buildModeSwitch(modeProvider),
               const SizedBox(height: 16),
-
-              // Family Info
               _buildFamilyInfo(),
               const SizedBox(height: 24),
-
-              // Stats
               _buildStats(),
               const SizedBox(height: 24),
-
-              // Member Balances
               _buildMemberBalances(),
               const SizedBox(height: 24),
-
-              // Recent Transactions
               _buildRecentTransactions(),
             ],
           ),
@@ -433,7 +421,6 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
         ),
         const SizedBox(height: 8),
         ...members.map((member) {
-          // Calculate member balance
           final memberTransactions = _familyTransactions
               .where((t) => t.memberId == member.id)
               .toList();
@@ -496,7 +483,7 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
               ],
             ),
           );
-        }),
+        }).toList(),
       ],
     );
   }
@@ -562,7 +549,7 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
         else
           ...recent.map((transaction) {
             return _buildTransactionTile(transaction);
-          }),
+          }).toList(),
       ],
     );
   }
@@ -641,4 +628,16 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.pie_chart_outline),
-          acti
+          activeIcon: Icon(Icons.pie_chart),
+          label: 'Reports',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.family_restroom_outlined),
+          activeIcon: Icon(Icons.family_restroom),
+          label: 'Family',
+        ),
+      ],
+    );
+  }
+
+  voi
