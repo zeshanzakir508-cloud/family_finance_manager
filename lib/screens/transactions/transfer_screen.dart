@@ -32,10 +32,8 @@ class _TransferScreenState extends State<TransferScreen> {
     final authService = Provider.of<AuthService>(context);
     final familyProvider = Provider.of<FamilyProvider>(context);
     final members = familyProvider.familyMembers;
-    final currentUser = authService.currentUser;
     final userId = authService.userId;
 
-    // Set default from user
     if (_fromMemberId == null && userId != null) {
       _fromMemberId = userId;
     }
@@ -69,7 +67,6 @@ class _TransferScreenState extends State<TransferScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Info Banner
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -101,7 +98,6 @@ class _TransferScreenState extends State<TransferScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Error Message
                   if (_errorMessage != null)
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -134,23 +130,18 @@ class _TransferScreenState extends State<TransferScreen> {
                     ),
                   const SizedBox(height: 16),
 
-                  // From Member
                   _buildFromDropdown(members, userId),
                   const SizedBox(height: 16),
 
-                  // To Member
                   _buildToDropdown(members, userId),
                   const SizedBox(height: 16),
 
-                  // Amount
                   _buildAmountField(),
                   const SizedBox(height: 16),
 
-                  // Note
                   _buildNoteField(),
                   const SizedBox(height: 24),
 
-                  // Send Button
                   _buildSendButton(),
                 ],
               ),
@@ -227,7 +218,6 @@ class _TransferScreenState extends State<TransferScreen> {
   }
 
   Widget _buildToDropdown(List<UserModel> members, String? userId) {
-    // Filter out the current user from "To" list
     final filteredMembers = members.where((m) => m.id != userId).toList();
 
     return DropdownButtonFormField<String>(
@@ -341,7 +331,6 @@ class _TransferScreenState extends State<TransferScreen> {
   }
 
   void _sendTransfer() async {
-    // Validate
     if (_fromMemberId == null) {
       setState(() {
         _errorMessage = 'Please select a sender';
@@ -396,7 +385,6 @@ class _TransferScreenState extends State<TransferScreen> {
         throw Exception('Invalid member or family');
       }
 
-      // Create transfer
       final transfer = TransferModel(
         id: Helpers.generateId(),
         familyId: family.id,
@@ -411,8 +399,6 @@ class _TransferScreenState extends State<TransferScreen> {
       );
 
       await DatabaseService.saveTransfer(transfer);
-
-      // Send notification to receiver
       await NotificationService.notifyTransferRequest(transfer);
 
       if (mounted) {
