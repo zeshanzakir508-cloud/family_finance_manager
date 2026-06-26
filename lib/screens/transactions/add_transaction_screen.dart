@@ -4,7 +4,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import '../../services/auth_service.dart';
 import '../../models/transaction_model.dart';
-import '../../models/user_profile.dart';
 import '../../utils/app_theme.dart';
 
 class AddTransactionScreen extends StatefulWidget {
@@ -22,10 +21,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   TransactionType _selectedType = TransactionType.expense;
   String? _selectedCategory;
   DateTime _selectedDate = DateTime.now();
-  bool _isRecurring = false;
-  String? _selectedRecurrence;
-  String? _selectedPaymentMethod;
-  String? _selectedLocation;
   bool _isLoading = false;
 
   final List<String> _incomeCategories = [
@@ -55,10 +50,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     'electronics',
     'other_expense',
   ];
-
-  final List<String> _recurrenceOptions = ['Daily', 'Weekly', 'Monthly', 'Yearly'];
-  final List<String> _paymentMethods = ['Cash', 'Card', 'Bank Transfer', 'Digital Wallet', 'Other'];
-  final List<String> _locations = ['Home', 'Office', 'Store', 'Restaurant', 'Other'];
 
   @override
   Widget build(BuildContext context) {
@@ -114,24 +105,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   _buildDatePicker(),
                   const SizedBox(height: 16),
 
-                  // Payment Method
-                  _buildPaymentMethodDropdown(),
-                  const SizedBox(height: 16),
-
-                  // Location
-                  _buildLocationDropdown(),
-                  const SizedBox(height: 16),
-
                   // Notes
                   _buildNotesField(),
-                  const SizedBox(height: 16),
-
-                  // Recurring
-                  _buildRecurringToggle(),
-                  if (_isRecurring) ...[
-                    const SizedBox(height: 8),
-                    _buildRecurrenceDropdown(),
-                  ],
                   const SizedBox(height: 24),
 
                   // Save Button
@@ -367,58 +342,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     );
   }
 
-  Widget _buildPaymentMethodDropdown() {
-    return DropdownButtonFormField<String>(
-      value: _selectedPaymentMethod,
-      decoration: InputDecoration(
-        labelText: 'Payment Method',
-        hintText: 'Select payment method',
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        filled: true,
-        fillColor: AppTheme.surfaceColor,
-      ),
-      items: _paymentMethods.map((method) {
-        return DropdownMenuItem<String>(
-          value: method,
-          child: Text(method),
-        );
-      }).toList(),
-      onChanged: (value) {
-        setState(() {
-          _selectedPaymentMethod = value;
-        });
-      },
-    );
-  }
-
-  Widget _buildLocationDropdown() {
-    return DropdownButtonFormField<String>(
-      value: _selectedLocation,
-      decoration: InputDecoration(
-        labelText: 'Location',
-        hintText: 'Select location',
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        filled: true,
-        fillColor: AppTheme.surfaceColor,
-      ),
-      items: _locations.map((location) {
-        return DropdownMenuItem<String>(
-          value: location,
-          child: Text(location),
-        );
-      }).toList(),
-      onChanged: (value) {
-        setState(() {
-          _selectedLocation = value;
-        });
-      },
-    );
-  }
-
   Widget _buildNotesField() {
     return TextField(
       controller: _notesController,
@@ -432,55 +355,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         filled: true,
         fillColor: AppTheme.surfaceColor,
       ),
-    );
-  }
-
-  Widget _buildRecurringToggle() {
-    return Row(
-      children: [
-        Switch(
-          value: _isRecurring,
-          onChanged: (value) {
-            setState(() {
-              _isRecurring = value;
-              if (!value) {
-                _selectedRecurrence = null;
-              }
-            });
-          },
-          activeColor: AppTheme.primaryColor,
-        ),
-        Text(
-          'Recurring Transaction',
-          style: AppTheme.bodyStyle,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRecurrenceDropdown() {
-    return DropdownButtonFormField<String>(
-      value: _selectedRecurrence,
-      decoration: InputDecoration(
-        labelText: 'Recurrence Frequency *',
-        hintText: 'How often?',
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        filled: true,
-        fillColor: AppTheme.surfaceColor,
-      ),
-      items: _recurrenceOptions.map((option) {
-        return DropdownMenuItem<String>(
-          value: option.toLowerCase(),
-          child: Text(option),
-        );
-      }).toList(),
-      onChanged: (value) {
-        setState(() {
-          _selectedRecurrence = value;
-        });
-      },
     );
   }
 
@@ -542,16 +416,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       return;
     }
 
-    if (_isRecurring && _selectedRecurrence == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a recurrence frequency'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
     setState(() {
       _isLoading = true;
     });
@@ -568,12 +432,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         notes: _notesController.text.trim().isEmpty 
             ? null 
             : _notesController.text.trim(),
-        isRecurring: _isRecurring,
-        recurrenceFrequency: _selectedRecurrence,
-        paymentMethod: _selectedPaymentMethod,
-        location: _selectedLocation,
         createdAt: DateTime.now(),
-        isSynced: false,
         currency: 'USD',
       );
 
