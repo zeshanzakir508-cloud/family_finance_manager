@@ -17,7 +17,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
-  
+
   TransactionType _selectedType = TransactionType.expense;
   String? _selectedCategory;
   DateTime _selectedDate = DateTime.now();
@@ -244,9 +244,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     final categories = _selectedType == TransactionType.income
         ? _incomeCategories
         : _expenseCategories;
-    
+
     final displayNames = categories.map((cat) {
-      return cat.split('_').map((word) => 
+      return cat.split('_').map((word) =>
         word[0].toUpperCase() + word.substring(1)
       ).join(' ');
     }).toList();
@@ -429,8 +429,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         description: _descriptionController.text.trim(),
         type: _selectedType,
         date: _selectedDate,
-        notes: _notesController.text.trim().isEmpty 
-            ? null 
+        notes: _notesController.text.trim().isEmpty
+            ? null
             : _notesController.text.trim(),
         createdAt: DateTime.now(),
         currency: 'USD',
