@@ -23,7 +23,6 @@ import 'models/family_member_model.dart';
 import 'models/notification_model.dart';
 import 'utils/app_theme.dart';
 
-// Store if the app is already running
 bool _isAppInitialized = false;
 
 void main() {
@@ -41,7 +40,7 @@ void _initializeApp() async {
   try {
     print('📱 Starting app...');
     
-    // Try to initialize Firebase, but don't fail if it's already initialized
+    // Initialize Firebase - Check if already initialized
     try {
       await Firebase.initializeApp(
         options: const FirebaseOptions(
@@ -55,8 +54,7 @@ void _initializeApp() async {
       );
       print('✅ Firebase initialized');
     } catch (e) {
-      // Firebase might already be initialized
-      print('⚠️ Firebase init skipped: $e');
+      print('⚠️ Firebase already initialized: $e');
     }
 
     // Initialize Hive
@@ -64,103 +62,119 @@ void _initializeApp() async {
     await Hive.initFlutter();
     print('✅ Hive initialized');
     
-    // Register Hive adapters (ignore if already registered)
+    // Register Hive adapters - handle duplicate registration
     print('📦 Registering Hive adapters...');
-    _registerAdapterIfNeeded(() => Hive.registerAdapter(UserProfileAdapter()));
-    _registerAdapterIfNeeded(() => Hive.registerAdapter(TransactionModelAdapter()));
-    _registerAdapterIfNeeded(() => Hive.registerAdapter(TransactionTypeAdapter()));
-    _registerAdapterIfNeeded(() => Hive.registerAdapter(TransactionCategoryAdapter()));
-    _registerAdapterIfNeeded(() => Hive.registerAdapter(FamilyModelAdapter()));
-    _registerAdapterIfNeeded(() => Hive.registerAdapter(FamilyMemberModelAdapter()));
-    _registerAdapterIfNeeded(() => Hive.registerAdapter(NotificationModelAdapter()));
-    _registerAdapterIfNeeded(() => Hive.registerAdapter(NotificationTypeAdapter()));
+    try {
+      Hive.registerAdapter(UserProfileAdapter());
+    } catch (e) { print('⚠️ UserProfileAdapter already registered'); }
+    try {
+      Hive.registerAdapter(TransactionModelAdapter());
+    } catch (e) { print('⚠️ TransactionModelAdapter already registered'); }
+    try {
+      Hive.registerAdapter(TransactionTypeAdapter());
+    } catch (e) { print('⚠️ TransactionTypeAdapter already registered'); }
+    try {
+      Hive.registerAdapter(TransactionCategoryAdapter());
+    } catch (e) { print('⚠️ TransactionCategoryAdapter already registered'); }
+    try {
+      Hive.registerAdapter(FamilyModelAdapter());
+    } catch (e) { print('⚠️ FamilyModelAdapter already registered'); }
+    try {
+      Hive.registerAdapter(FamilyMemberModelAdapter());
+    } catch (e) { print('⚠️ FamilyMemberModelAdapter already registered'); }
+    try {
+      Hive.registerAdapter(NotificationModelAdapter());
+    } catch (e) { print('⚠️ NotificationModelAdapter already registered'); }
+    try {
+      Hive.registerAdapter(NotificationTypeAdapter());
+    } catch (e) { print('⚠️ NotificationTypeAdapter already registered'); }
     print('✅ Hive adapters registered');
     
-    // Open Hive boxes (ignore if already open)
+    // Open Hive boxes - handle already open
     print('📂 Opening Hive boxes...');
-    _openBoxIfNeeded<UserProfile>('userProfile');
-    _openBoxIfNeeded<TransactionModel>('transactions');
-    _openBoxIfNeeded<FamilyModel>('families');
-    _openBoxIfNeeded<FamilyMemberModel>('familyMembers');
-    _openBoxIfNeeded<NotificationModel>('notifications');
-    _openBoxIfNeeded<dynamic>('appSettings');
+    try {
+      await Hive.openBox<UserProfile>('userProfile');
+    } catch (e) { print('⚠️ userProfile box already open'); }
+    try {
+      await Hive.openBox<TransactionModel>('transactions');
+    } catch (e) { print('⚠️ transactions box already open'); }
+    try {
+      await Hive.openBox<FamilyModel>('families');
+    } catch (e) { print('⚠️ families box already open'); }
+    try {
+      await Hive.openBox<FamilyMemberModel>('familyMembers');
+    } catch (e) { print('⚠️ familyMembers box already open'); }
+    try {
+      await Hive.openBox<NotificationModel>('notifications');
+    } catch (e) { print('⚠️ notifications box already open'); }
+    try {
+      await Hive.openBox<dynamic>('appSettings');
+    } catch (e) { print('⚠️ appSettings box already open'); }
     print('✅ Hive boxes opened');
 
     print('🚀 Starting app...');
     runApp(const MyApp());
-  } catch (e) {
+  } catch (e, stack) {
     print('❌ ERROR: $e');
-    // Show error screen but don't allow retry (to prevent duplicate initialization)
-    runApp(
-      MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: Colors.red,
+    print(stack);
+    _showErrorScreen(e);
+  }
+}
+
+void _showErrorScreen(dynamic error) {
+  runApp(
+    MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Colors.red,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'App Initialization Failed',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'App Initialization Failed',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
+                  child: Text(
+                    'Error: $error',
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontSize: 12,
                     ),
-                    child: Text(
-                      'Error: $e',
-                      style: const TextStyle(
-                        color: Colors.red,
-                        fontSize: 12,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Please restart the app or rebuild the APK',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 14,
-                    ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Please restart the app or rebuild the APK',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 14,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-void _registerAdapterIfNeeded(void Function() register) {
-  try {
-    register();
-  } catch (e) {
-    // Adapter already registered, ignore
-  }
-}
-
-void _openBoxIfNeeded<T>(String boxName) {
-  try {
-    Hive.openBox<T>(boxName);
-  } catch (e) {
-    // Box already open, ignore
-  }
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -219,6 +233,7 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: authService.authStateChanges,
       builder: (context, snapshot) {
+        // Still loading - show splash
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(
@@ -234,32 +249,23 @@ class AuthWrapper extends StatelessWidget {
           );
         }
 
+        // Error
         if (snapshot.hasError) {
           return Scaffold(
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: Colors.red,
-                  ),
+                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
                   const SizedBox(height: 16),
                   const Text(
                     'Authentication Error',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     '${snapshot.error}',
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 14,
-                    ),
+                    style: const TextStyle(color: Colors.grey, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
@@ -275,10 +281,12 @@ class AuthWrapper extends StatelessWidget {
           );
         }
 
+        // User is logged in
         if (snapshot.hasData && snapshot.data != null) {
           return const DashboardScreen();
         }
 
+        // User is NOT logged in - show login
         return const LoginScreen();
       },
     );
