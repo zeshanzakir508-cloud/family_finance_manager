@@ -38,7 +38,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isPersonalMode ? 'Family Management' : 'Family Management'),
+        title: const Text('Family Management'),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
@@ -56,11 +56,8 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Mode Switch
                   _buildModeSwitch(modeProvider),
                   const SizedBox(height: 16),
-
-                  // Family List or Create/Join
                   if (isPersonalMode)
                     _buildPersonalModeView(userId)
                   else
@@ -256,7 +253,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Family Info Card
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -283,13 +279,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                       fontSize: 20,
                     ),
                   ),
-                  if (isAdmin)
-                    IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.white, size: 20),
-                      onPressed: () {
-                        // Edit family name
-                      },
-                    ),
                 ],
               ),
               const SizedBox(height: 4),
@@ -317,21 +306,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      'Admin: ${_getAdminName(members)}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ],
@@ -339,7 +313,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
         ),
         const SizedBox(height: 16),
 
-        // Family Code
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -384,16 +357,15 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
         ),
         const SizedBox(height: 16),
 
-        // Members List
         Text(
           'Members',
           style: AppTheme.subheadingStyle,
         ),
         const SizedBox(height: 8),
         if (members.isEmpty)
-          Text(
+          const Text(
             'No members yet',
-            style: AppTheme.captionStyle,
+            style: TextStyle(color: Colors.grey),
           )
         else
           ...members.map((member) {
@@ -457,7 +429,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                 ],
               ),
             );
-          }),
+          }).toList(),
         const SizedBox(height: 8),
 
         if (isAdmin)
@@ -473,7 +445,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
 
         const SizedBox(height: 16),
 
-        // Delete Family (Admin only)
         if (isAdmin)
           SizedBox(
             width: double.infinity,
@@ -489,14 +460,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
           ),
       ],
     );
-  }
-
-  String _getAdminName(List<UserModel> members) {
-    final admin = members.firstWhere(
-      (m) => m.id == Provider.of<FamilyProvider>(context).currentFamily?.adminId,
-      orElse: () => UserModel(),
-    );
-    return admin.displayName;
   }
 
   void _showCreateFamilyDialog() {
@@ -586,4 +549,57 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
           ),
         );
         setState(() {
-         
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showJoinFamilyDialog() {
+    _inviteCodeController.clear();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Join Family'),
+        content: TextField(
+          controller: _inviteCodeController,
+          decoration: const InputDecoration(
+            labelText: 'Family Code *',
+            hintText: 'Enter the family code',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: _joinFamily,
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.primaryColor,
+            ),
+            child: const Text('Join'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _joinFamily() async {
+    if (_inviteCodeController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a family code'),
+     
