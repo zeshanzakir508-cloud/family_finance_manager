@@ -4,24 +4,35 @@ import 'package:flutter/material.dart';
 class AuthService extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   User? _user;
+  bool _isInitialized = false;
 
   AuthService() {
     _auth.authStateChanges().listen((User? user) {
       _user = user;
+      _isInitialized = true;
       notifyListeners();
     });
   }
 
+  // Stream of auth state changes
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
+  // Get current user
   User? get currentUser => _user;
 
+  // Get user ID
   String? get userId => _user?.uid;
 
+  // Get user email
   String? get userEmail => _user?.email;
 
+  // Check if user is authenticated
   bool get isAuthenticated => _user != null;
 
+  // Check if auth is initialized
+  bool get isInitialized => _isInitialized;
+
+  // Sign in with email and password
   Future<User?> signInWithEmail(String email, String password) async {
     try {
       UserCredential result = await _auth.signInWithEmailAndPassword(
@@ -40,6 +51,7 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  // Sign up with email and password
   Future<User?> signUpWithEmail(String email, String password) async {
     try {
       UserCredential result = await _auth.createUserWithEmailAndPassword(
@@ -49,6 +61,7 @@ class AuthService extends ChangeNotifier {
       _user = result.user;
       notifyListeners();
       
+      // Send email verification
       await result.user?.sendEmailVerification();
       
       return result.user;
@@ -61,6 +74,7 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  // Send password reset email
   Future<bool> sendPasswordResetEmail(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email.trim());
@@ -71,6 +85,7 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  // Sign out
   Future<void> signOut() async {
     try {
       await _auth.signOut();
@@ -81,6 +96,7 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  // Delete account
   Future<bool> deleteAccount() async {
     try {
       await _user?.delete();
@@ -89,6 +105,43 @@ class AuthService extends ChangeNotifier {
       return true;
     } catch (e) {
       debugPrint('Delete account error: $e');
+      return false;
+    }
+  }
+
+  // Update password
+  Future<bool> updatePassword(String newPassword) async {
+    try {
+      await _user?.updatePassword(newPassword);
+      return true;
+    } catch (e) {
+      debugPrint('Update password error: $e');
+      return false;
+    }
+  }
+
+  // Update email
+  Future<bool> updateEmail(String newEmail) async {
+    try {
+      await _user?.updateEmail(newEmail.trim());
+      return true;
+    } catch (e) {
+      debugPrint('Update email error: $e');
+      return false;
+    }
+  }
+
+  // Re-authenticate user
+  Future<bool> reauthenticate(String password) async {
+    try {
+      AuthCredential credential = EmailAuthProvider.credential(
+        email: _user?.email ?? '',
+        password: password,
+      );
+      await _user?.reauthenticateWithCredential(credential);
+      return true;
+    } catch (e) {
+      debugPrint('Re-authentication error: $e');
       return false;
     }
   }
