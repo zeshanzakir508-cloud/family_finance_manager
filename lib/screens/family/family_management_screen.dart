@@ -26,7 +26,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
   final TextEditingController _memberEmailController = TextEditingController();
 
   bool _isLoading = false;
-  String? _selectedFamilyId;
 
   @override
   Widget build(BuildContext context) {
@@ -602,4 +601,4 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please enter a family code'),
-     
+          backgroundColor: Colors.
