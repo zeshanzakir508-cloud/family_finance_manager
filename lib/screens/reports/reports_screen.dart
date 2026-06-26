@@ -104,8 +104,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
             _buildDatePicker(),
             const SizedBox(height: 16),
             _buildSummaryCards(),
-            const SizedBox(height: 16),
-            _buildTransactionsList(),
+            const SizedBox(height: 24),
+            _buildTransactionList(),
           ],
         ),
       ),
@@ -310,7 +310,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  Widget _buildTransactionsList() {
+  Widget _buildTransactionList() {
     if (_filteredTransactions.isEmpty) {
       return Center(
         child: Padding(
@@ -329,6 +329,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   color: AppTheme.textSecondaryColor,
                 ),
               ),
+              const SizedBox(height: 8),
+              Text(
+                'Try adding some transactions first',
+                style: AppTheme.captionStyle,
+              ),
             ],
           ),
         ),
@@ -338,65 +343,75 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Transactions (${_filteredTransactions.length})',
-          style: AppTheme.subheadingStyle.copyWith(fontSize: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Transactions (${_filteredTransactions.length})',
+              style: AppTheme.subheadingStyle.copyWith(fontSize: 16),
+            ),
+            Text(
+              'Balance: \$${_balance.toStringAsFixed(2)}',
+              style: TextStyle(
+                color: _balance >= 0 ? Colors.green : Colors.red,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
-        ..._filteredTransactions.take(10).map((transaction) {
-          return _buildTransactionItem(transaction);
-        }),
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _filteredTransactions.length > 10 ? 10 : _filteredTransactions.length,
+          separatorBuilder: (context, index) => const Divider(),
+          itemBuilder: (context, index) {
+            final transaction = _filteredTransactions[index];
+            return _buildTransactionTile(transaction);
+          },
+        ),
+        if (_filteredTransactions.length > 10)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Showing 10 of ${_filteredTransactions.length} transactions',
+              style: AppTheme.captionStyle,
+              textAlign: TextAlign.center,
+            ),
+          ),
       ],
     );
   }
 
-  Widget _buildTransactionItem(TransactionModel transaction) {
+  Widget _buildTransactionTile(TransactionModel transaction) {
     final isIncome = transaction.type == TransactionType.income;
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: AppTheme.dividerColor),
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: transaction.typeColor.withOpacity(0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          transaction.categoryIcon,
+          color: transaction.typeColor,
+          size: 20,
         ),
       ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: transaction.typeColor.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              transaction.categoryIcon,
-              color: transaction.typeColor,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  transaction.description ?? 'No description',
-                  style: AppTheme.bodyStyle,
-                ),
-                Text(
-                  transaction.categoryDisplayName,
-                  style: AppTheme.captionStyle,
-                ),
-              ],
-            ),
-          ),
-          Text(
-            '${isIncome ? '+' : '-'}${transaction.formattedAmount}',
-            style: AppTheme.bodyStyle.copyWith(
-              color: transaction.typeColor,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+      title: Text(
+        transaction.description ?? 'Transaction',
+        style: AppTheme.bodyStyle,
+      ),
+      subtitle: Text(
+        '${transaction.formattedDate} • ${transaction.categoryDisplayName}',
+        style: AppTheme.captionStyle,
+      ),
+      trailing: Text(
+        '${isIncome ? '+' : '-'}${transaction.formattedAmount}',
+        style: AppTheme.bodyStyle.copyWith(
+          color: transaction.typeColor,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
