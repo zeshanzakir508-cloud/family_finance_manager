@@ -114,7 +114,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Profile Section
             _buildSectionHeader('Profile'),
             Card(
               child: ListTile(
@@ -151,7 +150,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Preferences Section
             _buildSectionHeader('Preferences'),
             Card(
               child: Column(
@@ -213,7 +211,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Notifications Section
             _buildSectionHeader('Notifications'),
             Card(
               child: SwitchListTile(
@@ -241,7 +238,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Security Section
             _buildSectionHeader('Security'),
             Card(
               child: Column(
@@ -307,7 +303,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Mode Section
             _buildSectionHeader('Mode'),
             Card(
               child: ListTile(
@@ -350,7 +345,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Data Management Section
             _buildSectionHeader('Data Management'),
             Card(
               child: Column(
@@ -395,7 +389,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 24),
 
-            // About Section
             _buildSectionHeader('About'),
             Card(
               child: ListTile(
@@ -591,4 +584,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-      
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              if (confirmController.text != 'DELETE') {
+                ScaffoldMessenger.of(context).showSnackBar(
+           
