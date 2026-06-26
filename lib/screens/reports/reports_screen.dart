@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../models/transaction_model.dart';
-import '../../models/user_profile.dart';
 import '../../utils/app_theme.dart';
 
 class ReportsScreen extends StatefulWidget {
@@ -22,7 +21,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
   String? _selectedType;
   String? _selectedCategory;
 
-  late List<TransactionModel> _allTransactions = [];
   List<TransactionModel> _filteredTransactions = [];
   double _totalIncome = 0;
   double _totalExpense = 0;
@@ -36,14 +34,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Future<void> _loadData() async {
     final box = Hive.box<TransactionModel>('transactions');
-    _allTransactions = box.values.toList();
-    _applyFilters();
+    final allTransactions = box.values.toList();
+    _applyFilters(allTransactions);
   }
 
-  void _applyFilters() {
+  void _applyFilters(List<TransactionModel> allTransactions) {
     final dateRange = _getDateRange();
 
-    _filteredTransactions = _allTransactions.where((transaction) {
+    _filteredTransactions = allTransactions.where((transaction) {
       if (transaction.date == null) return false;
       if (dateRange != null) {
         if (transaction.date!.isBefore(dateRange['start']!) ||
@@ -159,7 +157,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         onTap: () {
           setState(() {
             _selectedPeriod = value;
-            _applyFilters();
+            _loadData();
           });
         },
         child: Container(
@@ -220,7 +218,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         _selectedYear.year - 1,
                       );
                     }
-                    _applyFilters();
+                    _loadData();
                   });
                 },
               ),
@@ -238,7 +236,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         _selectedYear.year + 1,
                       );
                     }
-                    _applyFilters();
+                    _loadData();
                   });
                 },
               ),
@@ -282,7 +280,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               onChanged: (value) {
                 setState(() {
                   _selectedType = value;
-                  _applyFilters();
+                  _loadData();
                 });
               },
               style: AppTheme.bodyStyle,
@@ -312,7 +310,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               onChanged: (value) {
                 setState(() {
                   _selectedCategory = value;
-                  _applyFilters();
+                  _loadData();
                 });
               },
               style: AppTheme.bodyStyle,
@@ -327,7 +325,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               setState(() {
                 _selectedType = 'all';
                 _selectedCategory = 'all';
-                _applyFilters();
+                _loadData();
               });
             },
             style: TextButton.styleFrom(
@@ -658,175 +656,4 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  '(${(percentage * 100).toStringAsFixed(1)}%)',
-                  style: AppTheme.captionStyle,
-                ),
-              ],
-            ),
-          );
-        }),
-      ],
-    );
-  }
-
-  Color _getColorForCategory(String category) {
-    final colors = [
-      Colors.blue,
-      Colors.green,
-      Colors.red,
-      Colors.orange,
-      Colors.purple,
-      Colors.teal,
-      Colors.pink,
-      Colors.amber,
-      Colors.indigo,
-      Colors.lime,
-    ];
-    final index = category.hashCode % colors.length;
-    return colors[index];
-  }
-
-  Widget _buildTrendsTab() {
-    if (_filteredTransactions.isEmpty) {
-      return _buildEmptyState('No data available for trends');
-    }
-
-    final monthMap = <String, Map<String, double>>{};
-    for (var transaction in _filteredTransactions) {
-      if (transaction.date == null) continue;
-      final monthKey = DateFormat('MMM yyyy').format(transaction.date!);
-      if (!monthMap.containsKey(monthKey)) {
-        monthMap[monthKey] = {'income': 0, 'expense': 0};
-      }
-      if (transaction.type == TransactionType.income) {
-        monthMap[monthKey]!['income'] =
-            (monthMap[monthKey]!['income'] ?? 0) + (transaction.amount ?? 0);
-      } else {
-        monthMap[monthKey]!['expense'] =
-            (monthMap[monthKey]!['expense'] ?? 0) + (transaction.amount ?? 0);
-      }
-    }
-
-    final entries = monthMap.entries.toList();
-    if (entries.isEmpty) {
-      return _buildEmptyState('No transactions to show trends');
-    }
-
-    final maxValue = entries.fold<double>(0, (max, entry) {
-      final total = (entry.value['income'] ?? 0) + (entry.value['expense'] ?? 0);
-      return total > max ? total : max;
-    });
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Monthly Trends',
-          style: AppTheme.subheadingStyle.copyWith(fontSize: 16),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 200,
-          child: BarChart(
-            BarChartData(
-              alignment: BarChartAlignment.spaceAround,
-              maxY: maxValue * 1.2,
-              barGroups: entries.map((entry) {
-                return BarChartGroupData(
-                  x: entries.indexOf(entry),
-                  barRods: [
-                    BarChartRodData(
-                      toY: entry.value['income'] ?? 0,
-                      color: Colors.green,
-                      width: 12,
-                    ),
-                    BarChartRodData(
-                      toY: entry.value['expense'] ?? 0,
-                      color: Colors.red,
-                      width: 12,
-                    ),
-                  ],
-                );
-              }).toList(),
-              titlesData: FlTitlesData(
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    getTitlesWidget: (value, meta) {
-                      final index = value.toInt();
-                      if (index >= 0 && index < entries.length) {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            entries[index].key,
-                            style: AppTheme.captionStyle.copyWith(
-                              fontSize: 10,
-                            ),
-                          ),
-                        );
-                      }
-                      return const SizedBox();
-                    },
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  color: Colors.green,
-                ),
-                const SizedBox(width: 8),
-                Text('Income', style: AppTheme.bodyStyle),
-              ],
-            ),
-            const SizedBox(width: 24),
-            Row(
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  color: Colors.red,
-                ),
-                const SizedBox(width: 8),
-                Text('Expense', style: AppTheme.bodyStyle),
-              ],
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEmptyState(String message) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          children: [
-            Icon(
-              Icons.analytics_outlined,
-              size: 64,
-              color: AppTheme.textSecondaryColor.withOpacity(0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              style: AppTheme.bodyStyle.copyWith(
-                color: AppTheme.textSecondaryColor,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+                  '(${(percentage * 100).
