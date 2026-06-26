@@ -62,7 +62,6 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
     final modeProvider = Provider.of<ModeProvider>(context);
-    final familyProvider = Provider.of<FamilyProvider>(context);
 
     if (_family == null) {
       return _buildNoFamilyState();
@@ -640,4 +639,6 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
     );
   }
 
-  voi
+  void _handleNavigation(int index) {
+    switch (index) {
+      case 
