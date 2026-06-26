@@ -1,244 +1,618 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../../models/family_model.dart';
+import '../../models/user_profile.dart';
+import '../../models/notification_model.dart';
+import '../../services/auth_service.dart';
+import '../../utils/app_theme.dart';
 
-import 'screens/auth/login_screen.dart';
-import 'screens/auth/signup_screen.dart';
-import 'screens/auth/forgot_password_screen.dart';
-import 'screens/dashboard/dashboard_screen.dart';
-import 'screens/settings/settings_screen.dart';
-import 'screens/profile/profile_screen.dart';
-import 'screens/transactions/add_transaction_screen.dart';
-import 'screens/transactions/transaction_detail_screen.dart';
-import 'screens/notifications/notifications_screen.dart';
-import 'screens/family/family_management_screen.dart';
-import 'screens/reports/reports_screen.dart';
-import 'services/auth_service.dart';
-import 'models/user_profile.dart';
-import 'models/transaction_model.dart';
-import 'models/family_model.dart';
-import 'models/family_member_model.dart';
-import 'models/notification_model.dart';
-import 'utils/app_theme.dart';
-
-bool _isAppInitialized = false;
-
-void main() {
-  if (_isAppInitialized) {
-    return;
-  }
-  _isAppInitialized = true;
-  
-  WidgetsFlutterBinding.ensureInitialized();
-  _initializeApp();
-}
-
-void _initializeApp() async {
-  try {
-    print('📱 Starting app...');
-    
-    // Initialize Firebase
-    try {
-      await Firebase.initializeApp(
-        options: const FirebaseOptions(
-          apiKey: "AIzaSyC2PqPJ9E1VJj2lPtM06qYwD7xGZ5kR9nQ",
-          authDomain: "family-finance-manager.firebaseapp.com",
-          projectId: "family-finance-manager",
-          storageBucket: "family-finance-manager.appspot.com",
-          messagingSenderId: "808843357815",
-          appId: "1:808843357815:android:8edf9e5b7c6a4d2f",
-        ),
-      );
-      print('✅ Firebase initialized');
-    } catch (e) {
-      print('⚠️ Firebase init skipped: $e');
-    }
-
-    // Initialize Hive
-    await Hive.initFlutter();
-    print('✅ Hive initialized');
-    
-    // Register Hive adapters
-    try { Hive.registerAdapter(UserProfileAdapter()); } catch (e) {}
-    try { Hive.registerAdapter(TransactionModelAdapter()); } catch (e) {}
-    try { Hive.registerAdapter(TransactionTypeAdapter()); } catch (e) {}
-    try { Hive.registerAdapter(TransactionCategoryAdapter()); } catch (e) {}
-    try { Hive.registerAdapter(FamilyModelAdapter()); } catch (e) {}
-    try { Hive.registerAdapter(FamilyMemberModelAdapter()); } catch (e) {}
-    try { Hive.registerAdapter(NotificationModelAdapter()); } catch (e) {}
-    try { Hive.registerAdapter(NotificationTypeAdapter()); } catch (e) {}
-    print('✅ Hive adapters registered');
-    
-    // Open Hive boxes
-    try { await Hive.openBox<UserProfile>('userProfile'); } catch (e) {}
-    try { await Hive.openBox<TransactionModel>('transactions'); } catch (e) {}
-    try { await Hive.openBox<FamilyModel>('families'); } catch (e) {}
-    try { await Hive.openBox<FamilyMemberModel>('familyMembers'); } catch (e) {}
-    try { await Hive.openBox<NotificationModel>('notifications'); } catch (e) {}
-    try { await Hive.openBox<dynamic>('appSettings'); } catch (e) {}
-    print('✅ Hive boxes opened');
-
-    runApp(const MyApp());
-  } catch (e, stack) {
-    print('❌ ERROR: $e');
-    print(stack);
-    _showErrorScreen(e);
-  }
-}
-
-void _showErrorScreen(dynamic error) {
-  runApp(
-    MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                const SizedBox(height: 16),
-                const Text(
-                  'App Initialization Failed',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Error: $error',
-                    style: const TextStyle(color: Colors.red, fontSize: 12),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Please restart the app or rebuild the APK',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class FamilyManagementScreen extends StatefulWidget {
+  const FamilyManagementScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        Provider<AuthService>(
-          create: (_) => AuthService(),
-        ),
-      ],
-      child: MaterialApp(
-        title: 'Family Finance Manager',
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.system,
-        debugShowCheckedModeBanner: true,
-        home: const AuthWrapper(),
-        routes: {
-          '/login': (context) => const LoginScreen(),
-          '/signup': (context) => const SignUpScreen(),
-          '/forgot-password': (context) => const ForgotPasswordScreen(),
-          '/dashboard': (context) => const DashboardScreen(),
-          '/settings': (context) => const SettingsScreen(),
-          '/profile': (context) => const ProfileScreen(),
-          '/add-transaction': (context) => const AddTransactionScreen(),
-          '/notifications': (context) => const NotificationsScreen(),
-          '/family-management': (context) => const FamilyManagementScreen(),
-          '/reports': (context) => const ReportsScreen(),
-        },
-        onGenerateRoute: (settings) {
-          if (settings.name == '/transaction-details') {
-            final transactionId = settings.arguments as String? ?? '';
-            return MaterialPageRoute(
-              builder: (context) => TransactionDetailScreen(
-                transactionId: transactionId,
-              ),
-            );
-          }
-          return null;
-        },
-      ),
-    );
-  }
+  State<FamilyManagementScreen> createState() => _FamilyManagementScreenState();
 }
 
-class AuthWrapper extends StatelessWidget {
-  const AuthWrapper({super.key});
+class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
+  final TextEditingController _familyNameController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _inviteCodeController = TextEditingController();
+
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
+    final userId = authService.userId;
 
-    return StreamBuilder<User?>(
-      stream: authService.authStateChanges,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Loading...'),
-                ],
-              ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Family Management'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () => _showCreateFamilyDialog(),
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : ValueListenableBuilder(
+              valueListenable: Hive.box<FamilyModel>('families').listenable(),
+              builder: (context, Box<FamilyModel> box, _) {
+                final families = box.values.toList();
+
+                if (families.isEmpty) {
+                  return _buildEmptyState();
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: families.length,
+                  itemBuilder: (context, index) {
+                    final family = families[index];
+                    final isMember = family.memberIds?.contains(userId) ?? false;
+                    final isAdmin = family.adminId == userId;
+
+                    return _buildFamilyCard(family, isMember, isAdmin);
+                  },
+                );
+              },
             ),
-          );
-        }
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showJoinFamilyDialog,
+        backgroundColor: AppTheme.primaryColor,
+        child: const Icon(Icons.group_add, color: Colors.white),
+      ),
+    );
+  }
 
-        if (snapshot.hasError) {
-          return Scaffold(
-            body: Center(
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.family_restroom_outlined,
+            size: 64,
+            color: AppTheme.textSecondaryColor.withOpacity(0.5),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No Family Groups',
+            style: AppTheme.headingStyle.copyWith(
+              fontSize: 18,
+              color: AppTheme.textSecondaryColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Create a new family or join an existing one',
+            style: AppTheme.bodyStyle.copyWith(
+              color: AppTheme.textSecondaryColor,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton.icon(
+                onPressed: _showCreateFamilyDialog,
+                icon: const Icon(Icons.add),
+                label: const Text('Create Family'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: _showJoinFamilyDialog,
+                icon: const Icon(Icons.group_add),
+                label: const Text('Join Family'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primaryColor,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFamilyCard(FamilyModel family, bool isMember, bool isAdmin) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ExpansionTile(
+        leading: CircleAvatar(
+          backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+          child: Text(
+            family.displayName.substring(0, 1).toUpperCase(),
+            style: TextStyle(
+              color: AppTheme.primaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        title: Text(
+          family.displayName,
+          style: AppTheme.bodyStyle.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              family.description ?? 'No description',
+              style: AppTheme.captionStyle,
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(
+                  Icons.people_outline,
+                  size: 14,
+                  color: AppTheme.textSecondaryColor,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${family.memberCount} members',
+                  style: AppTheme.captionStyle,
+                ),
+                if (isAdmin) ...[
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Admin',
+                      style: AppTheme.captionStyle.copyWith(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+                if (isMember && !isAdmin) ...[
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Member',
+                      style: AppTheme.captionStyle.copyWith(
+                        color: Colors.green,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+        trailing: isMember
+            ? IconButton(
+                icon: const Icon(Icons.exit_to_app, color: Colors.red),
+                onPressed: () => _leaveFamily(family),
+                tooltip: 'Leave Family',
+              )
+            : ElevatedButton(
+                onPressed: () => _joinFamily(family),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(80, 32),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+                child: const Text('Join'),
+              ),
+        children: [
+          if (isMember) ...[
+            Padding(
+              padding: const EdgeInsets.all(16),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Authentication Error',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  // Family Code
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceColor,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppTheme.dividerColor),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Family Code:',
+                          style: AppTheme.bodyStyle.copyWith(
+                            color: AppTheme.textSecondaryColor,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Text(
+                              family.familyCode ?? 'N/A',
+                              style: AppTheme.bodyStyle.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primaryColor,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: const Icon(Icons.copy, size: 16),
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Family code copied!'),
+                                    duration: Duration(seconds: 1),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Members List
+                  Text(
+                    'Members',
+                    style: AppTheme.subheadingStyle.copyWith(fontSize: 16),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    '${snapshot.error}',
-                    style: const TextStyle(color: Colors.grey, fontSize: 14),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () {
-                      authService.signOut();
-                    },
-                    child: const Text('Retry'),
-                  ),
+                  _buildMembersList(family),
                 ],
               ),
             ),
-          );
-        }
+          ],
+        ],
+      ),
+    );
+  }
 
-        if (snapshot.hasData && snapshot.data != null) {
-          return const DashboardScreen();
-        }
+  Widget _buildMembersList(FamilyModel family) {
+    final userBox = Hive.box<UserProfile>('userProfile');
+    final members = family.memberIds?.map((id) {
+      return userBox.get(id);
+    }).where((user) => user != null).toList() ?? [];
 
-        return const LoginScreen();
+    if (members.isEmpty) {
+      return Text(
+        'No members yet',
+        style: AppTheme.captionStyle,
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: members.length,
+      itemBuilder: (context, index) {
+        final user = members[index] as UserProfile;
+        final isAdmin = family.adminId == user.id;
+
+        return ListTile(
+          leading: CircleAvatar(
+            backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+            child: Text(
+              user.initials,
+              style: TextStyle(
+                color: AppTheme.primaryColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          title: Text(
+            user.displayName,
+            style: AppTheme.bodyStyle,
+          ),
+          subtitle: Text(
+            user.email ?? 'No email',
+            style: AppTheme.captionStyle,
+          ),
+          trailing: isAdmin
+              ? Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Admin',
+                    style: AppTheme.captionStyle.copyWith(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                )
+              : null,
+        );
       },
     );
   }
-}
+
+  Future<void> _showCreateFamilyDialog() async {
+    _familyNameController.clear();
+    _descriptionController.clear();
+
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create Family'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _familyNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Family Name *',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _descriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: _createFamily,
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.primaryColor,
+            ),
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _createFamily() async {
+    if (_familyNameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a family name'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userId = authService.userId;
+    final userBox = Hive.box<UserProfile>('userProfile');
+    final currentUser = userBox.get(userId);
+
+    final family = FamilyModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: _familyNameController.text.trim(),
+      description: _descriptionController.text.trim().isEmpty
+          ? null
+          : _descriptionController.text.trim(),
+      createdBy: userId,
+      adminId: userId,
+      memberIds: [userId!],
+      createdAt: DateTime.now(),
+      isActive: true,
+      familyCode: _generateFamilyCode(),
+      currency: 'USD',
+    );
+
+    final box = Hive.box<FamilyModel>('families');
+    await box.add(family);
+
+    if (currentUser != null) {
+      final updatedUser = currentUser.copyWith(familyId: family.id);
+      await userBox.put(userId, updatedUser);
+    }
+
+    final notification = NotificationModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: userId,
+      title: 'Family Created',
+      message: 'You have created the family "${family.name}"',
+      type: NotificationType.family,
+      createdAt: DateTime.now(),
+      isRead: false,
+    );
+    await Hive.box<NotificationModel>('notifications').add(notification);
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Family created successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  Future<void> _showJoinFamilyDialog() async {
+    _inviteCodeController.clear();
+
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Join Family'),
+        content: TextField(
+          controller: _inviteCodeController,
+          decoration: const InputDecoration(
+            labelText: 'Family Code *',
+            hintText: 'Enter the family code',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: _joinFamilyByCode,
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.primaryColor,
+            ),
+            child: const Text('Join'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _joinFamilyByCode() async {
+    if (_inviteCodeController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a family code'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final box = Hive.box<FamilyModel>('families');
+    FamilyModel? foundFamily;
+
+    for (var family in box.values) {
+      if (family.familyCode == _inviteCodeController.text.trim()) {
+        foundFamily = family;
+        break;
+      }
+    }
+
+    if (foundFamily == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid family code'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    await _joinFamily(foundFamily);
+  }
+
+  Future<void> _joinFamily(FamilyModel family) async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userId = authService.userId;
+    final userBox = Hive.box<UserProfile>('userProfile');
+    final currentUser = userBox.get(userId);
+
+    final updatedFamily = family.copyWith(
+      memberIds: [...?family.memberIds, userId!],
+    );
+    await updatedFamily.save();
+
+    if (currentUser != null) {
+      final updatedUser = currentUser.copyWith(familyId: family.id);
+      await userBox.put(userId, updatedUser);
+    }
+
+    final notification = NotificationModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: userId,
+      title: 'Joined Family',
+      message: 'You have joined the family "${family.name}"',
+      type: NotificationType.family,
+      createdAt: DateTime.now(),
+      isRead: false,
+    );
+    await Hive.box<NotificationModel>('notifications').add(notification);
+
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Joined "${family.displayName}" successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  Future<void> _leaveFamily(FamilyModel family) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Leave Family'),
+        content: Text(
+          'Are you sure you want to leave "${family.displayName}"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.errorColor,
+            ),
+            child: const Text('Leave'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final userId = authService.userId;
+      final userBox = Hive.box<UserProfile>('userProfile');
+      final currentUser = userBox.get(userId);
+
+      final updatedFamily = family.copyWith(
+        memberIds: family.memberIds?.where((id) => id != userId).toList(),
+      );
+      await updatedFamily.save();
+
+      if (currentUser != null) {
+        final updatedUser = currentUser.copyWith(familyId: null);
+        await userBox.put(userId, updatedUser);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Left "${family.displayName}"'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      
