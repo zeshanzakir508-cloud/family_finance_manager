@@ -56,15 +56,10 @@ class _BackupScreenState extends State<BackupScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Backup Info Card
                   _buildBackupInfo(),
                   const SizedBox(height: 24),
-
-                  // Actions
                   _buildActions(),
                   const SizedBox(height: 24),
-
-                  // Backup History
                   _buildBackupHistory(),
                 ],
               ),
@@ -278,15 +273,10 @@ class _BackupScreenState extends State<BackupScreen> {
         '${backup.formattedDate} • ${backup.formattedSize} • ${backup.transactionCount} transactions',
         style: AppTheme.captionStyle,
       ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.red),
-            onPressed: () => _deleteBackup(backup),
-            tooltip: 'Delete',
-          ),
-        ],
+      trailing: IconButton(
+        icon: const Icon(Icons.delete_outline, color: Colors.red),
+        onPressed: () => _deleteBackup(backup),
+        tooltip: 'Delete',
       ),
       onTap: () {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -369,7 +359,6 @@ class _BackupScreenState extends State<BackupScreen> {
 
     if (confirm != true) return;
 
-    // For now, use the latest backup
     if (_backups.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
