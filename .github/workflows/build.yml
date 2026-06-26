@@ -3,9 +3,8 @@ name: Build APK
 on:
   push:
     branches: [ main ]
-    paths:
-      - '.github/workflows/build.yml'
-  workflow_dispatch:
+    # Remove paths filter to run on ALL pushes to main
+  workflow_dispatch:  # Manual trigger still available
 
 jobs:
   build:
