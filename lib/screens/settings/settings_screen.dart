@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../providers/mode_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
-import '../../services/backup_service.dart';
 import '../../models/user_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
-import '../../utils/helpers.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -33,7 +32,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadSettings();
   }
 
-  void _loadSettings() async {
+  Future<void> _loadSettings() async {
     final authService = Provider.of<AuthService>(context, listen: false);
     final userId = authService.userId;
 
@@ -56,7 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  void _saveSettings() async {
+  Future<void> _saveSettings() async {
     final authService = Provider.of<AuthService>(context, listen: false);
     final userId = authService.userId;
 
@@ -78,7 +77,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Settings saved!'),
+          content: Text('Settings saved successfully!'),
           backgroundColor: Colors.green,
           duration: Duration(seconds: 2),
         ),
@@ -88,7 +87,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authService = Provider.of<AuthService>(context);
     final modeProvider = Provider.of<ModeProvider>(context);
 
     return Scaffold(
@@ -114,225 +112,122 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader('Profile'),
-            Card(
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                  radius: 28,
-                  child: Text(
-                    _userName?.substring(0, 1).toUpperCase() ?? 'U',
-                    style: TextStyle(
-                      color: AppTheme.primaryColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                    ),
-                  ),
+            _buildProfileSection(),
+            const SizedBox(height: 24),
+            _buildPreferencesSection(),
+            const SizedBox(height: 24),
+            _buildNotificationsSection(),
+            const SizedBox(height: 24),
+            _buildSecuritySection(),
+            const SizedBox(height: 24),
+            _buildModeSection(modeProvider),
+            const SizedBox(height: 24),
+            _buildAboutSection(),
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Profile',
+          style: AppTheme.bodyStyle.copyWith(
+            color: AppTheme.textSecondaryColor,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+              radius: 28,
+              child: Text(
+                _userName?.substring(0, 1).toUpperCase() ?? 'U',
+                style: TextStyle(
+                  color: AppTheme.primaryColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
                 ),
-                title: Text(
-                  _userName ?? 'User',
-                  style: AppTheme.bodyStyle.copyWith(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
-                ),
-                subtitle: Text(
-                  _userEmail ?? 'No email',
-                  style: AppTheme.captionStyle,
-                ),
-                trailing: Icon(
-                  Icons.arrow_forward_ios,
-                  size: 16,
-                  color: AppTheme.textSecondaryColor,
-                ),
-                onTap: () {},
               ),
             ),
-            const SizedBox(height: 24),
-
-            _buildSectionHeader('Preferences'),
-            Card(
-              child: Column(
-                children: [
-                  SwitchListTile(
-                    title: Text(
-                      'Dark Mode',
-                      style: AppTheme.bodyStyle,
-                    ),
-                    subtitle: Text(
-                      'Switch between light and dark theme',
-                      style: AppTheme.captionStyle,
-                    ),
-                    value: _isDarkMode,
-                    onChanged: (value) {
-                      setState(() {
-                        _isDarkMode = value;
-                      });
-                    },
-                    secondary: Icon(
-                      _isDarkMode ? Icons.dark_mode : Icons.light_mode,
-                      color: AppTheme.primaryColor,
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    title: Text(
-                      'Currency',
-                      style: AppTheme.bodyStyle,
-                    ),
-                    subtitle: Text(
-                      'Select your preferred currency',
-                      style: AppTheme.captionStyle,
-                    ),
-                    trailing: DropdownButton<String>(
-                      value: _selectedCurrency,
-                      items: _currencies.map((currency) {
-                        return DropdownMenuItem<String>(
-                          value: currency,
-                          child: Text(currency),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            _selectedCurrency = value;
-                          });
-                        }
-                      },
-                      underline: const SizedBox(),
-                      icon: Icon(
-                        Icons.arrow_drop_down,
-                        color: AppTheme.primaryColor,
-                      ),
-                    ),
-                  ),
-                ],
+            title: Text(
+              _userName ?? 'User',
+              style: AppTheme.bodyStyle.copyWith(
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
               ),
             ),
-            const SizedBox(height: 24),
+            subtitle: Text(
+              _userEmail ?? 'No email',
+              style: AppTheme.captionStyle,
+            ),
+            trailing: const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+            ),
+            onTap: () {
+              // Navigate to profile edit
+            },
+          ),
+        ),
+      ],
+    );
+  }
 
-            _buildSectionHeader('Notifications'),
-            Card(
-              child: SwitchListTile(
-                title: Text(
-                  'Push Notifications',
-                  style: AppTheme.bodyStyle,
-                ),
-                subtitle: Text(
-                  'Receive notifications for important updates',
-                  style: AppTheme.captionStyle,
-                ),
-                value: _notificationsEnabled,
+  Widget _buildPreferencesSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Preferences',
+          style: AppTheme.bodyStyle.copyWith(
+            color: AppTheme.textSecondaryColor,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: Column(
+            children: [
+              SwitchListTile(
+                title: const Text('Dark Mode'),
+                subtitle: const Text('Switch between light and dark theme'),
+                value: _isDarkMode,
                 onChanged: (value) {
                   setState(() {
-                    _notificationsEnabled = value;
+                    _isDarkMode = value;
                   });
                 },
                 secondary: Icon(
-                  _notificationsEnabled
-                      ? Icons.notifications_active
-                      : Icons.notifications_off,
+                  _isDarkMode ? Icons.dark_mode : Icons.light_mode,
                   color: AppTheme.primaryColor,
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-
-            _buildSectionHeader('Security'),
-            Card(
-              child: Column(
-                children: [
-                  SwitchListTile(
-                    title: Text(
-                      'Fingerprint Login',
-                      style: AppTheme.bodyStyle,
-                    ),
-                    subtitle: Text(
-                      'Enable fingerprint or face recognition',
-                      style: AppTheme.captionStyle,
-                    ),
-                    value: _fingerprintEnabled,
-                    onChanged: (value) {
-                      setState(() {
-                        _fingerprintEnabled = value;
-                      });
-                    },
-                    secondary: Icon(
-                      _fingerprintEnabled ? Icons.fingerprint : Icons.fingerprint_outlined,
-                      color: AppTheme.primaryColor,
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: Icon(
-                      Icons.lock_outline,
-                      color: AppTheme.primaryColor,
-                    ),
-                    title: Text(
-                      'Change Password',
-                      style: AppTheme.bodyStyle,
-                    ),
-                    trailing: Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                    onTap: _showChangePasswordDialog,
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: Icon(
-                      Icons.delete_outline,
-                      color: AppTheme.errorColor,
-                    ),
-                    title: Text(
-                      'Delete Account',
-                      style: AppTheme.bodyStyle.copyWith(
-                        color: AppTheme.errorColor,
-                      ),
-                    ),
-                    trailing: Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: AppTheme.errorColor,
-                    ),
-                    onTap: _showDeleteAccountDialog,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            _buildSectionHeader('Mode'),
-            Card(
-              child: ListTile(
-                leading: Icon(
-                  modeProvider.isPersonalMode ? Icons.person : Icons.family_restroom,
-                  color: AppTheme.primaryColor,
-                ),
-                title: Text(
-                  'Current Mode',
-                  style: AppTheme.bodyStyle,
-                ),
-                subtitle: Text(
-                  modeProvider.isPersonalMode ? 'Personal Mode' : 'Family Mode',
-                  style: AppTheme.captionStyle,
-                ),
+              const Divider(height: 1),
+              ListTile(
+                title: const Text('Currency'),
+                subtitle: const Text('Select your preferred currency'),
                 trailing: DropdownButton<String>(
-                  value: modeProvider.isPersonalMode ? 'personal' : 'family',
-                  items: const [
-                    DropdownMenuItem(value: 'personal', child: Text('Personal')),
-                    DropdownMenuItem(value: 'family', child: Text('Family')),
-                  ],
+                  value: _selectedCurrency,
+                  items: _currencies.map((currency) {
+                    return DropdownMenuItem<String>(
+                      value: currency,
+                      child: Text(currency),
+                    );
+                  }).toList(),
                   onChanged: (value) {
                     if (value != null) {
-                      modeProvider.setMode(value);
-                      setState(() {});
-                      if (value == 'personal') {
-                        Navigator.pushReplacementNamed(context, '/personal-dashboard');
-                      } else {
-                        Navigator.pushReplacementNamed(context, '/family-dashboard');
-                      }
+                      setState(() {
+                        _selectedCurrency = value;
+                      });
                     }
                   },
                   underline: const SizedBox(),
@@ -342,98 +237,204 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-
-            _buildSectionHeader('Data Management'),
-            Card(
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: Icon(
-                      Icons.backup_outlined,
-                      color: AppTheme.primaryColor,
-                    ),
-                    title: Text(
-                      'Backup & Restore',
-                      style: AppTheme.bodyStyle,
-                    ),
-                    trailing: Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                    onTap: () {
-                      Navigator.pushNamed(context, '/backup');
-                    },
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: Icon(
-                      Icons.analytics_outlined,
-                      color: AppTheme.primaryColor,
-                    ),
-                    title: Text(
-                      'Export Data',
-                      style: AppTheme.bodyStyle,
-                    ),
-                    trailing: Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                    onTap: _exportData,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            _buildSectionHeader('About'),
-            Card(
-              child: ListTile(
-                leading: Icon(
-                  Icons.info_outline,
-                  color: AppTheme.primaryColor,
-                ),
-                title: Text(
-                  'App Version',
-                  style: AppTheme.bodyStyle,
-                ),
-                subtitle: Text(Constants.appVersion),
-                trailing: Icon(
-                  Icons.arrow_forward_ios,
-                  size: 16,
-                  color: AppTheme.textSecondaryColor,
-                ),
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${Constants.appName} v${Constants.appVersion}'),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 32),
-          ],
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        title,
-        style: AppTheme.bodyStyle.copyWith(
-          color: AppTheme.textSecondaryColor,
-          fontWeight: FontWeight.w600,
-          fontSize: 14,
+  Widget _buildNotificationsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Notifications',
+          style: AppTheme.bodyStyle.copyWith(
+            color: AppTheme.textSecondaryColor,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
         ),
-      ),
+        const SizedBox(height: 8),
+        Card(
+          child: SwitchListTile(
+            title: const Text('Push Notifications'),
+            subtitle: const Text('Receive notifications for important updates'),
+            value: _notificationsEnabled,
+            onChanged: (value) {
+              setState(() {
+                _notificationsEnabled = value;
+              });
+            },
+            secondary: Icon(
+              _notificationsEnabled
+                  ? Icons.notifications_active
+                  : Icons.notifications_off,
+              color: AppTheme.primaryColor,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSecuritySection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Security',
+          style: AppTheme.bodyStyle.copyWith(
+            color: AppTheme.textSecondaryColor,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: Column(
+            children: [
+              SwitchListTile(
+                title: const Text('Fingerprint Login'),
+                subtitle: const Text('Enable fingerprint or face recognition'),
+                value: _fingerprintEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    _fingerprintEnabled = value;
+                  });
+                },
+                secondary: Icon(
+                  _fingerprintEnabled ? Icons.fingerprint : Icons.fingerprint_outlined,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: Icon(
+                  Icons.lock_outline,
+                  color: AppTheme.primaryColor,
+                ),
+                title: const Text('Change Password'),
+                trailing: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                ),
+                onTap: _showChangePasswordDialog,
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: Icon(
+                  Icons.delete_outline,
+                  color: AppTheme.errorColor,
+                ),
+                title: Text(
+                  'Delete Account',
+                  style: AppTheme.bodyStyle.copyWith(
+                    color: AppTheme.errorColor,
+                  ),
+                ),
+                trailing: const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                ),
+                onTap: _showDeleteAccountDialog,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildModeSection(ModeProvider modeProvider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Mode',
+          style: AppTheme.bodyStyle.copyWith(
+            color: AppTheme.textSecondaryColor,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: ListTile(
+            leading: Icon(
+              modeProvider.isPersonalMode ? Icons.person : Icons.family_restroom,
+              color: AppTheme.primaryColor,
+            ),
+            title: const Text('Current Mode'),
+            subtitle: Text(
+              modeProvider.isPersonalMode ? 'Personal Mode' : 'Family Mode',
+            ),
+            trailing: DropdownButton<String>(
+              value: modeProvider.isPersonalMode ? 'personal' : 'family',
+              items: const [
+                DropdownMenuItem(value: 'personal', child: Text('Personal')),
+                DropdownMenuItem(value: 'family', child: Text('Family')),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  modeProvider.setMode(value);
+                  setState(() {});
+                  if (value == 'personal') {
+                    Navigator.pushReplacementNamed(context, '/personal-dashboard');
+                  } else {
+                    Navigator.pushReplacementNamed(context, '/family-dashboard');
+                  }
+                }
+              },
+              underline: const SizedBox(),
+              icon: Icon(
+                Icons.arrow_drop_down,
+                color: AppTheme.primaryColor,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAboutSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'About',
+          style: AppTheme.bodyStyle.copyWith(
+            color: AppTheme.textSecondaryColor,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: ListTile(
+            leading: Icon(
+              Icons.info_outline,
+              color: AppTheme.primaryColor,
+            ),
+            title: const Text('App Version'),
+            subtitle: const Text(Constants.appVersion),
+            trailing: const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+            ),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${Constants.appName} v${Constants.appVersion}'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -510,6 +511,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 newPasswordController.text,
               );
 
+              if (!mounted) return;
               Navigator.pop(context);
 
               if (success) {
@@ -590,4 +592,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () async {
               if (confirmController.text != 'DELETE') {
                 ScaffoldMessenger.of(context).showSnackBar(
-           
+                  const SnackBar(
+                    content: Text('Please type "DELETE" to confirm'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+
+              final authService = Provider.of<AuthService>(context, listen: false);
+              final success = await authService.deleteAccount();
+
+              if (success) {
+                await DatabaseService.clearAllData();
+
+                if (!mounted) return;
+                Navigator.pop(context);
+                Navigator.pushReplacementNamed(context, '/login');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Account deleted successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Failed to delete account. Please try again.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.errorColor,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+}
