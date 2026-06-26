@@ -53,8 +53,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         NotificationModel(
           id: (DateTime.now().millisecondsSinceEpoch + 2).toString(),
           userId: userId,
-          title: 'Family Feature Coming Soon!',
-          message: 'Invite your family members to manage finances together.',
+          title: 'Family Feature Ready!',
+          message: 'Create a family group and invite members to manage finances together.',
           type: NotificationType.family,
           createdAt: DateTime.now().subtract(const Duration(days: 1)),
           isRead: true,
@@ -94,7 +94,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 final authService = Provider.of<AuthService>(context);
                 final userId = authService.userId;
                 
-                // Filter by userId
                 var notifications = box.values
                     .where((n) => n.userId == userId)
                     .toList()
@@ -261,6 +260,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         readAt: DateTime.now(),
       );
       await updated.save();
+      setState(() {});
     }
   }
 
@@ -280,6 +280,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       );
       await updated.save();
     }
+
+    setState(() {});
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
