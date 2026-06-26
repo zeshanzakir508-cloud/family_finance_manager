@@ -26,7 +26,6 @@ import 'utils/app_theme.dart';
 bool _isAppInitialized = false;
 
 void main() {
-  // Prevent multiple calls to main()
   if (_isAppInitialized) {
     return;
   }
@@ -40,7 +39,7 @@ void _initializeApp() async {
   try {
     print('📱 Starting app...');
     
-    // Initialize Firebase - Check if already initialized
+    // Initialize Firebase
     try {
       await Firebase.initializeApp(
         options: const FirebaseOptions(
@@ -54,65 +53,33 @@ void _initializeApp() async {
       );
       print('✅ Firebase initialized');
     } catch (e) {
-      print('⚠️ Firebase already initialized: $e');
+      print('⚠️ Firebase init skipped: $e');
     }
 
     // Initialize Hive
-    print('💾 Initializing Hive...');
     await Hive.initFlutter();
     print('✅ Hive initialized');
     
-    // Register Hive adapters - handle duplicate registration
-    print('📦 Registering Hive adapters...');
-    try {
-      Hive.registerAdapter(UserProfileAdapter());
-    } catch (e) { print('⚠️ UserProfileAdapter already registered'); }
-    try {
-      Hive.registerAdapter(TransactionModelAdapter());
-    } catch (e) { print('⚠️ TransactionModelAdapter already registered'); }
-    try {
-      Hive.registerAdapter(TransactionTypeAdapter());
-    } catch (e) { print('⚠️ TransactionTypeAdapter already registered'); }
-    try {
-      Hive.registerAdapter(TransactionCategoryAdapter());
-    } catch (e) { print('⚠️ TransactionCategoryAdapter already registered'); }
-    try {
-      Hive.registerAdapter(FamilyModelAdapter());
-    } catch (e) { print('⚠️ FamilyModelAdapter already registered'); }
-    try {
-      Hive.registerAdapter(FamilyMemberModelAdapter());
-    } catch (e) { print('⚠️ FamilyMemberModelAdapter already registered'); }
-    try {
-      Hive.registerAdapter(NotificationModelAdapter());
-    } catch (e) { print('⚠️ NotificationModelAdapter already registered'); }
-    try {
-      Hive.registerAdapter(NotificationTypeAdapter());
-    } catch (e) { print('⚠️ NotificationTypeAdapter already registered'); }
+    // Register Hive adapters
+    try { Hive.registerAdapter(UserProfileAdapter()); } catch (e) {}
+    try { Hive.registerAdapter(TransactionModelAdapter()); } catch (e) {}
+    try { Hive.registerAdapter(TransactionTypeAdapter()); } catch (e) {}
+    try { Hive.registerAdapter(TransactionCategoryAdapter()); } catch (e) {}
+    try { Hive.registerAdapter(FamilyModelAdapter()); } catch (e) {}
+    try { Hive.registerAdapter(FamilyMemberModelAdapter()); } catch (e) {}
+    try { Hive.registerAdapter(NotificationModelAdapter()); } catch (e) {}
+    try { Hive.registerAdapter(NotificationTypeAdapter()); } catch (e) {}
     print('✅ Hive adapters registered');
     
-    // Open Hive boxes - handle already open
-    print('📂 Opening Hive boxes...');
-    try {
-      await Hive.openBox<UserProfile>('userProfile');
-    } catch (e) { print('⚠️ userProfile box already open'); }
-    try {
-      await Hive.openBox<TransactionModel>('transactions');
-    } catch (e) { print('⚠️ transactions box already open'); }
-    try {
-      await Hive.openBox<FamilyModel>('families');
-    } catch (e) { print('⚠️ families box already open'); }
-    try {
-      await Hive.openBox<FamilyMemberModel>('familyMembers');
-    } catch (e) { print('⚠️ familyMembers box already open'); }
-    try {
-      await Hive.openBox<NotificationModel>('notifications');
-    } catch (e) { print('⚠️ notifications box already open'); }
-    try {
-      await Hive.openBox<dynamic>('appSettings');
-    } catch (e) { print('⚠️ appSettings box already open'); }
+    // Open Hive boxes
+    try { await Hive.openBox<UserProfile>('userProfile'); } catch (e) {}
+    try { await Hive.openBox<TransactionModel>('transactions'); } catch (e) {}
+    try { await Hive.openBox<FamilyModel>('families'); } catch (e) {}
+    try { await Hive.openBox<FamilyMemberModel>('familyMembers'); } catch (e) {}
+    try { await Hive.openBox<NotificationModel>('notifications'); } catch (e) {}
+    try { await Hive.openBox<dynamic>('appSettings'); } catch (e) {}
     print('✅ Hive boxes opened');
 
-    print('🚀 Starting app...');
     runApp(const MyApp());
   } catch (e, stack) {
     print('❌ ERROR: $e');
@@ -131,18 +98,11 @@ void _showErrorScreen(dynamic error) {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: Colors.red,
-                ),
+                const Icon(Icons.error_outline, size: 64, color: Colors.red),
                 const SizedBox(height: 16),
                 const Text(
                   'App Initialization Failed',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 Container(
@@ -153,20 +113,14 @@ void _showErrorScreen(dynamic error) {
                   ),
                   child: Text(
                     'Error: $error',
-                    style: const TextStyle(
-                      color: Colors.red,
-                      fontSize: 12,
-                    ),
+                    style: const TextStyle(color: Colors.red, fontSize: 12),
                     textAlign: TextAlign.center,
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'Please restart the app or rebuild the APK',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
               ],
             ),
@@ -233,7 +187,6 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: authService.authStateChanges,
       builder: (context, snapshot) {
-        // Still loading - show splash
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(
@@ -249,7 +202,6 @@ class AuthWrapper extends StatelessWidget {
           );
         }
 
-        // Error
         if (snapshot.hasError) {
           return Scaffold(
             body: Center(
@@ -281,12 +233,10 @@ class AuthWrapper extends StatelessWidget {
           );
         }
 
-        // User is logged in
         if (snapshot.hasData && snapshot.data != null) {
           return const DashboardScreen();
         }
 
-        // User is NOT logged in - show login
         return const LoginScreen();
       },
     );
