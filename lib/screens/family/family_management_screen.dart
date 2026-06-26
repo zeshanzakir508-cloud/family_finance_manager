@@ -18,10 +18,8 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
   final TextEditingController _familyNameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _inviteCodeController = TextEditingController();
-  final TextEditingController _memberEmailController = TextEditingController();
   
   bool _isLoading = false;
-  bool _isCreating = false;
   String? _selectedFamilyId;
   FamilyModel? _selectedFamily;
   List<String> _allMemberEmails = [];
@@ -253,51 +251,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Family Code
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceColor,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppTheme.dividerColor),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Family Code:',
-                          style: AppTheme.bodyStyle.copyWith(
-                            color: AppTheme.textSecondaryColor,
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            Text(
-                              family.familyCode ?? 'N/A',
-                              style: AppTheme.bodyStyle.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.primaryColor,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              icon: const Icon(Icons.copy, size: 16),
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Family code copied!'),
-                                    duration: Duration(seconds: 1),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  
                   // Members List
                   Text(
                     'Members',
@@ -305,11 +258,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                   ),
                   const SizedBox(height: 8),
                   _buildMembersList(family),
-                  
-                  if (isAdmin) ...[
-                    const SizedBox(height: 16),
-                    _buildAdminActions(family),
-                  ],
                 ],
               ),
             ),
@@ -374,65 +322,9 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                     ),
                   ),
                 )
-              : IconButton(
-                  icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-                  onPressed: () => _removeMember(family, user.id!),
-                  tooltip: 'Remove member',
-                ),
+              : null,
         );
       },
-    );
-  }
-
-  Widget _buildAdminActions(FamilyModel family) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Divider(),
-        Text(
-          'Admin Actions',
-          style: AppTheme.subheadingStyle.copyWith(fontSize: 14),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => _showAddMemberDialog(family),
-                icon: const Icon(Icons.person_add),
-                label: const Text('Add Member'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.primaryColor,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => _showInviteDialog(family),
-                icon: const Icon(Icons.share),
-                label: const Text('Invite'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.primaryColor,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: () => _deleteFamily(family),
-            icon: const Icon(Icons.delete, color: Colors.red),
-            label: const Text('Delete Family', style: TextStyle(color: Colors.red)),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.red,
-              side: const BorderSide(color: Colors.red),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -496,7 +388,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     }
 
     setState(() {
-      _isCreating = true;
+      _isLoading = true;
     });
 
     final authService = Provider.of<AuthService>(context, listen: false);
@@ -517,10 +409,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
       isActive: true,
       familyCode: _generateFamilyCode(),
       currency: 'USD',
-      settings: {
-        'allowMemberInvites': true,
-        'requireApproval': true,
-      },
     );
 
     final box = Hive.box<FamilyModel>('families');
@@ -545,7 +433,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     await Hive.box<NotificationModel>('notifications').add(notification);
 
     setState(() {
-      _isCreating = false;
+      _isLoading = false;
     });
 
     if (mounted) {
@@ -711,286 +599,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
           SnackBar(
             content: Text('Left "${family.displayName}"'),
             backgroundColor: Colors.orange,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _removeMember(FamilyModel family, String memberId) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Remove Member'),
-        content: const Text(
-          'Are you sure you want to remove this member from the family?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.errorColor,
-            ),
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      final updatedFamily = family.copyWith(
-        memberIds: family.memberIds?.where((id) => id != memberId).toList(),
-      );
-      await updatedFamily.save();
-
-      // Update user profile
-      final userBox = Hive.box<UserProfile>('userProfile');
-      final user = userBox.get(memberId);
-      if (user != null) {
-        final updatedUser = user.copyWith(familyId: null);
-        await userBox.put(memberId, updatedUser);
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Member removed successfully'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _showAddMemberDialog(FamilyModel family) async {
-    _memberEmailController.clear();
-
-    return showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Member'),
-        content: Autocomplete<String>(
-          optionsBuilder: (TextEditingValue textEditingValue) {
-            if (textEditingValue.text.isEmpty) {
-              return const Iterable<String>.empty();
-            }
-            return _allMemberEmails.where((email) {
-              return email.toLowerCase().contains(
-                textEditingValue.text.toLowerCase(),
-              );
-            });
-          },
-          onSelected: (String selection) {
-            _memberEmailController.text = selection;
-          },
-          fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
-            _memberEmailController.text = textEditingController.text;
-            return TextField(
-              controller: textEditingController,
-              focusNode: focusNode,
-              decoration: const InputDecoration(
-                labelText: 'Member Email *',
-                hintText: 'Enter email address',
-                border: OutlineInputBorder(),
-              ),
-            );
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => _addMember(family),
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.primaryColor,
-            ),
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _addMember(FamilyModel family) async {
-    final email = _memberEmailController.text.trim();
-    if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter an email address'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    // Find user by email
-    final userBox = Hive.box<UserProfile>('userProfile');
-    UserProfile? foundUser;
-    for (var user in userBox.values) {
-      if (user.email == email) {
-        foundUser = user;
-        break;
-      }
-    }
-
-    if (foundUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('User not found. They need to sign up first.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    // Check if already a member
-    if (family.memberIds?.contains(foundUser.id) == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('User is already a member of this family'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    final updatedFamily = family.copyWith(
-      memberIds: [...?family.memberIds, foundUser.id!],
-    );
-    await updatedFamily.save();
-
-    // Update user's family ID
-    final updatedUser = foundUser.copyWith(familyId: family.id);
-    await userBox.put(foundUser.id!, updatedUser);
-
-    // Create notification for the added member
-    final notification = NotificationModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      userId: foundUser.id,
-      title: 'Added to Family',
-      message: 'You have been added to "${family.displayName}"',
-      type: NotificationType.invite,
-      createdAt: DateTime.now(),
-      isRead: false,
-    );
-    await Hive.box<NotificationModel>('notifications').add(notification);
-
-    if (mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Member added successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
-  }
-
-  Future<void> _showInviteDialog(FamilyModel family) async {
-    return showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Invite to Family'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Share this code with others to join:',
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceColor,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppTheme.dividerColor),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    family.familyCode ?? 'N/A',
-                    style: AppTheme.headingStyle.copyWith(
-                      fontSize: 18,
-                      color: AppTheme.primaryColor,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.copy),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Family code copied!'),
-                          duration: Duration(seconds: 1),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _deleteFamily(FamilyModel family) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Family'),
-        content: Text(
-          'Are you sure you want to delete "${family.displayName}"? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.errorColor,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      // Remove family from all members
-      final userBox = Hive.box<UserProfile>('userProfile');
-      for (var memberId in family.memberIds ?? []) {
-        final user = userBox.get(memberId);
-        if (user != null) {
-          final updatedUser = user.copyWith(familyId: null);
-          await userBox.put(memberId, updatedUser);
-        }
-      }
-
-      await family.delete();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Family deleted successfully'),
-            backgroundColor: Colors.green,
           ),
         );
       }
