@@ -1,7 +1,11 @@
 name: Build APK
 
 on:
-  workflow_dispatch:  # Manual trigger only
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/build.yml'  # Only runs when this file changes
+  workflow_dispatch:  # Manual trigger always available
 
 jobs:
   build:
