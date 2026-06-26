@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../services/auth_service.dart';
 import '../../models/transaction_model.dart';
@@ -17,17 +16,22 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
   String? _userName;
+  double _totalIncome = 0;
+  double _totalExpense = 0;
+  double _balance = 0;
+  List<TransactionModel> _recentTransactions = [];
 
   @override
   void initState() {
     super.initState();
     _loadUserProfile();
+    _loadTransactions();
   }
 
   Future<void> _loadUserProfile() async {
     final authService = Provider.of<AuthService>(context, listen: false);
     final userId = authService.userId;
-    
+
     if (userId != null) {
       final box = Hive.box<UserProfile>('userProfile');
       final user = box.get(userId);
@@ -39,10 +43,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  void _loadTransactions() {
+    final box = Hive.box<TransactionModel>('transactions');
+    final transactions = box.values.toList();
+
+    double income = 0;
+    double expense = 0;
+
+    for (var transaction in transactions) {
+      if (transaction.type == TransactionType.income) {
+        income += transaction.amount ?? 0;
+      } else {
+        expense += transaction.amount ?? 0;
+      }
+    }
+
+    transactions.sort((a, b) => b.date!.compareTo(a.date!));
+    final recent = transactions.take(5).toList();
+
+    setState(() {
+      _totalIncome = income;
+      _totalExpense = expense;
+      _balance = income - expense;
+      _recentTransactions = recent;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
-    final userEmail = authService.userEmail ?? 'User';
 
     return Scaffold(
       appBar: AppBar(
@@ -54,13 +83,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {
-              // Navigate to notifications
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Notifications coming soon!'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
+              Navigator.pushNamed(context, '/notifications');
             },
           ),
           PopupMenuButton<String>(
@@ -68,22 +91,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onSelected: (value) {
               switch (value) {
                 case 'profile':
-                  // Navigate to profile
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Profile coming soon!'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
+                  Navigator.pushNamed(context, '/profile');
                   break;
                 case 'settings':
-                  // Navigate to settings
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Settings coming soon!'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
+                  Navigator.pushNamed(context, '/settings');
                   break;
                 case 'logout':
                   _logout(authService);
@@ -133,6 +144,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           setState(() {
             _selectedIndex = index;
           });
+          _handleNavigation(index);
         },
         items: const [
           BottomNavigationBarItem(
@@ -160,19 +172,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
       floatingActionButton: _selectedIndex == 1
           ? FloatingActionButton(
               onPressed: () {
-                // Navigate to add transaction
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Add Transaction coming soon!'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
+                Navigator.pushNamed(context, '/add-transaction');
               },
               backgroundColor: AppTheme.primaryColor,
               child: const Icon(Icons.add, color: Colors.white),
             )
           : null,
     );
+  }
+
+  void _handleNavigation(int index) {
+    switch (index) {
+      case 0:
+        // Already on home
+        break;
+      case 1:
+        // Add transaction - handled by FAB
+        break;
+      case 2:
+        Navigator.pushNamed(context, '/reports');
+        break;
+      case 3:
+        Navigator.pushNamed(context, '/family-management');
+        break;
+    }
   }
 
   Widget _buildBody() {
@@ -182,104 +205,108 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 1:
         return _buildAddTab();
       case 2:
-        return _buildReportsTab();
+        return const Center(child: CircularProgressIndicator());
       case 3:
-        return _buildFamilyTab();
+        return const Center(child: CircularProgressIndicator());
       default:
         return _buildHomeTab();
     }
   }
 
-  // Home Tab
   Widget _buildHomeTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Welcome Message
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.primaryColor,
-                  AppTheme.primaryColor.withOpacity(0.8),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Welcome back!',
-                  style: AppTheme.bodyStyle.copyWith(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _userName ?? 'Family Member',
-                  style: AppTheme.headingStyle.copyWith(
-                    color: Colors.white,
-                    fontSize: 24,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.account_balance_wallet,
-                      color: Colors.white70,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Balance: \$0.00',
-                      style: AppTheme.bodyStyle.copyWith(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+    return RefreshIndicator(
+      onRefresh: () async {
+        _loadTransactions();
+      },
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Welcome Message
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.primaryColor,
+                    AppTheme.primaryColor.withOpacity(0.8),
                   ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Welcome back!',
+                    style: AppTheme.bodyStyle.copyWith(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _userName ?? 'Family Member',
+                    style: AppTheme.headingStyle.copyWith(
+                      color: Colors.white,
+                      fontSize: 24,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.account_balance_wallet,
+                        color: Colors.white70,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Balance: \$${_balance.toStringAsFixed(2)}',
+                        style: AppTheme.bodyStyle.copyWith(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Quick Stats
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    title: 'Income',
+                    amount: '\$${_totalIncome.toStringAsFixed(2)}',
+                    icon: Icons.arrow_upward,
+                    color: Colors.green,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                    title: 'Expenses',
+                    amount: '\$${_totalExpense.toStringAsFixed(2)}',
+                    icon: Icons.arrow_downward,
+                    color: Colors.red,
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 24),
-          
-          // Quick Stats
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  title: 'Income',
-                  amount: '\$0.00',
-                  icon: Icons.arrow_upward,
-                  color: Colors.green,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatCard(
-                  title: 'Expenses',
-                  amount: '\$0.00',
-                  icon: Icons.arrow_downward,
-                  color: Colors.red,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          
-          // Recent Transactions
-          _buildRecentTransactions(),
-        ],
+            const SizedBox(height: 24),
+
+            // Recent Transactions
+            _buildRecentTransactions(),
+          ],
+        ),
       ),
     );
   }
@@ -331,88 +358,73 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildRecentTransactions() {
-    return ValueListenableBuilder(
-      valueListenable: Hive.box<TransactionModel>('transactions').listenable(),
-      builder: (context, Box<TransactionModel> box, _) {
-        final transactions = box.values.toList();
-        transactions.sort((a, b) => b.date!.compareTo(a.date!));
-        final recentTransactions = transactions.take(5).toList();
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Recent Transactions',
-                  style: AppTheme.subheadingStyle,
+            Text(
+              'Recent Transactions',
+              style: AppTheme.subheadingStyle,
+            ),
+            TextButton(
+              onPressed: () {
+                // Navigate to all transactions
+              },
+              child: Text(
+                'See All',
+                style: AppTheme.bodyStyle.copyWith(
+                  color: AppTheme.primaryColor,
                 ),
-                TextButton(
-                  onPressed: () {
-                    // Navigate to all transactions
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('All Transactions coming soon!'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  },
-                  child: Text(
-                    'See All',
-                    style: AppTheme.bodyStyle.copyWith(
-                      color: AppTheme.primaryColor,
-                    ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (_recentTransactions.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(32),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.dividerColor),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.receipt_long_outlined,
+                  size: 48,
+                  color: AppTheme.textSecondaryColor,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'No transactions yet',
+                  style: AppTheme.bodyStyle.copyWith(
+                    color: AppTheme.textSecondaryColor,
                   ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Tap the + button to add your first transaction!',
+                  style: AppTheme.captionStyle,
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            if (recentTransactions.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(32),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceColor,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.dividerColor),
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.receipt_long_outlined,
-                      size: 48,
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'No transactions yet',
-                      style: AppTheme.bodyStyle.copyWith(
-                        color: AppTheme.textSecondaryColor,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Start adding your first transaction!',
-                      style: AppTheme.captionStyle,
-                    ),
-                  ],
-                ),
-              )
-            else
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: recentTransactions.length,
-                separatorBuilder: (context, index) => const Divider(),
-                itemBuilder: (context, index) {
-                  final transaction = recentTransactions[index];
-                  return _buildTransactionTile(transaction);
-                },
-              ),
-          ],
-        );
-      },
+          )
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _recentTransactions.length,
+            separatorBuilder: (context, index) => const Divider(),
+            itemBuilder: (context, index) {
+              final transaction = _recentTransactions[index];
+              return _buildTransactionTile(transaction);
+            },
+          ),
+      ],
     );
   }
 
@@ -446,18 +458,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
       onTap: () {
-        // Navigate to transaction details
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Transaction details for ${transaction.description}'),
-            duration: const Duration(seconds: 2),
-          ),
+        Navigator.pushNamed(
+          context,
+          '/transaction-details',
+          arguments: transaction.id,
         );
       },
     );
   }
 
-  // Add Tab
   Widget _buildAddTab() {
     return const Center(
       child: Column(
@@ -476,84 +485,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               fontSize: 16,
             ),
           ),
-          SizedBox(height: 8),
-          Text(
-            'Or use the button below',
-            style: TextStyle(
-              color: AppTheme.textSecondaryColor,
-              fontSize: 14,
-            ),
-          ),
         ],
       ),
     );
   }
 
-  // Reports Tab
-  Widget _buildReportsTab() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.pie_chart_outline,
-            size: 64,
-            color: AppTheme.textSecondaryColor,
-          ),
-          SizedBox(height: 16),
-          Text(
-            'Reports & Analytics',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Coming soon!',
-            style: TextStyle(
-              color: AppTheme.textSecondaryColor,
-              fontSize: 16,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Family Tab
-  Widget _buildFamilyTab() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.people_outline,
-            size: 64,
-            color: AppTheme.textSecondaryColor,
-          ),
-          SizedBox(height: 16),
-          Text(
-            'Family Management',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Coming soon!',
-            style: TextStyle(
-              color: AppTheme.textSecondaryColor,
-              fontSize: 16,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Logout Method
   Future<void> _logout(AuthService authService) async {
     final confirm = await showDialog<bool>(
       context: context,
