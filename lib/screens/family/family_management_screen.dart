@@ -18,34 +18,8 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
   final TextEditingController _familyNameController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _inviteCodeController = TextEditingController();
-  
+
   bool _isLoading = false;
-  String? _selectedFamilyId;
-  FamilyModel? _selectedFamily;
-  List<String> _allMemberEmails = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadFamilyData();
-  }
-
-  Future<void> _loadFamilyData() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    // Load all user emails for member search
-    final userBox = Hive.box<UserProfile>('userProfile');
-    _allMemberEmails = userBox.values
-        .where((user) => user.email != null)
-        .map((user) => user.email!)
-        .toList();
-
-    setState(() {
-      _isLoading = false;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +44,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
               valueListenable: Hive.box<FamilyModel>('families').listenable(),
               builder: (context, Box<FamilyModel> box, _) {
                 final families = box.values.toList();
-                
+
                 if (families.isEmpty) {
                   return _buildEmptyState();
                 }
@@ -82,7 +56,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                     final family = families[index];
                     final isMember = family.memberIds?.contains(userId) ?? false;
                     final isAdmin = family.adminId == userId;
-                    
+
                     return _buildFamilyCard(family, isMember, isAdmin);
                   },
                 );
@@ -251,6 +225,51 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Family Code
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceColor,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppTheme.dividerColor),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Family Code:',
+                          style: AppTheme.bodyStyle.copyWith(
+                            color: AppTheme.textSecondaryColor,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Text(
+                              family.familyCode ?? 'N/A',
+                              style: AppTheme.bodyStyle.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primaryColor,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: const Icon(Icons.copy, size: 16),
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Family code copied!'),
+                                    duration: Duration(seconds: 1),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
                   // Members List
                   Text(
                     'Members',
@@ -287,7 +306,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
       itemBuilder: (context, index) {
         final user = members[index] as UserProfile;
         final isAdmin = family.adminId == user.id;
-        
+
         return ListTile(
           leading: CircleAvatar(
             backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
@@ -399,8 +418,8 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     final family = FamilyModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: _familyNameController.text.trim(),
-      description: _descriptionController.text.trim().isEmpty 
-          ? null 
+      description: _descriptionController.text.trim().isEmpty
+          ? null
           : _descriptionController.text.trim(),
       createdBy: userId,
       adminId: userId,
@@ -414,13 +433,11 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     final box = Hive.box<FamilyModel>('families');
     await box.add(family);
 
-    // Update user profile with family ID
     if (currentUser != null) {
       final updatedUser = currentUser.copyWith(familyId: family.id);
       await userBox.put(userId, updatedUser);
     }
 
-    // Create notification for family creation
     final notification = NotificationModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       userId: userId,
@@ -492,7 +509,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
 
     final box = Hive.box<FamilyModel>('families');
     FamilyModel? foundFamily;
-    
+
     for (var family in box.values) {
       if (family.familyCode == _inviteCodeController.text.trim()) {
         foundFamily = family;
@@ -524,13 +541,11 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     );
     await updatedFamily.save();
 
-    // Update user profile with family ID
     if (currentUser != null) {
       final updatedUser = currentUser.copyWith(familyId: family.id);
       await userBox.put(userId, updatedUser);
     }
 
-    // Create notification
     final notification = NotificationModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       userId: userId,
@@ -588,7 +603,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
       );
       await updatedFamily.save();
 
-      // Update user profile
       if (currentUser != null) {
         final updatedUser = currentUser.copyWith(familyId: null);
         await userBox.put(userId, updatedUser);
@@ -601,19 +615,4 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
             backgroundColor: Colors.orange,
           ),
         );
-      }
-    }
-  }
-
-  String _generateFamilyCode() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    final random = DateTime.now().millisecondsSinceEpoch;
-    final String code = String.fromCharCodes(
-      List.generate(8, (index) {
-        final charIndex = (random + index * 7) % chars.length;
-        return chars.codeUnitAt(charIndex);
-      }),
-    );
-    return code;
-  }
-}
+      
