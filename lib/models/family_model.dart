@@ -108,5 +108,6 @@ class FamilyModel extends HiveObject {
   }
 
   String get displayName => name ?? 'Family';
+  
   int get memberCount => memberIds?.length ?? 0;
 }
