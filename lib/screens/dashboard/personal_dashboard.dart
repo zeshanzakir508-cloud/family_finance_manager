@@ -35,17 +35,14 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
     final userId = authService.userId;
 
     if (userId != null) {
-      // Load user name
       final user = DatabaseService.getUser(userId);
       if (user != null) {
         _userName = user.displayName;
       }
 
-      // Load transactions
       _transactions = DatabaseService.getUserTransactions(userId);
       _transactions.sort((a, b) => b.date!.compareTo(a.date!));
 
-      // Calculate totals
       double income = 0;
       double expense = 0;
       for (var t in _transactions) {
@@ -412,7 +409,7 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
         else
           ...recent.map((transaction) {
             return _buildTransactionTile(transaction);
-          }),
+          }).toList(),
       ],
     );
   }
@@ -506,7 +503,6 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
   void _handleNavigation(int index) {
     switch (index) {
       case 0:
-        // Already on dashboard
         break;
       case 1:
         Navigator.pushNamed(context, '/add-transaction');
