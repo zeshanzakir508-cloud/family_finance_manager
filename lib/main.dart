@@ -30,20 +30,26 @@ import 'models/backup_model.dart';
 import 'utils/app_theme.dart';
 import 'utils/constants.dart';
 
+bool _firebaseInitialized = false;
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    await Firebase.initializeApp(
-      options: const FirebaseOptions(
-        apiKey: "AIzaSyC2PqPJ9E1VJj2lPtM06qYwD7xGZ5kR9nQ",
-        authDomain: "family-finance-manager.firebaseapp.com",
-        projectId: "family-finance-manager",
-        storageBucket: "family-finance-manager.appspot.com",
-        messagingSenderId: "808843357815",
-        appId: "1:808843357815:android:8edf9e5b7c6a4d2f",
-      ),
-    );
+    // Initialize Firebase - ONLY ONCE
+    if (!_firebaseInitialized) {
+      await Firebase.initializeApp(
+        options: const FirebaseOptions(
+          apiKey: "AIzaSyC2PqPJ9E1VJj2lPtM06qYwD7xGZ5kR9nQ",
+          authDomain: "family-finance-manager.firebaseapp.com",
+          projectId: "family-finance-manager",
+          storageBucket: "family-finance-manager.appspot.com",
+          messagingSenderId: "808843357815",
+          appId: "1:808843357815:android:8edf9e5b7c6a4d2f",
+        ),
+      );
+      _firebaseInitialized = true;
+    }
 
     await Hive.initFlutter();
     
