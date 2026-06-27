@@ -32,7 +32,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadSettings();
   }
 
-  Future<void> _loadSettings() async {
+  void _loadSettings() async {
     final authService = Provider.of<AuthService>(context, listen: false);
     final userId = authService.userId;
 
@@ -55,16 +55,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  Future<void> _saveSettings() async {
+  void _saveSettings() async {
     final authService = Provider.of<AuthService>(context, listen: false);
     final userId = authService.userId;
 
     if (userId != null) {
       final user = DatabaseService.getUser(userId);
       if (user != null) {
-        final updatedUser = user.copyWith(
-          isDarkMode: _isDarkMode,
+        final updatedUser = UserModel(
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          phoneNumber: user.phoneNumber,
+          fatherOrHusbandName: user.fatherOrHusbandName,
+          createdAt: user.createdAt,
+          familyId: user.familyId,
+          isEmailVerified: user.isEmailVerified,
           currency: _selectedCurrency,
+          isDarkMode: _isDarkMode,
         );
         await DatabaseService.saveUser(updatedUser);
       }
@@ -123,7 +131,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _buildModeSection(modeProvider),
             const SizedBox(height: 24),
             _buildAboutSection(),
-            const SizedBox(height: 32),
           ],
         ),
       ),
@@ -172,9 +179,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Icons.arrow_forward_ios,
               size: 16,
             ),
-            onTap: () {
-              // Navigate to profile edit
-            },
+            onTap: () {},
           ),
         ),
       ],
@@ -320,7 +325,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Icons.arrow_forward_ios,
                   size: 16,
                 ),
-                onTap: _showChangePasswordDialog,
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Change Password coming soon!'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
               ),
               const Divider(height: 1),
               ListTile(
@@ -338,7 +350,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Icons.arrow_forward_ios,
                   size: 16,
                 ),
-                onTap: _showDeleteAccountDialog,
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Delete Account coming soon!'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -435,202 +454,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  void _showChangePasswordDialog() {
-    final currentPasswordController = TextEditingController();
-    final newPasswordController = TextEditingController();
-    final confirmPasswordController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Change Password'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: currentPasswordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Current Password',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: newPasswordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'New Password',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: confirmPasswordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Confirm New Password',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              final authService = Provider.of<AuthService>(context, listen: false);
-
-              if (newPasswordController.text != confirmPasswordController.text) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Passwords do not match!'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                return;
-              }
-
-              if (newPasswordController.text.length < 6) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Password must be at least 6 characters!'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                return;
-              }
-
-              final success = await authService.updatePassword(
-                newPasswordController.text,
-              );
-
-              if (!mounted) return;
-              Navigator.pop(context);
-
-              if (success) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Password updated successfully!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Failed to update password.'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.primaryColor,
-            ),
-            child: const Text('Update'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteAccountDialog() {
-    final passwordController = TextEditingController();
-    final confirmController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Account'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Are you sure you want to delete your account?',
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'This action cannot be undone. All your data will be permanently deleted.',
-              style: TextStyle(
-                color: AppTheme.textSecondaryColor,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Enter Password *',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: confirmController,
-              decoration: const InputDecoration(
-                labelText: 'Type "DELETE" to confirm *',
-                hintText: 'DELETE',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              if (confirmController.text != 'DELETE') {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please type "DELETE" to confirm'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                return;
-              }
-
-              final authService = Provider.of<AuthService>(context, listen: false);
-              final success = await authService.deleteAccount();
-
-              if (success) {
-                await DatabaseService.clearAllData();
-
-                if (!mounted) return;
-                Navigator.pop(context);
-                Navigator.pushReplacementNamed(context, '/login');
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Account deleted successfully'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Failed to delete account. Please try again.'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.errorColor,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
     );
   }
 }
