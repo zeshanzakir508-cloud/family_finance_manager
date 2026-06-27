@@ -79,7 +79,34 @@ class UserModel extends HiveObject {
     );
   }
 
+  UserModel copyWith({
+    String? id,
+    String? email,
+    String? fullName,
+    String? phoneNumber,
+    String? fatherOrHusbandName,
+    DateTime? createdAt,
+    String? familyId,
+    bool? isEmailVerified,
+    String? currency,
+    bool? isDarkMode,
+  }) {
+    return UserModel(
+      id: id ?? this.id,
+      email: email ?? this.email,
+      fullName: fullName ?? this.fullName,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      fatherOrHusbandName: fatherOrHusbandName ?? this.fatherOrHusbandName,
+      createdAt: createdAt ?? this.createdAt,
+      familyId: familyId ?? this.familyId,
+      isEmailVerified: isEmailVerified ?? this.isEmailVerified,
+      currency: currency ?? this.currency,
+      isDarkMode: isDarkMode ?? this.isDarkMode,
+    );
+  }
+
   String get displayName => fullName ?? email?.split('@').first ?? 'User';
+  
   String get initials {
     if (fullName != null && fullName!.isNotEmpty) {
       final parts = fullName!.split(' ');
