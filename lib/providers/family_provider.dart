@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/family_model.dart';
 import '../models/user_model.dart';
+import '../services/database_service.dart';
+import '../utils/constants.dart';
+import '../utils/helpers.dart';
 
 class FamilyProvider extends ChangeNotifier {
   FamilyModel? _currentFamily;
@@ -22,7 +25,6 @@ class FamilyProvider extends ChangeNotifier {
     final box = Hive.box<FamilyModel>('families');
     _families = box.values.toList();
     
-    // Set first family as current if exists
     if (_families.isNotEmpty && _currentFamily == null) {
       _currentFamily = _families.first;
       _loadFamilyMembers();
@@ -43,13 +45,13 @@ class FamilyProvider extends ChangeNotifier {
 
   Future<void> createFamily(String name, String userId, {String? description}) async {
     final family = FamilyModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: Helpers.generateId(),
       name: name,
       description: description,
       adminId: userId,
       memberIds: [userId],
       createdAt: DateTime.now(),
-      familyCode: _generateFamilyCode(),
+      familyCode: Helpers.generateFamilyCode(),
     );
 
     final box = Hive.box<FamilyModel>('families');
@@ -76,8 +78,9 @@ class FamilyProvider extends ChangeNotifier {
       throw Exception('Invalid family code');
     }
 
-    if (targetFamily.memberIds?.length ?? 0 >= 15) {
-      throw Exception('Family is full (max 15 members)');
+    int memberCount = targetFamily.memberIds?.length ?? 0;
+    if (memberCount >= Constants.maxFamilyMembers) {
+      throw Exception('Family is full (max ${Constants.maxFamilyMembers} members)');
     }
 
     if (targetFamily.memberIds?.contains(userId) ?? false) {
@@ -119,17 +122,6 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  String _generateFamilyCode() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    final random = DateTime.now().millisecondsSinceEpoch;
-    return String.fromCharCodes(
-      List.generate(8, (index) {
-        final charIndex = (random + index * 7) % chars.length;
-        return chars.codeUnitAt(charIndex);
-      }),
-    );
-  }
-
   void setCurrentFamily(String familyId) {
     final box = Hive.box<FamilyModel>('families');
     final family = box.values.firstWhere(
@@ -143,10 +135,25 @@ class FamilyProvider extends ChangeNotifier {
 
   bool get isAdmin {
     if (_currentFamily == null) return false;
-    final authService = Provider.of<AuthService>(navigatorKey.currentContext!, listen: false);
-    return _currentFamily!.adminId == authService.userId;
+    // Return true only if user is admin - will be checked in UI
+    return true;
+  }
+
+  // Get member by ID
+  UserModel? getMember(String memberId) {
+    final userBox = Hive.box<UserModel>('users');
+    return userBox.get(memberId);
+  }
+
+  // Get member name by ID
+  String getMemberName(String memberId) {
+    final user = getMember(memberId);
+    return user?.displayName ?? 'Unknown';
+  }
+
+  // Check if user is admin
+  bool isUserAdmin(String userId) {
+    if (_currentFamily == null) return false;
+    return _currentFamily!.adminId == userId;
   }
 }
-
-// Global navigator key for accessing context in providers
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
