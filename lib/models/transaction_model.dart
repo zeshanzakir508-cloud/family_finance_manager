@@ -82,7 +82,7 @@ class TransactionModel extends HiveObject {
     return TransactionModel(
       id: json['id'],
       userId: json['userId'],
-      amount: json['amount'],
+      amount: json['amount']?.toDouble(),
       category: json['category'],
       description: json['description'],
       type: json['type'],
@@ -93,6 +93,38 @@ class TransactionModel extends HiveObject {
       memberId: json['memberId'],
       memberName: json['memberName'],
       isFamilyTransaction: json['isFamilyTransaction'] ?? false,
+    );
+  }
+
+  TransactionModel copyWith({
+    String? id,
+    String? userId,
+    double? amount,
+    String? category,
+    String? description,
+    String? type,
+    DateTime? date,
+    String? notes,
+    DateTime? createdAt,
+    String? familyId,
+    String? memberId,
+    String? memberName,
+    bool? isFamilyTransaction,
+  }) {
+    return TransactionModel(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      amount: amount ?? this.amount,
+      category: category ?? this.category,
+      description: description ?? this.description,
+      type: type ?? this.type,
+      date: date ?? this.date,
+      notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+      familyId: familyId ?? this.familyId,
+      memberId: memberId ?? this.memberId,
+      memberName: memberName ?? this.memberName,
+      isFamilyTransaction: isFamilyTransaction ?? this.isFamilyTransaction,
     );
   }
 
