@@ -94,10 +94,13 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                 child: Center(
                   child: Text(
                     'Personal',
-                    style: TextStyle(
+                    style: AppTheme.bodyStyle.copyWith(
                       color: modeProvider.isPersonalMode
                           ? Colors.white
                           : AppTheme.textSecondaryColor,
+                      fontWeight: modeProvider.isPersonalMode
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                     ),
                   ),
                 ),
@@ -121,10 +124,13 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                 child: Center(
                   child: Text(
                     'Family',
-                    style: TextStyle(
+                    style: AppTheme.bodyStyle.copyWith(
                       color: modeProvider.isFamilyMode
                           ? Colors.white
                           : AppTheme.textSecondaryColor,
+                      fontWeight: modeProvider.isFamilyMode
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                     ),
                   ),
                 ),
@@ -149,11 +155,25 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
           ),
           child: Column(
             children: [
-              const Icon(Icons.family_restroom_outlined, size: 48),
+              const Icon(
+                Icons.family_restroom_outlined,
+                size: 48,
+                color: AppTheme.primaryColor,
+              ),
               const SizedBox(height: 8),
-              const Text('You are in Personal Mode'),
+              Text(
+                'You are in Personal Mode',
+                style: AppTheme.subheadingStyle,
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 4),
-              const Text('Switch to Family Mode to manage your family'),
+              Text(
+                'Switch to Family Mode to manage your family',
+                style: AppTheme.bodyStyle.copyWith(
+                  color: AppTheme.textSecondaryColor,
+                ),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () {
@@ -193,11 +213,25 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
             ),
             child: Column(
               children: [
-                const Icon(Icons.family_restroom_outlined, size: 48),
+                const Icon(
+                  Icons.family_restroom_outlined,
+                  size: 48,
+                  color: AppTheme.textSecondaryColor,
+                ),
                 const SizedBox(height: 8),
-                const Text('No Family Found'),
+                Text(
+                  'No Family Found',
+                  style: AppTheme.subheadingStyle,
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 4),
-                const Text('Create a family or join an existing one'),
+                Text(
+                  'Create a family or join an existing one',
+                  style: AppTheme.bodyStyle.copyWith(
+                    color: AppTheme.textSecondaryColor,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: _showCreateFamilyDialog,
@@ -222,7 +256,10 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.teal, Colors.teal.shade700],
+              colors: [
+                Colors.teal,
+                Colors.teal.shade700,
+              ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -236,14 +273,20 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                 children: [
                   Text(
                     family.name ?? 'Family',
-                    style: const TextStyle(color: Colors.white, fontSize: 20),
+                    style: AppTheme.headingStyle.copyWith(
+                      color: Colors.white,
+                      fontSize: 20,
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 4),
               Text(
                 family.description ?? 'No description',
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
+                style: AppTheme.bodyStyle.copyWith(
+                  color: Colors.white70,
+                  fontSize: 14,
+                ),
               ),
               const SizedBox(height: 12),
               Row(
@@ -256,7 +299,10 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                     ),
                     child: Text(
                       '${family.memberCount}/${Constants.maxFamilyMembers} members',
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ],
@@ -276,10 +322,21 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Family Code:'),
+              Text(
+                'Family Code:',
+                style: AppTheme.bodyStyle.copyWith(
+                  color: AppTheme.textSecondaryColor,
+                ),
+              ),
               Row(
                 children: [
-                  Text(family.familyCode ?? 'N/A'),
+                  Text(
+                    family.familyCode ?? 'N/A',
+                    style: AppTheme.bodyStyle.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   IconButton(
                     icon: const Icon(Icons.copy, size: 16),
@@ -299,10 +356,16 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
         ),
         const SizedBox(height: 16),
 
-        const Text('Members'),
+        Text(
+          'Members',
+          style: AppTheme.subheadingStyle,
+        ),
         const SizedBox(height: 8),
         if (members.isEmpty)
-          const Text('No members yet')
+          const Text(
+            'No members yet',
+            style: TextStyle(color: Colors.grey),
+          )
         else
           ...members.map((member) {
             final isAdminUser = family.adminId == member.id;
@@ -317,19 +380,45 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                 children: [
                   CircleAvatar(
                     backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                    child: Text(member.initials),
+                    child: Text(
+                      member.initials,
+                      style: TextStyle(
+                        color: AppTheme.primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(member.displayName),
-                        Text(member.email ?? 'No email'),
+                        Text(
+                          member.displayName,
+                          style: AppTheme.bodyStyle,
+                        ),
+                        Text(
+                          member.email ?? 'No email',
+                          style: AppTheme.captionStyle,
+                        ),
                       ],
                     ),
                   ),
-                  if (isAdminUser) const Text('Admin'),
+                  if (isAdminUser)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Admin',
+                        style: AppTheme.captionStyle.copyWith(
+                          color: Colors.blue,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   if (isAdmin && member.id != userId)
                     IconButton(
                       icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
@@ -347,6 +436,10 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
             onPressed: _showAddMemberDialog,
             icon: const Icon(Icons.person_add),
             label: const Text('Add Member'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+            ),
           ),
 
         const SizedBox(height: 16),
@@ -404,6 +497,9 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
           ),
           TextButton(
             onPressed: _createFamily,
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.primaryColor,
+            ),
             child: const Text('Create'),
           ),
         ],
@@ -414,7 +510,10 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
   void _createFamily() async {
     if (_familyNameController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a family name'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Please enter a family name'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -443,7 +542,10 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Family created successfully!'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Family created successfully!'),
+            backgroundColor: Colors.green,
+          ),
         );
         setState(() {
           _isLoading = false;
@@ -454,7 +556,10 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -481,6 +586,9 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
           ),
           TextButton(
             onPressed: _joinFamily,
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.primaryColor,
+            ),
             child: const Text('Join'),
           ),
         ],
@@ -491,83 +599,16 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
   void _joinFamily() async {
     if (_inviteCodeController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a family code'), backgroundColor: Colors.red),
-      );
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final userId = authService.userId;
-
-      if (userId == null) {
-        throw Exception('User not logged in');
-      }
-
-      final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
-      await familyProvider.joinFamily(
-        _inviteCodeController.text.trim().toUpperCase(),
-        userId,
-      );
-
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Joined family successfully!'), backgroundColor: Colors.green),
-        );
-        setState(() {
-          _isLoading = false;
-        });
-        Navigator.pushReplacementNamed(context, '/family-dashboard');
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
-    }
-  }
-
-  void _showAddMemberDialog() {
-    _memberEmailController.clear();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Member'),
-        content: TextField(
-          controller: _memberEmailController,
-          keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(
-            labelText: 'Email Address *',
-            hintText: 'Enter member\'s email',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: _addMember,
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _addMember() async {
+        const SnackBar(
+          content: Text('Please enter a family code'),
+          backgroundColor: Colors.red
+          void _addMember() async {
     if (_memberEmailController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter an email address'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Please enter an email address'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -611,7 +652,10 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Member added successfully!'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Member added successfully!'),
+            backgroundColor: Colors.green,
+          ),
         );
         setState(() {
           _isLoading = false;
@@ -623,7 +667,10 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -633,12 +680,19 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Remove Member'),
-        content: const Text('Are you sure you want to remove this member from the family?'),
+        content: const Text(
+          'Are you sure you want to remove this member from the family?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.errorColor,
+            ),
             child: const Text('Remove'),
           ),
         ],
@@ -672,7 +726,10 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Member removed successfully'), backgroundColor: Colors.orange),
+          const SnackBar(
+            content: Text('Member removed successfully'),
+            backgroundColor: Colors.orange,
+          ),
         );
         setState(() {
           _isLoading = false;
@@ -684,7 +741,10 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -694,12 +754,19 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Family'),
-        content: const Text('Are you sure you want to delete this family? This action cannot be undone.'),
+        content: const Text(
+          'Are you sure you want to delete this family? This action cannot be undone.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.errorColor,
+            ),
             child: const Text('Delete'),
           ),
         ],
@@ -732,7 +799,10 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Family deleted successfully'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Family deleted successfully'),
+            backgroundColor: Colors.green,
+          ),
         );
         setState(() {
           _isLoading = false;
@@ -744,8 +814,11 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
-}
+          }
