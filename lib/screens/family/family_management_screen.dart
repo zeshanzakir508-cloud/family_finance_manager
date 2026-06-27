@@ -141,8 +141,65 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
       ),
     );
   }
-
   Widget _buildPersonalModeView(String? userId) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.dividerColor),
+        ),
+        child: Column(
+          children: [
+            const Icon(
+              Icons.family_restroom_outlined,
+              size: 48,
+              color: AppTheme.primaryColor,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'You are in Personal Mode',
+              style: AppTheme.subheadingStyle,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Switch to Family Mode to manage your family',
+              style: AppTheme.bodyStyle.copyWith(
+                color: AppTheme.textSecondaryColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                final modeProvider = Provider.of<ModeProvider>(context, listen: false);
+                modeProvider.setMode('family');
+                Navigator.pushReplacementNamed(context, '/family-dashboard');
+              },
+              child: const Text('Switch to Family Mode'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: _showCreateFamilyDialog,
+              child: const Text('Create Family'),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+Widget _buildFamilyModeView(FamilyProvider familyProvider, String? userId) {
+  final family = familyProvider.currentFamily;
+  final members = familyProvider.familyMembers;
+  final isAdmin = familyProvider.isAdmin;
+
+  if (family == null) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -158,17 +215,17 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
               const Icon(
                 Icons.family_restroom_outlined,
                 size: 48,
-                color: AppTheme.primaryColor,
+                color: AppTheme.textSecondaryColor,
               ),
               const SizedBox(height: 8),
               Text(
-                'You are in Personal Mode',
+                'No Family Found',
                 style: AppTheme.subheadingStyle,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 4),
               Text(
-                'Switch to Family Mode to manage your family',
+                'Create a family or join an existing one',
                 style: AppTheme.bodyStyle.copyWith(
                   color: AppTheme.textSecondaryColor,
                 ),
@@ -176,18 +233,14 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
               ),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () {
-                  final modeProvider = Provider.of<ModeProvider>(context, listen: false);
-                  modeProvider.setMode('family');
-                  Navigator.pushReplacementNamed(context, '/family-dashboard');
-                },
-                child: const Text('Switch to Family Mode'),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton(
                 onPressed: _showCreateFamilyDialog,
                 child: const Text('Create Family'),
               ),
+              const SizedBox(height: 8),
+              OutlinedButton(
+                onPressed: _showJoinFamilyDialog,
+                child: const Text('Join Family'),
+              ),
             ],
           ),
         ),
@@ -195,414 +248,440 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     );
   }
 
-  Widget _buildFamilyModeView(FamilyProvider familyProvider, String? userId) {
-    final family = familyProvider.currentFamily;
-    final members = familyProvider.familyMembers;
-    final isAdmin = familyProvider.isAdmin;
-
-    if (family == null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.dividerColor),
-            ),
-            child: Column(
-              children: [
-                const Icon(
-                  Icons.family_restroom_outlined,
-                  size: 48,
-                  color: AppTheme.textSecondaryColor,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'No Family Found',
-                  style: AppTheme.subheadingStyle,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Create a family or join an existing one',
-                  style: AppTheme.bodyStyle.copyWith(
-                    color: AppTheme.textSecondaryColor,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: _showCreateFamilyDialog,
-                  child: const Text('Create Family'),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton(
-                  onPressed: _showJoinFamilyDialog,
-                  child: const Text('Join Family'),
-                ),
-              ],
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Colors.teal,
-                Colors.teal.shade700,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    family.name ?? 'Family',
-                    style: AppTheme.headingStyle.copyWith(
-                      color: Colors.white,
-                      fontSize: 20,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                family.description ?? 'No description',
-                style: AppTheme.bodyStyle.copyWith(
-                  color: Colors.white70,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '${family.memberCount}/${Constants.maxFamilyMembers} members',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Colors.teal,
+              Colors.teal.shade700,
             ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
+          borderRadius: BorderRadius.circular(16),
         ),
-        const SizedBox(height: 16),
-
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.dividerColor),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Family Code:',
-                style: AppTheme.bodyStyle.copyWith(
-                  color: AppTheme.textSecondaryColor,
-                ),
-              ),
-              Row(
-                children: [
-                  Text(
-                    family.familyCode ?? 'N/A',
-                    style: AppTheme.bodyStyle.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.primaryColor,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.copy, size: 16),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Family code copied!'),
-                          duration: Duration(seconds: 1),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        Text(
-          'Members',
-          style: AppTheme.subheadingStyle,
-        ),
-        const SizedBox(height: 8),
-        if (members.isEmpty)
-          const Text(
-            'No members yet',
-            style: TextStyle(color: Colors.grey),
-          )
-        else
-          ...members.map((member) {
-            final isAdminUser = family.adminId == member.id;
-            return Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: AppTheme.dividerColor),
-                ),
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                    child: Text(
-                      member.initials,
-                      style: TextStyle(
-                        color: AppTheme.primaryColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          member.displayName,
-                          style: AppTheme.bodyStyle,
-                        ),
-                        Text(
-                          member.email ?? 'No email',
-                          style: AppTheme.captionStyle,
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (isAdminUser)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'Admin',
-                        style: AppTheme.captionStyle.copyWith(
-                          color: Colors.blue,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  if (isAdmin && member.id != userId)
-                    IconButton(
-                      icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-                      onPressed: () => _removeMember(member.id!),
-                      tooltip: 'Remove member',
-                    ),
-                ],
-              ),
-            );
-          }).toList(),
-        const SizedBox(height: 8),
-
-        if (isAdmin)
-          ElevatedButton.icon(
-            onPressed: _showAddMemberDialog,
-            icon: const Icon(Icons.person_add),
-            label: const Text('Add Member'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-            ),
-          ),
-
-        const SizedBox(height: 16),
-
-        if (isAdmin)
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _deleteFamily,
-              icon: const Icon(Icons.delete),
-              label: const Text('Delete Family'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red,
-                side: const BorderSide(color: Colors.red),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  void _showCreateFamilyDialog() {
-    _familyNameController.clear();
-    _descriptionController.clear();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create Family'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: _familyNameController,
-              decoration: const InputDecoration(
-                labelText: 'Family Name *',
-                border: OutlineInputBorder(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  family.name ?? 'Family',
+                  style: AppTheme.headingStyle.copyWith(
+                    color: Colors.white,
+                    fontSize: 20,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              family.description ?? 'No description',
+              style: AppTheme.bodyStyle.copyWith(
+                color: Colors.white70,
+                fontSize: 14,
               ),
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 2,
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${family.memberCount}/${Constants.maxFamilyMembers} members',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: _createFamily,
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.primaryColor,
+      ),
+      const SizedBox(height: 16),
+
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.dividerColor),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Family Code:',
+              style: AppTheme.bodyStyle.copyWith(
+                color: AppTheme.textSecondaryColor,
+              ),
             ),
-            child: const Text('Create'),
+            Row(
+              children: [
+                Text(
+                  family.familyCode ?? 'N/A',
+                  style: AppTheme.bodyStyle.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.copy, size: 16),
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Family code copied!'),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 16),
+
+      Text(
+        'Members',
+        style: AppTheme.subheadingStyle,
+      ),
+      const SizedBox(height: 8),
+      if (members.isEmpty)
+        const Text(
+          'No members yet',
+          style: TextStyle(color: Colors.grey),
+        )
+      else
+        ...members.map((member) {
+          final isAdminUser = family.adminId == member.id;
+          return Container(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: AppTheme.dividerColor),
+              ),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                  child: Text(
+                    member.initials,
+                    style: TextStyle(
+                      color: AppTheme.primaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        member.displayName,
+                        style: AppTheme.bodyStyle,
+                      ),
+                      Text(
+                        member.email ?? 'No email',
+                        style: AppTheme.captionStyle,
+                      ),
+                    ],
+                  ),
+                ),
+                if (isAdminUser)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Admin',
+                      style: AppTheme.captionStyle.copyWith(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                if (isAdmin && member.id != userId)
+                  IconButton(
+                    icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                    onPressed: () => _removeMember(member.id!),
+                    tooltip: 'Remove member',
+                  ),
+              ],
+            ),
+          );
+        }).toList(),
+      const SizedBox(height: 8),
+
+      if (isAdmin)
+        ElevatedButton.icon(
+          onPressed: _showAddMemberDialog,
+          icon: const Icon(Icons.person_add),
+          label: const Text('Add Member'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.primaryColor,
+            foregroundColor: Colors.white,
+          ),
+        ),
+
+      const SizedBox(height: 16),
+
+      if (isAdmin)
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _deleteFamily,
+            icon: const Icon(Icons.delete),
+            label: const Text('Delete Family'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.red,
+              side: const BorderSide(color: Colors.red),
+            ),
+          ),
+        ),
+    ],
+  );
+}
+  void _showCreateFamilyDialog() {
+  _familyNameController.clear();
+  _descriptionController.clear();
+
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Create Family'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _familyNameController,
+            decoration: const InputDecoration(
+              labelText: 'Family Name *',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _descriptionController,
+            decoration: const InputDecoration(
+              labelText: 'Description',
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 2,
           ),
         ],
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: _createFamily,
+          style: TextButton.styleFrom(
+            foregroundColor: AppTheme.primaryColor,
+          ),
+          child: const Text('Create'),
+        ),
+      ],
+    ),
+  );
+}
+
+void _createFamily() async {
+  if (_familyNameController.text.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Please enter a family name'),
+        backgroundColor: Colors.red,
+      ),
     );
+    return;
   }
 
-  void _createFamily() async {
-    if (_familyNameController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a family name'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
+  setState(() {
+    _isLoading = true;
+  });
+
+  try {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userId = authService.userId;
+
+    if (userId == null) {
+      throw Exception('User not logged in');
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
+    await familyProvider.createFamily(
+      _familyNameController.text.trim(),
+      userId,
+      description: _descriptionController.text.trim().isEmpty
+          ? null
+          : _descriptionController.text.trim(),
+    );
 
-    try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final userId = authService.userId;
-
-      if (userId == null) {
-        throw Exception('User not logged in');
-      }
-
-      final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
-      await familyProvider.createFamily(
-        _familyNameController.text.trim(),
-        userId,
-        description: _descriptionController.text.trim().isEmpty
-            ? null
-            : _descriptionController.text.trim(),
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Family created successfully!'),
+          backgroundColor: Colors.green,
+        ),
       );
-
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Family created successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
       setState(() {
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
-  }
-
-  void _showJoinFamilyDialog() {
-    _inviteCodeController.clear();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Join Family'),
-        content: TextField(
-          controller: _inviteCodeController,
-          decoration: const InputDecoration(
-            labelText: 'Family Code *',
-            hintText: 'Enter the family code',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: _joinFamily,
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.primaryColor,
-            ),
-            child: const Text('Join'),
-          ),
-        ],
+  } catch (e) {
+    setState(() {
+      _isLoading = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error: $e'),
+        backgroundColor: Colors.red,
       ),
     );
   }
+}
 
-  void _joinFamily() async {
-    if (_inviteCodeController.text.isEmpty) {
+void _showJoinFamilyDialog() {
+  _inviteCodeController.clear();
+
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Join Family'),
+      content: TextField(
+        controller: _inviteCodeController,
+        decoration: const InputDecoration(
+          labelText: 'Family Code *',
+          hintText: 'Enter the family code',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: _joinFamily,
+          style: TextButton.styleFrom(
+            foregroundColor: AppTheme.primaryColor,
+          ),
+          child: const Text('Join'),
+        ),
+      ],
+    ),
+  );
+}
+
+void _joinFamily() async {
+  if (_inviteCodeController.text.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Please enter a family code'),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return;
+  }
+
+  setState(() {
+    _isLoading = true;
+  });
+
+  try {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userId = authService.userId;
+
+    if (userId == null) {
+      throw Exception('User not logged in');
+    }
+
+    final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
+    await familyProvider.joinFamily(
+      _inviteCodeController.text.trim().toUpperCase(),
+      userId,
+    );
+
+    if (mounted) {
+      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter a family code'),
-          backgroundColor: Colors.red
-          void _addMember() async {
+          content: Text('Joined family successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      setState(() {
+        _isLoading = false;
+      });
+      Navigator.pushReplacementNamed(context, '/family-dashboard');
+    }
+  } catch (e) {
+    setState(() {
+      _isLoading = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+}
+
+void _showAddMemberDialog() {
+  _memberEmailController.clear();
+
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Add Member'),
+      content: TextField(
+        controller: _memberEmailController,
+        keyboardType: TextInputType.emailAddress,
+        decoration: const InputDecoration(
+          labelText: 'Email Address *',
+          hintText: 'Enter member\'s email',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: _addMember,
+          style: TextButton.styleFrom(
+            foregroundColor: AppTheme.primaryColor,
+          ),
+          child: const Text('Add'),
+        ),
+      ],
+    ),
+  );
+}
+    void _addMember() async {
     if (_memberEmailController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -821,4 +900,4 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
       );
     }
   }
-          }
+}
