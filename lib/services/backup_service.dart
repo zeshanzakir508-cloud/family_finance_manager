@@ -13,19 +13,16 @@ import '../utils/constants.dart';
 import '../utils/helpers.dart';
 
 class BackupService {
-  // Create a new backup
   static Future<BackupModel?> createBackup(String userId) async {
     try {
       final user = DatabaseService.getUser(userId);
       if (user == null) return null;
 
-      // Collect all data
       final transactions = DatabaseService.getUserTransactions(userId);
       final families = DatabaseService.getAllFamilies();
       final transfers = DatabaseService.getUserTransfers(userId);
       final notifications = DatabaseService.getUserNotifications(userId);
 
-      // Create backup data
       final backupData = {
         'user': user.toJson(),
         'transactions': transactions.map((t) => t.toJson()).toList(),
@@ -36,7 +33,6 @@ class BackupService {
         'appVersion': Constants.appVersion,
       };
 
-      // Save to file
       final jsonString = jsonEncode(backupData);
       final directory = await getApplicationDocumentsDirectory();
       final fileName = 'backup_${Helpers.generateId()}.json';
@@ -44,16 +40,20 @@ class BackupService {
       final file = File(filePath);
       await file.writeAsString(jsonString);
 
-      // Create backup record
+      int totalMembers = 0;
+      for (var family in families) {
+        totalMembers += (family.memberIds?.length ?? 0);
+      }
+
       final backup = BackupModel(
         id: Helpers.generateId(),
         userId: userId,
         backupDate: DateTime.now(),
         fileName: fileName,
-        fileSize: (jsonString.length / (1024 * 1024)), // Convert to MB
+        fileSize: (jsonString.length / (1024 * 1024)),
         transactionCount: transactions.length,
         familyCount: families.length,
-        memberCount: families.fold(0, (sum, f) => sum + (f.memberIds?.length ?? 0)),
+        memberCount: totalMembers,
         filePath: filePath,
         isCloudBackup: false,
       );
@@ -66,23 +66,19 @@ class BackupService {
     }
   }
 
-  // Restore from backup
   static Future<bool> restoreBackup(String filePath, String userId) async {
     try {
       final file = File(filePath);
       final jsonString = await file.readAsString();
       final backupData = jsonDecode(jsonString) as Map<String, dynamic>;
 
-      // Clear existing data for user
       await DatabaseService.clearAllData();
 
-      // Restore user
       if (backupData['user'] != null) {
         final user = UserModel.fromJson(backupData['user']);
         await DatabaseService.saveUser(user);
       }
 
-      // Restore transactions
       if (backupData['transactions'] != null) {
         final transactions = (backupData['transactions'] as List)
             .map((t) => TransactionModel.fromJson(t))
@@ -92,7 +88,6 @@ class BackupService {
         }
       }
 
-      // Restore families
       if (backupData['families'] != null) {
         final families = (backupData['families'] as List)
             .map((f) => FamilyModel.fromJson(f))
@@ -102,7 +97,6 @@ class BackupService {
         }
       }
 
-      // Restore transfers
       if (backupData['transfers'] != null) {
         final transfers = (backupData['transfers'] as List)
             .map((t) => TransferModel.fromJson(t))
@@ -112,7 +106,6 @@ class BackupService {
         }
       }
 
-      // Restore notifications
       if (backupData['notifications'] != null) {
         final notifications = (backupData['notifications'] as List)
             .map((n) => NotificationModel.fromJson(n))
@@ -129,12 +122,10 @@ class BackupService {
     }
   }
 
-  // Get all backups for a user
   static Future<List<BackupModel>> getBackups(String userId) async {
     return DatabaseService.getUserBackups(userId);
   }
 
-  // Delete a backup file
   static Future<bool> deleteBackupFile(BackupModel backup) async {
     try {
       final file = File(backup.filePath ?? '');
@@ -149,7 +140,6 @@ class BackupService {
     }
   }
 
-  // Export data as JSON
   static Future<String?> exportData(String userId) async {
     try {
       final user = DatabaseService.getUser(userId);
@@ -174,18 +164,15 @@ class BackupService {
     }
   }
 
-  // Import data from JSON
   static Future<bool> importData(String jsonString, String userId) async {
     try {
       final importData = jsonDecode(jsonString) as Map<String, dynamic>;
 
-      // Import user
       if (importData['user'] != null) {
         final user = UserModel.fromJson(importData['user']);
         await DatabaseService.saveUser(user);
       }
 
-      // Import transactions
       if (importData['transactions'] != null) {
         final transactions = (importData['transactions'] as List)
             .map((t) => TransactionModel.fromJson(t))
@@ -195,7 +182,6 @@ class BackupService {
         }
       }
 
-      // Import families
       if (importData['families'] != null) {
         final families = (importData['families'] as List)
             .map((f) => FamilyModel.fromJson(f))
@@ -205,7 +191,6 @@ class BackupService {
         }
       }
 
-      // Import transfers
       if (importData['transfers'] != null) {
         final transfers = (importData['transfers'] as List)
             .map((t) => TransferModel.fromJson(t))
