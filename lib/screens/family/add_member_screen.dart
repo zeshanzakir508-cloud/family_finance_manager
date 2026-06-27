@@ -52,6 +52,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Info Card
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -83,6 +84,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                     ),
                     const SizedBox(height: 24),
 
+                    // Error Message
                     if (_errorMessage != null)
                       Container(
                         padding: const EdgeInsets.all(12),
@@ -115,6 +117,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                       ),
                     const SizedBox(height: 16),
 
+                    // Email Field
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -138,6 +141,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                     ),
                     const SizedBox(height: 24),
 
+                    // Member Limit Info
                     Consumer<FamilyProvider>(
                       builder: (context, familyProvider, child) {
                         final family = familyProvider.currentFamily;
@@ -180,6 +184,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                     ),
                     const SizedBox(height: 24),
 
+                    // Add Button
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
