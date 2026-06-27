@@ -67,10 +67,14 @@ class DatabaseService {
 
   static FamilyModel? getFamily(String familyId) {
     final box = Hive.box<FamilyModel>(Constants.familiesBox);
-    return box.values.firstWhere(
-      (f) => f.id == familyId,
-      orElse: () => throw Exception('Family not found'),
-    );
+    try {
+      return box.values.firstWhere(
+        (f) => f.id == familyId,
+        orElse: () => throw Exception('Family not found'),
+      );
+    } catch (e) {
+      return null;
+    }
   }
 
   static Future<void> deleteFamily(FamilyModel family) async {
