@@ -20,10 +20,58 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   String _filterType = 'all';
 
   @override
-  Widget build(BuildContext context) {
-    final authService = Provider.of<AuthService>(context);
-    final userId = authService.userId;
+  void initState() {
+    super.initState();
+    _addSampleNotifications();
+  }
 
+  Future<void> _addSampleNotifications() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userId = authService.userId;
+    
+    if (userId == null) return;
+
+    final box = Hive.box<NotificationModel>('notifications');
+    
+    if (box.isEmpty) {
+      final notifications = [
+        NotificationModel(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          userId: userId,
+          title: 'Welcome to Family Finance Manager!',
+          message: 'Start managing your family finances today.',
+          type: NotificationType.system,
+          createdAt: DateTime.now(),
+          isRead: false,
+        ),
+        NotificationModel(
+          id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
+          userId: userId,
+          title: 'Add Your First Transaction',
+          message: 'Tap the + button to add your first income or expense.',
+          type: NotificationType.transaction,
+          createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+          isRead: false,
+        ),
+        NotificationModel(
+          id: (DateTime.now().millisecondsSinceEpoch + 2).toString(),
+          userId: userId,
+          title: 'Family Feature Ready!',
+          message: 'Create a family group and invite members to manage finances together.',
+          type: NotificationType.family,
+          createdAt: DateTime.now().subtract(const Duration(days: 1)),
+          isRead: true,
+        ),
+      ];
+
+      for (var notification in notifications) {
+        await box.add(notification);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Notifications'),
@@ -32,12 +80,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.done_all_outlined),
-            onPressed: () async {
-              if (userId != null) {
-                await NotificationService.markAllAsRead(userId);
-                setState(() {});
-              }
-            },
+            onPressed: _markAllAsRead,
             tooltip: 'Mark all as read',
           ),
         ],
@@ -51,13 +94,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             child: ValueListenableBuilder(
               valueListenable: Hive.box<NotificationModel>('notifications').listenable(),
               builder: (context, Box<NotificationModel> box, _) {
-                if (userId == null) return const SizedBox();
-
+                final authService = Provider.of<AuthService>(context);
+                final userId = authService.userId;
+                
                 var notifications = box.values
                     .where((n) => n.userId == userId)
                     .toList()
                   ..sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
-
+                
                 final filteredNotifications = _filterType == 'all'
                     ? notifications
                     : notifications.where((n) => n.type?.name == _filterType).toList();
@@ -123,7 +167,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget _buildNotificationTile(NotificationModel notification) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-      color: notification.isUnread
+      color: notification.isUnread 
           ? AppTheme.primaryColor.withOpacity(0.05)
           : null,
       child: ListTile(
@@ -177,7 +221,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             : null,
         onTap: () {
           _markAsRead(notification);
-          _handleNotificationTap(notification);
         },
       ),
     );
@@ -213,25 +256,35 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  void _markAsRead(NotificationModel notification) async {
+  Future<void> _markAsRead(NotificationModel notification) async {
     if (notification.isUnread == true) {
       await DatabaseService.markNotificationAsRead(notification);
       setState(() {});
     }
   }
 
-  void _handleNotificationTap(NotificationModel notification) {
-    if (notification.type == NotificationType.transfer && notification.relatedId != null) {
-      // Navigate to transfer details
+  Future<void> _markAllAsRead() async {
+    final box = Hive.box<NotificationModel>('notifications');
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userId = authService.userId;
+    
+    final unreadNotifications = box.values
+        .where((n) => n.isUnread && n.userId == userId)
+        .toList();
+    
+    for (var notification in unreadNotifications) {
+      await DatabaseService.markNotificationAsRead(notification);
+    }
+
+    setState(() {});
+
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Viewing transfer details...'),
-          duration: const Duration(seconds: 1),
+          content: Text('${unreadNotifications.length} notifications marked as read'),
+          duration: const Duration(seconds: 2),
         ),
       );
-    } else if (notification.type == NotificationType.family && notification.relatedId != null) {
-      // Navigate to family management
-      Navigator.pushNamed(context, '/family-management');
     }
   }
 }
