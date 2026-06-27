@@ -2,28 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../providers/mode_provider.dart';
-import '../../providers/family_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../models/transaction_model.dart';
-import '../../models/family_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/helpers.dart';
 
-class FamilyDashboard extends StatefulWidget {
-  const FamilyDashboard({super.key});
+class PersonalDashboard extends StatefulWidget {
+  const PersonalDashboard({super.key});
 
   @override
-  State<FamilyDashboard> createState() => _FamilyDashboardState();
+  State<PersonalDashboard> createState() => _PersonalDashboardState();
 }
 
-class _FamilyDashboardState extends State<FamilyDashboard> {
-  List<TransactionModel> _familyTransactions = [];
+class _PersonalDashboardState extends State<PersonalDashboard> {
+  List<TransactionModel> _transactions = [];
   double _totalIncome = 0;
   double _totalExpense = 0;
   double _balance = 0;
-  FamilyModel? _family;
+  String _userName = 'User';
   int _selectedIndex = 0;
 
   @override
@@ -33,17 +31,21 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
   }
 
   void _loadData() {
-    final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
-    final family = familyProvider.currentFamily;
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userId = authService.userId;
 
-    if (family != null) {
-      _family = family;
-      _familyTransactions = DatabaseService.getFamilyTransactions(family.id!);
-      _familyTransactions.sort((a, b) => b.date!.compareTo(a.date!));
+    if (userId != null) {
+      final user = DatabaseService.getUser(userId);
+      if (user != null) {
+        _userName = user.displayName;
+      }
+
+      _transactions = DatabaseService.getUserTransactions(userId);
+      _transactions.sort((a, b) => b.date!.compareTo(a.date!));
 
       double income = 0;
       double expense = 0;
-      for (var t in _familyTransactions) {
+      for (var t in _transactions) {
         if (t.type == 'income') {
           income += t.amount ?? 0;
         } else {
@@ -53,6 +55,7 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
       _totalIncome = income;
       _totalExpense = expense;
       _balance = income - expense;
+
       setState(() {});
     }
   }
@@ -62,13 +65,9 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
     final authService = Provider.of<AuthService>(context);
     final modeProvider = Provider.of<ModeProvider>(context);
 
-    if (_family == null) {
-      return _buildNoFamilyState();
-    }
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(_family?.name ?? 'Family Dashboard'),
+        title: const Text('Personal Dashboard'),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
@@ -98,11 +97,9 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
             children: [
               _buildModeSwitch(modeProvider),
               const SizedBox(height: 16),
-              _buildFamilyInfo(),
+              _buildWelcomeCard(),
               const SizedBox(height: 24),
               _buildStats(),
-              const SizedBox(height: 24),
-              _buildMemberBalances(),
               const SizedBox(height: 24),
               _buildRecentTransactions(),
             ],
@@ -116,53 +113,6 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
         },
         backgroundColor: AppTheme.primaryColor,
         child: const Icon(Icons.add, color: Colors.white),
-      ),
-    );
-  }
-
-  Widget _buildNoFamilyState() {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Family Dashboard'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.family_restroom_outlined,
-              size: 64,
-              color: AppTheme.textSecondaryColor.withOpacity(0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No Family Found',
-              style: AppTheme.headingStyle.copyWith(
-                fontSize: 18,
-                color: AppTheme.textSecondaryColor,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Create a family or join an existing one',
-              style: AppTheme.bodyStyle.copyWith(
-                color: AppTheme.textSecondaryColor,
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pushNamed(context, '/family-management');
-              },
-              icon: const Icon(Icons.family_restroom),
-              label: const Text('Go to Family Management'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -264,15 +214,15 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
     );
   }
 
-  Widget _buildFamilyInfo() {
+  Widget _buildWelcomeCard() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.teal,
-            Colors.teal.shade700,
+            AppTheme.primaryColor,
+            AppTheme.primaryColor.withOpacity(0.8),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -282,31 +232,20 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _family?.name ?? 'Family',
-                style: AppTheme.headingStyle.copyWith(
-                  color: Colors.white,
-                  fontSize: 20,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '${_family?.memberCount ?? 0}/${Constants.maxFamilyMembers} members',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            'Welcome back!',
+            style: AppTheme.bodyStyle.copyWith(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _userName,
+            style: AppTheme.headingStyle.copyWith(
+              color: Colors.white,
+              fontSize: 24,
+            ),
           ),
           const SizedBox(height: 8),
           Row(
@@ -402,92 +341,8 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
     );
   }
 
-  Widget _buildMemberBalances() {
-    final familyProvider = Provider.of<FamilyProvider>(context);
-    final members = familyProvider.familyMembers;
-
-    if (members.isEmpty) {
-      return const SizedBox();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Member Balances',
-          style: AppTheme.subheadingStyle,
-        ),
-        const SizedBox(height: 8),
-        ...members.map((member) {
-          final memberTransactions = _familyTransactions
-              .where((t) => t.memberId == member.id)
-              .toList();
-          double income = 0;
-          double expense = 0;
-          for (var t in memberTransactions) {
-            if (t.type == 'income') {
-              income += t.amount ?? 0;
-            } else {
-              expense += t.amount ?? 0;
-            }
-          }
-          final balance = income - expense;
-          final isAdmin = _family?.adminId == member.id;
-
-          return Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                  child: Text(
-                    member.initials,
-                    style: TextStyle(
-                      color: AppTheme.primaryColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    member.displayName,
-                    style: AppTheme.bodyStyle,
-                  ),
-                ),
-                if (isAdmin)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      'Admin',
-                      style: AppTheme.captionStyle.copyWith(
-                        color: Colors.blue,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                const SizedBox(width: 8),
-                Text(
-                  Helpers.formatCurrency(balance),
-                  style: AppTheme.bodyStyle.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: balance >= 0 ? Colors.green : Colors.red,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-      ],
-    );
-  }
-
   Widget _buildRecentTransactions() {
-    final recent = _familyTransactions.take(5).toList();
+    final recent = _transactions.take(5).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -496,7 +351,7 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Recent Family Transactions',
+              'Recent Transactions',
               style: AppTheme.subheadingStyle,
             ),
             TextButton(
@@ -531,14 +386,14 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'No family transactions yet',
+                  'No transactions yet',
                   style: AppTheme.bodyStyle.copyWith(
                     color: AppTheme.textSecondaryColor,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Tap the + button to add your first family transaction!',
+                  'Tap the + button to add your first transaction!',
                   style: AppTheme.captionStyle,
                 ),
               ],
@@ -585,7 +440,7 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
                   style: AppTheme.bodyStyle,
                 ),
                 Text(
-                  '${transaction.memberName ?? 'Unknown'} • ${transaction.categoryDisplay}',
+                  '${transaction.categoryDisplay} • ${transaction.formattedDate}',
                   style: AppTheme.captionStyle,
                 ),
               ],
@@ -604,40 +459,6 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
   }
 
   Widget _buildBottomNavigationBar() {
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      currentIndex: _selectedIndex,
-      onTap: (index) {
-        setState(() {
-          _selectedIndex = index;
-        });
-        _handleNavigation(index);
-      },
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          activeIcon: Icon(Icons.home),
-          label: 'Dashboard',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.add_circle_outline),
-          activeIcon: Icon(Icons.add_circle),
-          label: 'Add',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.pie_chart_outline),
-          activeIcon: Icon(Icons.pie_chart),
-          label: 'Reports',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.family_restroom_outlined),
-          activeIcon: Icon(Icons.family_restroom),
-          label: 'Family',
-        ),
-      ],
-    );
-  }
-    Widget _buildBottomNavigationBar() {
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
       currentIndex: _selectedIndex,
