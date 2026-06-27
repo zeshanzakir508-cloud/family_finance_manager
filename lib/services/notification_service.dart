@@ -1,11 +1,11 @@
 import '../models/notification_model.dart';
 import '../models/transfer_model.dart';
 import '../models/family_model.dart';
+import '../models/transaction_model.dart';
 import 'database_service.dart';
 import 'package:flutter/material.dart';
 
 class NotificationService {
-  // Create a transfer notification
   static Future<void> notifyTransferRequest(TransferModel transfer) async {
     final notification = NotificationModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -21,7 +21,6 @@ class NotificationService {
     await DatabaseService.saveNotification(notification);
   }
 
-  // Create transfer approval notification
   static Future<void> notifyTransferApproved(TransferModel transfer) async {
     final notification = NotificationModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -37,7 +36,6 @@ class NotificationService {
     await DatabaseService.saveNotification(notification);
   }
 
-  // Create transfer rejection notification
   static Future<void> notifyTransferRejected(TransferModel transfer) async {
     final notification = NotificationModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -53,7 +51,6 @@ class NotificationService {
     await DatabaseService.saveNotification(notification);
   }
 
-  // Create family invite notification
   static Future<void> notifyFamilyInvite(String userId, FamilyModel family) async {
     final notification = NotificationModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -69,7 +66,6 @@ class NotificationService {
     await DatabaseService.saveNotification(notification);
   }
 
-  // Create member joined notification
   static Future<void> notifyMemberJoined(FamilyModel family, String memberName, String adminId) async {
     final notification = NotificationModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -85,7 +81,6 @@ class NotificationService {
     await DatabaseService.saveNotification(notification);
   }
 
-  // Create transaction notification
   static Future<void> notifyTransactionAdded(String userId, TransactionModel transaction) async {
     final notification = NotificationModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -101,13 +96,11 @@ class NotificationService {
     await DatabaseService.saveNotification(notification);
   }
 
-  // Get unread count for user
   static Future<int> getUnreadCount(String userId) async {
     final notifications = await DatabaseService.getUserNotifications(userId);
     return notifications.where((n) => n.isUnread).length;
   }
 
-  // Mark all as read for user
   static Future<void> markAllAsRead(String userId) async {
     final notifications = await DatabaseService.getUserNotifications(userId);
     for (var notification in notifications) {
