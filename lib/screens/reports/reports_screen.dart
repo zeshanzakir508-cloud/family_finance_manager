@@ -319,7 +319,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -541,4 +541,4 @@ class _ReportsScreenState extends State<ReportsScreen> {
       ),
     );
   }
-}
+          }
