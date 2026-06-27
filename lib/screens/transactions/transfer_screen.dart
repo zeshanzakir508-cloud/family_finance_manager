@@ -156,7 +156,7 @@ class _TransferScreenState extends State<TransferScreen> {
         labelText: 'From *',
         hintText: 'Select sender',
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.all(Radius.circular(12)),
         ),
         filled: true,
         prefixIcon: Icon(Icons.person_outline),
@@ -226,7 +226,7 @@ class _TransferScreenState extends State<TransferScreen> {
         labelText: 'To *',
         hintText: 'Select receiver',
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.all(Radius.circular(12)),
         ),
         filled: true,
         prefixIcon: Icon(Icons.person_outline),
@@ -281,7 +281,7 @@ class _TransferScreenState extends State<TransferScreen> {
           fontWeight: FontWeight.bold,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: const BorderRadius.all(Radius.circular(12)),
         ),
         filled: true,
         fillColor: AppTheme.surfaceColor,
@@ -298,7 +298,7 @@ class _TransferScreenState extends State<TransferScreen> {
         labelText: 'Note (Optional)',
         hintText: 'Add a note for this transfer',
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: const BorderRadius.all(Radius.circular(12)),
         ),
         filled: true,
         fillColor: AppTheme.surfaceColor,
