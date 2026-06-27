@@ -30,14 +30,19 @@ import 'models/backup_model.dart';
 import 'utils/app_theme.dart';
 import 'utils/constants.dart';
 
-bool _firebaseInitialized = false;
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    // Initialize Firebase - ONLY ONCE
-    if (!_firebaseInitialized) {
+    // Check if Firebase is already initialized
+    FirebaseApp? existingApp;
+    try {
+      existingApp = Firebase.app();
+    } catch (e) {
+      // Firebase not initialized yet
+    }
+
+    if (existingApp == null) {
       await Firebase.initializeApp(
         options: const FirebaseOptions(
           apiKey: "AIzaSyC2PqPJ9E1VJj2lPtM06qYwD7xGZ5kR9nQ",
@@ -48,25 +53,52 @@ void main() async {
           appId: "1:808843357815:android:8edf9e5b7c6a4d2f",
         ),
       );
-      _firebaseInitialized = true;
     }
 
     await Hive.initFlutter();
     
-    Hive.registerAdapter(UserModelAdapter());
-    Hive.registerAdapter(TransactionModelAdapter());
-    Hive.registerAdapter(FamilyModelAdapter());
-    Hive.registerAdapter(TransferModelAdapter());
-    Hive.registerAdapter(NotificationModelAdapter());
-    Hive.registerAdapter(BackupModelAdapter());
+    // Register adapters safely
+    try {
+      Hive.registerAdapter(UserModelAdapter());
+    } catch (e) {}
+    try {
+      Hive.registerAdapter(TransactionModelAdapter());
+    } catch (e) {}
+    try {
+      Hive.registerAdapter(FamilyModelAdapter());
+    } catch (e) {}
+    try {
+      Hive.registerAdapter(TransferModelAdapter());
+    } catch (e) {}
+    try {
+      Hive.registerAdapter(NotificationModelAdapter());
+    } catch (e) {}
+    try {
+      Hive.registerAdapter(BackupModelAdapter());
+    } catch (e) {}
     
-    await Hive.openBox<UserModel>('users');
-    await Hive.openBox<TransactionModel>('transactions');
-    await Hive.openBox<FamilyModel>('families');
-    await Hive.openBox<TransferModel>('transfers');
-    await Hive.openBox<NotificationModel>('notifications');
-    await Hive.openBox<BackupModel>('backups');
-    await Hive.openBox<dynamic>('appSettings');
+    // Open boxes safely
+    try {
+      await Hive.openBox<UserModel>('users');
+    } catch (e) {}
+    try {
+      await Hive.openBox<TransactionModel>('transactions');
+    } catch (e) {}
+    try {
+      await Hive.openBox<FamilyModel>('families');
+    } catch (e) {}
+    try {
+      await Hive.openBox<TransferModel>('transfers');
+    } catch (e) {}
+    try {
+      await Hive.openBox<NotificationModel>('notifications');
+    } catch (e) {}
+    try {
+      await Hive.openBox<BackupModel>('backups');
+    } catch (e) {}
+    try {
+      await Hive.openBox<dynamic>('appSettings');
+    } catch (e) {}
 
     runApp(const MyApp());
   } catch (e) {
