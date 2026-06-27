@@ -34,7 +34,6 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    // Initialize Firebase
     await Firebase.initializeApp(
       options: const FirebaseOptions(
         apiKey: "AIzaSyC2PqPJ9E1VJj2lPtM06qYwD7xGZ5kR9nQ",
@@ -46,10 +45,8 @@ void main() async {
       ),
     );
 
-    // Initialize Hive
     await Hive.initFlutter();
     
-    // Register adapters
     Hive.registerAdapter(UserModelAdapter());
     Hive.registerAdapter(TransactionModelAdapter());
     Hive.registerAdapter(FamilyModelAdapter());
@@ -57,7 +54,6 @@ void main() async {
     Hive.registerAdapter(NotificationModelAdapter());
     Hive.registerAdapter(BackupModelAdapter());
     
-    // Open boxes
     await Hive.openBox<UserModel>('users');
     await Hive.openBox<TransactionModel>('transactions');
     await Hive.openBox<FamilyModel>('families');
