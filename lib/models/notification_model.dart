@@ -1,5 +1,5 @@
-import 'package:hive/hive.dart';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 
 part 'notification_model.g.dart';
 
@@ -39,7 +39,7 @@ class NotificationModel extends HiveObject {
   DateTime? createdAt;
 
   @HiveField(7)
-  String? actionData; // JSON string for action
+  String? actionData;
 
   @HiveField(8)
   String? relatedId;
