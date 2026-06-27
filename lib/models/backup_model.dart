@@ -17,7 +17,7 @@ class BackupModel extends HiveObject {
   String? fileName;
 
   @HiveField(4)
-  double? fileSize; // in MB
+  double? fileSize;
 
   @HiveField(5)
   int? transactionCount;
