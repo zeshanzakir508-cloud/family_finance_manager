@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -91,7 +92,6 @@ void main() async {
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: () {
-                      // Retry
                       main();
                     },
                     child: const Text('Retry'),
@@ -209,7 +209,6 @@ class AuthWrapper extends StatelessWidget {
         }
 
         if (snapshot.hasData && snapshot.data != null) {
-          // User is logged in - go to mode selection
           return const ModeSelectionScreen();
         }
 
