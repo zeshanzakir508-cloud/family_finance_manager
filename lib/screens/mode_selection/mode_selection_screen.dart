@@ -11,13 +11,12 @@ class ModeSelectionScreen extends StatefulWidget {
 }
 
 class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
-  String _selectedMode = 'personal'; // 'personal' or 'family'
+  String _selectedMode = 'personal';
   bool _rememberChoice = false;
 
   @override
   void initState() {
     super.initState();
-    // Check if user already has a saved mode
     final modeProvider = Provider.of<ModeProvider>(context, listen: false);
     if (modeProvider.rememberChoice) {
       _selectedMode = modeProvider.currentMode;
@@ -215,15 +214,11 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
       return;
     }
 
-    // Save mode preference
     modeProvider.setMode(_selectedMode, remember: _rememberChoice);
 
-    // Navigate to appropriate dashboard
     if (_selectedMode == 'personal') {
       Navigator.pushReplacementNamed(context, '/personal-dashboard');
     } else {
-      // Check if user is in a family
-      // For now, navigate to family dashboard
       Navigator.pushReplacementNamed(context, '/family-dashboard');
     }
   }
