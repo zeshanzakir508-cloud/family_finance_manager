@@ -44,14 +44,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     if (modeProvider.isPersonalMode) {
       allTransactions = DatabaseService.getUserTransactions(userId);
     } else {
-      // Family mode - get all family transactions
-      final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
-      final family = familyProvider.currentFamily;
-      if (family != null) {
-        allTransactions = DatabaseService.getFamilyTransactions(family.id!);
-      } else {
-        allTransactions = [];
-      }
+      allTransactions = DatabaseService.getAllTransactions();
     }
 
     _applyFilters(allTransactions);
@@ -127,23 +120,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Mode Switch
             _buildModeSwitch(modeProvider),
             const SizedBox(height: 16),
-
-            // Period Selector
             _buildPeriodSelector(),
             const SizedBox(height: 16),
-
-            // Date Picker
             _buildDatePicker(),
             const SizedBox(height: 16),
-
-            // Summary Cards
             _buildSummaryCards(),
             const SizedBox(height: 16),
-
-            // Transaction List
             _buildTransactionList(),
           ],
         ),
