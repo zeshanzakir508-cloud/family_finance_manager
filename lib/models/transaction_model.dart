@@ -1,5 +1,5 @@
-import 'package:hive/hive.dart';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 
 part 'transaction_model.g.dart';
 
@@ -59,6 +59,42 @@ class TransactionModel extends HiveObject {
     this.memberName,
     this.isFamilyTransaction = false,
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'userId': userId,
+      'amount': amount,
+      'category': category,
+      'description': description,
+      'type': type,
+      'date': date?.toIso8601String(),
+      'notes': notes,
+      'createdAt': createdAt?.toIso8601String(),
+      'familyId': familyId,
+      'memberId': memberId,
+      'memberName': memberName,
+      'isFamilyTransaction': isFamilyTransaction,
+    };
+  }
+
+  factory TransactionModel.fromJson(Map<String, dynamic> json) {
+    return TransactionModel(
+      id: json['id'],
+      userId: json['userId'],
+      amount: json['amount'],
+      category: json['category'],
+      description: json['description'],
+      type: json['type'],
+      date: json['date'] != null ? DateTime.parse(json['date']) : null,
+      notes: json['notes'],
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
+      familyId: json['familyId'],
+      memberId: json['memberId'],
+      memberName: json['memberName'],
+      isFamilyTransaction: json['isFamilyTransaction'] ?? false,
+    );
+  }
 
   // Helper methods
   String get formattedAmount {
