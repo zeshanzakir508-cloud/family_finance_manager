@@ -278,10 +278,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (user != null) {
         if (mounted) {
-          // Save remember me preference
-          if (_rememberMe) {
-            // Will be handled by ModeProvider
-          }
           Navigator.pushReplacementNamed(context, '/mode-selection');
         }
       } else {
