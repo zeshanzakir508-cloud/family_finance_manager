@@ -6,10 +6,7 @@ import '../../providers/mode_provider.dart';
 import '../../providers/family_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
-import '../../services/notification_service.dart';
 import '../../models/transaction_model.dart';
-import '../../models/family_model.dart';
-import '../../models/user_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/helpers.dart';
@@ -26,7 +23,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
 
-  String _selectedType = 'expense'; // 'income' or 'expense'
+  String _selectedType = 'expense';
   String? _selectedCategory;
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
@@ -70,7 +67,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Mode Indicator
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
@@ -89,37 +85,29 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Type Toggle
                   _buildTypeToggle(),
                   const SizedBox(height: 24),
 
-                  // Member Selector (Family Mode Only)
                   if (isFamilyMode && familyProvider.hasFamily)
                     _buildMemberSelector(familyProvider),
                   if (isFamilyMode && familyProvider.hasFamily)
                     const SizedBox(height: 16),
 
-                  // Amount
                   _buildAmountField(),
                   const SizedBox(height: 16),
 
-                  // Category
                   _buildCategoryDropdown(),
                   const SizedBox(height: 16),
 
-                  // Description
                   _buildDescriptionField(),
                   const SizedBox(height: 16),
 
-                  // Date
                   _buildDatePicker(),
                   const SizedBox(height: 16),
 
-                  // Notes
                   _buildNotesField(),
                   const SizedBox(height: 24),
 
-                  // Save Button
                   _buildSaveButton(userId),
                 ],
               ),
@@ -188,14 +176,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
     return DropdownButtonFormField<String>(
       value: _selectedMemberId,
-      decoration: InputDecoration(
+      decoration: const InputDecoration(
         labelText: 'Select Member *',
         hintText: 'Who is this transaction for?',
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.all(Radius.circular(12)),
         ),
         filled: true,
-        fillColor: AppTheme.surfaceColor,
       ),
       items: members.map((member) {
         return DropdownMenuItem<String>(
@@ -240,21 +227,16 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     return TextField(
       controller: _amountController,
       keyboardType: TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(
+      decoration: const InputDecoration(
         labelText: 'Amount *',
         hintText: '0.00',
         prefixText: '\$ ',
-        prefixStyle: AppTheme.bodyStyle.copyWith(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-        ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.all(Radius.circular(12)),
         ),
         filled: true,
-        fillColor: AppTheme.surfaceColor,
       ),
-      style: AppTheme.headingStyle.copyWith(fontSize: 24),
+      style: TextStyle(fontSize: 24),
     );
   }
 
@@ -265,14 +247,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
     return DropdownButtonFormField<String>(
       value: _selectedCategory,
-      decoration: InputDecoration(
+      decoration: const InputDecoration(
         labelText: 'Category *',
         hintText: 'Select a category',
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.all(Radius.circular(12)),
         ),
         filled: true,
-        fillColor: AppTheme.surfaceColor,
       ),
       items: categories.map((category) {
         return DropdownMenuItem<String>(
@@ -297,14 +278,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   Widget _buildDescriptionField() {
     return TextField(
       controller: _descriptionController,
-      decoration: InputDecoration(
+      decoration: const InputDecoration(
         labelText: 'Description *',
         hintText: 'What was this transaction for?',
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.all(Radius.circular(12)),
         ),
         filled: true,
-        fillColor: AppTheme.surfaceColor,
       ),
     );
   }
@@ -358,14 +338,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     return TextField(
       controller: _notesController,
       maxLines: 3,
-      decoration: InputDecoration(
+      decoration: const InputDecoration(
         labelText: 'Notes (Optional)',
         hintText: 'Add any additional notes',
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.all(Radius.circular(12)),
         ),
         filled: true,
-        fillColor: AppTheme.surfaceColor,
       ),
     );
   }
@@ -399,7 +378,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }
 
   Future<void> _saveTransaction(String? userId) async {
-    // Validate
     if (_amountController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -468,11 +446,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       );
 
       await DatabaseService.saveTransaction(transaction);
-
-      // Create notification
-      if (userId != null) {
-        await NotificationService.notifyTransactionAdded(userId, transaction);
-      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
