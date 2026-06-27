@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/constants.dart';
 
 class ModeProvider extends ChangeNotifier {
-  String _currentMode = 'personal'; // 'personal' or 'family'
+  String _currentMode = 'personal';
   bool _rememberChoice = false;
 
   ModeProvider() {
@@ -14,9 +15,9 @@ class ModeProvider extends ChangeNotifier {
 
   Future<void> _loadSavedMode() async {
     final prefs = await SharedPreferences.getInstance();
-    _rememberChoice = prefs.getBool('remember_mode') ?? false;
+    _rememberChoice = prefs.getBool(Constants.rememberModeKey) ?? false;
     if (_rememberChoice) {
-      _currentMode = prefs.getString('selected_mode') ?? 'personal';
+      _currentMode = prefs.getString(Constants.selectedModeKey) ?? 'personal';
     }
     notifyListeners();
   }
@@ -27,11 +28,11 @@ class ModeProvider extends ChangeNotifier {
     
     final prefs = await SharedPreferences.getInstance();
     if (remember) {
-      await prefs.setString('selected_mode', mode);
-      await prefs.setBool('remember_mode', true);
+      await prefs.setString(Constants.selectedModeKey, mode);
+      await prefs.setBool(Constants.rememberModeKey, true);
     } else {
-      await prefs.remove('selected_mode');
-      await prefs.setBool('remember_mode', false);
+      await prefs.remove(Constants.selectedModeKey);
+      await prefs.setBool(Constants.rememberModeKey, false);
     }
     
     notifyListeners();
