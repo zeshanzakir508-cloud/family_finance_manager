@@ -267,7 +267,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       ),
       child: Row(
         children: [
-          Icon(
+          const Icon(
             Icons.calendar_today,
             color: AppTheme.primaryColor,
             size: 20,
@@ -319,7 +319,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
@@ -445,27 +445,25 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Widget _buildTransactionList() {
     if (_filteredTransactions.isEmpty) {
-      return Center(
+      return const Center(
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: EdgeInsets.all(32),
           child: Column(
             children: [
               Icon(
                 Icons.analytics_outlined,
                 size: 64,
-                color: AppTheme.textSecondaryColor.withOpacity(0.5),
+                color: Colors.grey,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Text(
                 'No transactions found',
-                style: AppTheme.bodyStyle.copyWith(
-                  color: AppTheme.textSecondaryColor,
-                ),
+                style: TextStyle(color: Colors.grey),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 'Try adding some transactions first',
-                style: AppTheme.captionStyle,
+                style: TextStyle(color: Colors.grey),
               ),
             ],
           ),
@@ -541,4 +539,4 @@ class _ReportsScreenState extends State<ReportsScreen> {
       ),
     );
   }
-          }
+}
