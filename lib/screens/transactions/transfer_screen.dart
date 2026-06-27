@@ -272,21 +272,16 @@ class _TransferScreenState extends State<TransferScreen> {
     return TextField(
       controller: _amountController,
       keyboardType: TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(
+      decoration: const InputDecoration(
         labelText: 'Amount *',
         hintText: '0.00',
         prefixText: '\$ ',
-        prefixStyle: AppTheme.bodyStyle.copyWith(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-        ),
         border: OutlineInputBorder(
-          borderRadius: const BorderRadius.all(Radius.circular(12)),
+          borderRadius: BorderRadius.all(Radius.circular(12)),
         ),
         filled: true,
-        fillColor: AppTheme.surfaceColor,
       ),
-      style: AppTheme.headingStyle.copyWith(fontSize: 24),
+      style: TextStyle(fontSize: 24),
     );
   }
 
@@ -294,14 +289,13 @@ class _TransferScreenState extends State<TransferScreen> {
     return TextField(
       controller: _noteController,
       maxLines: 3,
-      decoration: InputDecoration(
+      decoration: const InputDecoration(
         labelText: 'Note (Optional)',
         hintText: 'Add a note for this transfer',
         border: OutlineInputBorder(
-          borderRadius: const BorderRadius.all(Radius.circular(12)),
+          borderRadius: BorderRadius.all(Radius.circular(12)),
         ),
         filled: true,
-        fillColor: AppTheme.surfaceColor,
       ),
     );
   }
