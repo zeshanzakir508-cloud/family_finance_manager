@@ -52,7 +52,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Info Card
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -84,7 +83,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Error Message
                     if (_errorMessage != null)
                       Container(
                         padding: const EdgeInsets.all(12),
@@ -117,7 +115,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                       ),
                     const SizedBox(height: 16),
 
-                    // Email Field
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -126,7 +123,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                         hintText: 'Enter member\'s email',
                         prefixIcon: Icon(Icons.email_outlined),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.all(Radius.circular(12)),
                         ),
                       ),
                       validator: (value) {
@@ -141,7 +138,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Member Limit Info
                     Consumer<FamilyProvider>(
                       builder: (context, familyProvider, child) {
                         final family = familyProvider.currentFamily;
@@ -184,7 +180,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Add Button
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -229,34 +224,28 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
         throw Exception('No family found');
       }
 
-      // Check member limit
       if ((family.memberIds?.length ?? 0) >= Constants.maxFamilyMembers) {
         throw Exception('Family is full (max ${Constants.maxFamilyMembers} members)');
       }
 
-      // Find user by email
       final allUsers = DatabaseService.getAllUsers();
       final user = allUsers.firstWhere(
         (u) => u.email == _emailController.text.trim(),
         orElse: () => throw Exception('User not found. They need to sign up first.'),
       );
 
-      // Check if already a member
       if (family.memberIds?.contains(user.id) ?? false) {
         throw Exception('User is already a member of this family');
       }
 
-      // Add member
       final updatedFamily = family.copyWith(
         memberIds: [...?family.memberIds, user.id!],
       );
       await updatedFamily.save();
 
-      // Update user's family ID
       final updatedUser = user.copyWith(familyId: family.id);
       await DatabaseService.saveUser(updatedUser);
 
-      // Send notification
       await NotificationService.notifyFamilyInvite(user.id!, family);
 
       if (mounted) {
