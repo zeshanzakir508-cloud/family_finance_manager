@@ -641,4 +641,5 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
 
   void _handleNavigation(int index) {
     switch (index) {
-      case 
+      case :
+    }
