@@ -1,42 +1,22 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.example.family_finance_manager">
+    package="com.finfam.app">
 
-    <!-- Internet Permission -->
     <uses-permission android:name="android.permission.INTERNET" />
-
-    <!-- Storage Permissions -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
-        tools:ignore="ScopedStorage" />
-
-    <!-- Camera Permission -->
     <uses-permission android:name="android.permission.CAMERA" />
-
-    <!-- Biometric/Fingerprint Permission -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
-
-    <!-- Device Info Permission -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-
-    <!-- Notification Permission (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <!-- Location Permission -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-
-    <!-- Foreground Service Permission -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-
-    <!-- Vibration Permission -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
-        android:label="Family Finance Manager"
+        android:label="FinFam"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="true"
@@ -44,7 +24,6 @@
         android:supportsRtl="true"
         android:requestLegacyExternalStorage="true"
         android:usesCleartextTraffic="true"
-        android:networkSecurityConfig="@xml/network_security_config"
         tools:targetApi="31">
 
         <activity
@@ -70,12 +49,6 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <!-- Firebase Performance Monitoring -->
-        <meta-data
-            android:name="firebase_performance_logcat_enabled"
-            android:value="false" />
-
-        <!-- File Provider for Image Sharing -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
