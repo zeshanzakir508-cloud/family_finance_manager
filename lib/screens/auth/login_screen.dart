@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:local_auth/local_auth.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/app_config.dart';
+import '../../services/remote_config_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,6 +22,56 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _rememberMe = false;
   String? _errorMessage;
+  bool _fingerprintSupported = false;
+  bool _fingerprintEnabled = false;
+
+  final LocalAuthentication _localAuth = LocalAuthentication();
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometricSupport();
+  }
+
+  Future<void> _checkBiometricSupport() async {
+    try {
+      final isAvailable = await _localAuth.canCheckBiometrics;
+      final isDeviceSupported = await _localAuth.isDeviceSupported();
+      _fingerprintSupported = isAvailable && isDeviceSupported;
+      
+      // Check if fingerprint is enabled in settings
+      _fingerprintEnabled = RemoteConfigService.enableFingerprint;
+      
+      // Auto-authenticate if fingerprint is enabled
+      if (_fingerprintSupported && _fingerprintEnabled) {
+        // Try to authenticate
+        _authenticateWithBiometric();
+      }
+      
+      setState(() {});
+    } catch (e) {
+      print('Biometric check error: $e');
+    }
+  }
+
+  Future<void> _authenticateWithBiometric() async {
+    try {
+      final authenticated = await _localAuth.authenticate(
+        localizedReason: 'Authenticate to access FinFam',
+        options: const AuthenticationOptions(
+          stickyAuth: true,
+          biometricOnly: true,
+        ),
+      );
+
+      if (authenticated) {
+        // Auto-login with saved credentials (implement as needed)
+        print('Biometric authentication successful');
+      }
+    } catch (e) {
+      print('Biometric authentication error: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,18 +105,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Title
                   Text(
-                    'Family Finance Manager',
-                    style: AppTheme.headingStyle,
-                    textAlign: TextAlign.center,
+                    'FinFam',
+                    style: AppTheme.headingStyle.copyWith(
+                      fontSize: 32,
+                    ),
                   ),
-                  const SizedBox(height: 8),
-
+                  const SizedBox(height: 4),
                   Text(
-                    'Manage your family finances easily',
+                    'Family Finance Manager',
                     style: AppTheme.bodyStyle.copyWith(
                       color: AppTheme.textSecondaryColor,
                     ),
-                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 40),
 
@@ -217,6 +269,33 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                   const SizedBox(height: 16),
 
+                  // Fingerprint Login
+                  if (_fingerprintSupported && _fingerprintEnabled)
+                    Column(
+                      children: [
+                        const Text(
+                          'or',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: _authenticateWithBiometric,
+                          icon: const Icon(Icons.fingerprint),
+                          label: const Text('Login with Fingerprint'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppTheme.primaryColor,
+                            minimumSize: const Size(double.infinity, 50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            side: BorderSide(color: AppTheme.primaryColor),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                  const SizedBox(height: 16),
+
                   // Divider
                   Row(
                     children: [
@@ -278,7 +357,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (user != null) {
         if (mounted) {
-          Navigator.pushReplacementNamed(context, '/mode-selection');
+          Navigator.pushReplacementNamed(context, '/financial-dashboard');
         }
       } else {
         setState(() {
