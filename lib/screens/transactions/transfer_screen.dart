@@ -6,10 +6,12 @@ import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../services/notification_service.dart';
 import '../../models/transfer_model.dart';
+import '../../models/transaction_model.dart';
 import '../../models/user_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/helpers.dart';
+import '../../utils/app_config.dart';
 
 class TransferScreen extends StatefulWidget {
   const TransferScreen({super.key});
@@ -26,6 +28,7 @@ class _TransferScreenState extends State<TransferScreen> {
   String? _toMemberId;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isRecurring = false;
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +43,7 @@ class _TransferScreenState extends State<TransferScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Request Transfer'),
+        title: const Text('Transfer Money'),
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
@@ -67,29 +70,30 @@ class _TransferScreenState extends State<TransferScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Info Banner
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.1),
+                      color: Colors.blue.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: Colors.orange.withOpacity(0.3),
+                        color: Colors.blue.withOpacity(0.3),
                       ),
                     ),
                     child: Row(
                       children: [
                         const Icon(
                           Icons.info_outline,
-                          color: Colors.orange,
+                          color: Colors.blue,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Transfer will need approval from the receiver to complete.',
+                            'Transfer money between family members. Receiver must approve the transfer.',
                             style: AppTheme.bodyStyle.copyWith(
                               fontSize: 14,
-                              color: Colors.orange,
+                              color: Colors.blue,
                             ),
                           ),
                         ),
@@ -130,18 +134,27 @@ class _TransferScreenState extends State<TransferScreen> {
                     ),
                   const SizedBox(height: 16),
 
+                  // From Member
                   _buildFromDropdown(members, userId),
                   const SizedBox(height: 16),
 
+                  // To Member
                   _buildToDropdown(members, userId),
                   const SizedBox(height: 16),
 
+                  // Amount
                   _buildAmountField(),
                   const SizedBox(height: 16),
 
+                  // Note
                   _buildNoteField(),
+                  const SizedBox(height: 16),
+
+                  // Recurring Option
+                  _buildRecurringToggle(),
                   const SizedBox(height: 24),
 
+                  // Send Button
                   _buildSendButton(),
                 ],
               ),
@@ -300,6 +313,32 @@ class _TransferScreenState extends State<TransferScreen> {
     );
   }
 
+  Widget _buildRecurringToggle() {
+    return Row(
+      children: [
+        Switch(
+          value: _isRecurring,
+          onChanged: (value) {
+            setState(() {
+              _isRecurring = value;
+            });
+          },
+          activeColor: AppTheme.primaryColor,
+        ),
+        Text(
+          'Recurring Transfer',
+          style: AppTheme.bodyStyle,
+        ),
+        const SizedBox(width: 8),
+        const Icon(
+          Icons.repeat,
+          size: 16,
+          color: Colors.grey,
+        ),
+      ],
+    );
+  }
+
   Widget _buildSendButton() {
     return SizedBox(
       width: double.infinity,
@@ -379,21 +418,59 @@ class _TransferScreenState extends State<TransferScreen> {
         throw Exception('Invalid member or family');
       }
 
-      final transfer = TransferModel(
+      final transferId = Helpers.generateId();
+
+      // Sender's transaction (Expense - Transfer)
+      final senderTransaction = TransactionModel(
         id: Helpers.generateId(),
-        familyId: family.id,
-        fromMemberId: _fromMemberId,
-        fromMemberName: fromMember.displayName,
-        toMemberId: _toMemberId,
-        toMemberName: toMember.displayName,
+        userId: userId,
         amount: amount,
-        note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
-        status: TransferStatus.pending,
+        category: 'Transfer',
+        description: 'Transfer to ${toMember.displayName}',
+        type: 'transfer',
+        date: DateTime.now(),
+        notes: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
         createdAt: DateTime.now(),
+        familyId: family.id,
+        memberId: _fromMemberId,
+        memberName: fromMember.displayName,
+        isFamilyTransaction: true,
+        transferId: transferId,
+        transferStatus: 'pending',
       );
 
-      await DatabaseService.saveTransfer(transfer);
-      await NotificationService.notifyTransferRequest(transfer);
+      // Receiver's transaction (Income)
+      final receiverTransaction = TransactionModel(
+        id: Helpers.generateId(),
+        userId: toMember.id,
+        amount: amount,
+        category: 'Transfer Received',
+        description: 'Received from ${fromMember.displayName}',
+        type: 'income',
+        date: DateTime.now(),
+        notes: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+        createdAt: DateTime.now(),
+        familyId: family.id,
+        memberId: _toMemberId,
+        memberName: toMember.displayName,
+        isFamilyTransaction: true,
+        sourceMemberId: _fromMemberId,
+        sourceMemberName: fromMember.displayName,
+        transferId: transferId,
+        transferStatus: 'pending',
+      );
+
+      await DatabaseService.saveTransaction(senderTransaction);
+      await DatabaseService.saveTransaction(receiverTransaction);
+
+      // Send notification to receiver
+      await NotificationService.notifyTransferRequest(
+        fromMember.displayName,
+        toMember.displayName,
+        amount,
+        transferId,
+        toMember.id!,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
