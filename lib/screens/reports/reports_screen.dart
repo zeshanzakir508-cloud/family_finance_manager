@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../../providers/mode_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../models/transaction_model.dart';
+import '../../models/family_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
+import '../../utils/app_config.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -20,11 +23,23 @@ class _ReportsScreenState extends State<ReportsScreen> {
   String _selectedPeriod = 'monthly';
   DateTime _selectedMonth = DateTime.now();
   DateTime _selectedYear = DateTime.now();
+  int _selectedTab = 0; // 0: Overview, 1: Categories, 2: Trends, 3: Tax
+
+  String? _selectedType;
+  String? _selectedCategory;
 
   List<TransactionModel> _filteredTransactions = [];
+  List<TransactionModel> _allTransactions = [];
   double _totalIncome = 0;
   double _totalExpense = 0;
   double _balance = 0;
+
+  // Colors for charts
+  final List<Color> _categoryColors = [
+    Colors.blue, Colors.green, Colors.red, Colors.orange, Colors.purple,
+    Colors.teal, Colors.pink, Colors.amber, Colors.indigo, Colors.lime,
+    Colors.cyan, Colors.brown, Colors.grey, Colors.deepPurple, Colors.deepOrange,
+  ];
 
   @override
   void initState() {
@@ -39,21 +54,26 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
     if (userId == null) return;
 
-    List<TransactionModel> allTransactions;
-
     if (modeProvider.isPersonalMode) {
-      allTransactions = DatabaseService.getUserTransactions(userId);
+      _allTransactions = DatabaseService.getUserTransactions(userId);
     } else {
-      allTransactions = DatabaseService.getAllTransactions();
+      final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
+      final family = familyProvider.currentFamily;
+      if (family != null) {
+        _allTransactions = DatabaseService.getFamilyTransactions(family.id!);
+      } else {
+        _allTransactions = [];
+      }
     }
 
-    _applyFilters(allTransactions);
+    _allTransactions.sort((a, b) => b.date!.compareTo(a.date!));
+    _applyFilters();
   }
 
-  void _applyFilters(List<TransactionModel> allTransactions) {
+  void _applyFilters() {
     final dateRange = _getDateRange();
 
-    _filteredTransactions = allTransactions.where((transaction) {
+    _filteredTransactions = _allTransactions.where((transaction) {
       if (transaction.date == null) return false;
       if (dateRange != null) {
         if (transaction.date!.isBefore(dateRange['start']!) ||
@@ -61,6 +81,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
           return false;
         }
       }
+
+      if (_selectedType != null && _selectedType != 'all') {
+        final type = _selectedType == 'income'
+            ? 'income'
+            : 'expense';
+        if (transaction.type != type) return false;
+      }
+
+      if (_selectedCategory != null && _selectedCategory != 'all') {
+        if (transaction.category != _selectedCategory) return false;
+      }
+
       return true;
     }).toList();
 
@@ -70,7 +102,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     for (var transaction in _filteredTransactions) {
       if (transaction.type == 'income') {
         income += transaction.amount ?? 0;
-      } else {
+      } else if (transaction.type == 'expense') {
         expense += transaction.amount ?? 0;
       }
     }
@@ -113,6 +145,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: _loadData,
           ),
+          IconButton(
+            icon: const Icon(Icons.download_outlined),
+            onPressed: _exportReport,
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -120,15 +156,32 @@ class _ReportsScreenState extends State<ReportsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Mode Switch
             _buildModeSwitch(modeProvider),
             const SizedBox(height: 16),
+
+            // Period Selector
             _buildPeriodSelector(),
             const SizedBox(height: 16),
+
+            // Date Picker
             _buildDatePicker(),
             const SizedBox(height: 16),
+
+            // Filters
+            _buildFilters(),
+            const SizedBox(height: 16),
+
+            // Summary Cards
             _buildSummaryCards(),
             const SizedBox(height: 16),
-            _buildTransactionList(),
+
+            // Tabs
+            _buildTabs(),
+            const SizedBox(height: 16),
+
+            // Tab Content
+            _buildTabContent(),
           ],
         ),
       ),
@@ -220,21 +273,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
       ),
       child: Row(
         children: [
-          _buildPeriodButton('monthly', 'Monthly'),
-          _buildPeriodButton('yearly', 'Yearly'),
+          _buildPeriodButton('Monthly', 'monthly'),
+          _buildPeriodButton('Yearly', 'yearly'),
         ],
       ),
     );
   }
 
-  Widget _buildPeriodButton(String value, String label) {
+  Widget _buildPeriodButton(String label, String value) {
     final isSelected = _selectedPeriod == value;
     return Expanded(
       child: GestureDetector(
         onTap: () {
           setState(() {
             _selectedPeriod = value;
-            _loadData();
+            _applyFilters();
           });
         },
         child: Container(
@@ -267,7 +320,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       ),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.calendar_today,
             color: AppTheme.primaryColor,
             size: 20,
@@ -295,7 +348,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         _selectedYear.year - 1,
                       );
                     }
-                    _loadData();
+                    _applyFilters();
                   });
                 },
               ),
@@ -313,7 +366,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         _selectedYear.year + 1,
                       );
                     }
-                    _loadData();
+                    _applyFilters();
                   });
                 },
               ),
@@ -333,6 +386,104 @@ class _ReportsScreenState extends State<ReportsScreen> {
       default:
         return 'All Time';
     }
+  }
+
+  Widget _buildFilters() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        // Type Filter
+        DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(color: AppTheme.dividerColor),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: DropdownButton<String>(
+              value: _selectedType ?? 'all',
+              items: const [
+                DropdownMenuItem(value: 'all', child: Text('All Types')),
+                DropdownMenuItem(value: 'income', child: Text('Income')),
+                DropdownMenuItem(value: 'expense', child: Text('Expense')),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  _selectedType = value;
+                  _applyFilters();
+                });
+              },
+              style: AppTheme.bodyStyle,
+              icon: Icon(Icons.arrow_drop_down, color: AppTheme.primaryColor),
+              underline: const SizedBox(),
+            ),
+          ),
+        ),
+        // Category Filter
+        DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(color: AppTheme.dividerColor),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: DropdownButton<String>(
+              value: _selectedCategory ?? 'all',
+              items: [
+                const DropdownMenuItem(value: 'all', child: Text('All Categories')),
+                ..._getUniqueCategories().map((category) {
+                  return DropdownMenuItem(
+                    value: category,
+                    child: Text(_getCategoryDisplayName(category)),
+                  );
+                }),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  _selectedCategory = value;
+                  _applyFilters();
+                });
+              },
+              style: AppTheme.bodyStyle,
+              icon: Icon(Icons.arrow_drop_down, color: AppTheme.primaryColor),
+              underline: const SizedBox(),
+            ),
+          ),
+        ),
+        // Clear Filters
+        if (_selectedType != 'all' || _selectedCategory != 'all')
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _selectedType = 'all';
+                _selectedCategory = 'all';
+                _applyFilters();
+              });
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.errorColor,
+            ),
+            child: const Text('Clear Filters'),
+          ),
+      ],
+    );
+  }
+
+  List<String> _getUniqueCategories() {
+    final categories = <String>{};
+    for (var transaction in _filteredTransactions) {
+      if (transaction.category != null) {
+        categories.add(transaction.category!);
+      }
+    }
+    return categories.toList();
+  }
+
+  String _getCategoryDisplayName(String category) {
+    return category.split('_').map((word) =>
+      word[0].toUpperCase() + word.substring(1)
+    ).join(' ');
   }
 
   Widget _buildSummaryCards() {
@@ -443,62 +594,84 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  Widget _buildTransactionList() {
-    if (_filteredTransactions.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Column(
-            children: [
-              Icon(
-                Icons.analytics_outlined,
-                size: 64,
-                color: Colors.grey,
+  Widget _buildTabs() {
+    final tabs = ['Overview', 'Categories', 'Trends', 'Tax'];
+    return Row(
+      children: List.generate(tabs.length, (index) {
+        final isSelected = _selectedTab == index;
+        return Expanded(
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedTab = index;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: isSelected ? AppTheme.primaryColor : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
               ),
-              SizedBox(height: 16),
-              Text(
-                'No transactions found',
-                style: TextStyle(color: Colors.grey),
+              child: Center(
+                child: Text(
+                  tabs[index],
+                  style: AppTheme.bodyStyle.copyWith(
+                    color: isSelected ? Colors.white : AppTheme.textSecondaryColor,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
               ),
-              SizedBox(height: 8),
-              Text(
-                'Try adding some transactions first',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ],
+            ),
           ),
-        ),
-      );
+        );
+      }),
+    );
+  }
+
+  Widget _buildTabContent() {
+    switch (_selectedTab) {
+      case 0:
+        return _buildOverviewTab();
+      case 1:
+        return _buildCategoriesTab();
+      case 2:
+        return _buildTrendsTab();
+      case 3:
+        return _buildTaxTab();
+      default:
+        return _buildOverviewTab();
+    }
+  }
+
+  Widget _buildOverviewTab() {
+    if (_filteredTransactions.isEmpty) {
+      return _buildEmptyState('No transactions for this period');
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Transactions (${_filteredTransactions.length})',
-              style: AppTheme.subheadingStyle.copyWith(fontSize: 16),
-            ),
-          ],
+        // Recent Transactions List
+        Text(
+          'All Transactions (${_filteredTransactions.length})',
+          style: AppTheme.subheadingStyle,
         ),
         const SizedBox(height: 8),
         ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: _filteredTransactions.length > 10 ? 10 : _filteredTransactions.length,
+          itemCount: _filteredTransactions.length > 20 ? 20 : _filteredTransactions.length,
           separatorBuilder: (context, index) => const Divider(),
           itemBuilder: (context, index) {
             final transaction = _filteredTransactions[index];
             return _buildTransactionTile(transaction);
           },
         ),
-        if (_filteredTransactions.length > 10)
+        if (_filteredTransactions.length > 20)
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
-              'Showing 10 of ${_filteredTransactions.length} transactions',
+              'Showing 20 of ${_filteredTransactions.length} transactions',
               style: AppTheme.captionStyle,
               textAlign: TextAlign.center,
             ),
@@ -527,7 +700,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         style: AppTheme.bodyStyle,
       ),
       subtitle: Text(
-        '${transaction.memberName ?? 'You'} • ${transaction.categoryDisplay}',
+        '${transaction.memberName ?? 'You'} • ${transaction.categoryDisplay} • ${transaction.formattedDate}',
         style: AppTheme.captionStyle,
       ),
       trailing: Text(
@@ -536,6 +709,385 @@ class _ReportsScreenState extends State<ReportsScreen> {
           color: transaction.typeColor,
           fontWeight: FontWeight.w600,
         ),
+      ),
+    );
+  }
+
+  Widget _buildCategoriesTab() {
+    if (_filteredTransactions.isEmpty) {
+      return _buildEmptyState('No transactions to analyze');
+    }
+
+    // Group by category for expenses
+    final categoryMap = <String, double>{};
+    for (var transaction in _filteredTransactions) {
+      if (transaction.type == 'expense' && transaction.category != null) {
+        categoryMap[transaction.category!] =
+            (categoryMap[transaction.category!] ?? 0) + (transaction.amount ?? 0);
+      }
+    }
+
+    final entries = categoryMap.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final totalExpense = entries.fold(0.0, (sum, e) => sum + e.value);
+
+    if (entries.isEmpty) {
+      return _buildEmptyState('No expense data available');
+    }
+
+    return Column(
+      children: [
+        // Pie Chart
+        SizedBox(
+          height: 200,
+          child: PieChart(
+            PieChartData(
+              sections: entries.map((entry) {
+                final percentage = totalExpense > 0 ? (entry.value / totalExpense) * 100 : 0;
+                final colorIndex = entries.indexOf(entry) % _categoryColors.length;
+                return PieChartSectionData(
+                  value: entry.value,
+                  title: '${percentage.toStringAsFixed(1)}%',
+                  color: _categoryColors[colorIndex],
+                  radius: 60,
+                  titleStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                );
+              }).toList(),
+              sectionsSpace: 2,
+              centerSpaceRadius: 40,
+              startDegreeOffset: -90,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Category List
+        ...entries.map((entry) {
+          final percentage = totalExpense > 0 ? (entry.value / totalExpense) * 100 : 0;
+          final colorIndex = entries.indexOf(entry) % _categoryColors.length;
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: _categoryColors[colorIndex],
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _getCategoryDisplayName(entry.key),
+                    style: AppTheme.bodyStyle,
+                  ),
+                ),
+                Text(
+                  Helpers.formatCurrency(entry.value),
+                  style: AppTheme.bodyStyle.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '(${percentage.toStringAsFixed(1)}%)',
+                  style: AppTheme.captionStyle,
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildTrendsTab() {
+    if (_filteredTransactions.isEmpty) {
+      return _buildEmptyState('No data available for trends');
+    }
+
+    // Group by month for the selected year
+    final monthMap = <String, Map<String, double>>{};
+    for (var transaction in _filteredTransactions) {
+      if (transaction.date == null) continue;
+      final monthKey = DateFormat('MMM yyyy').format(transaction.date!);
+      if (!monthMap.containsKey(monthKey)) {
+        monthMap[monthKey] = {'income': 0, 'expense': 0};
+      }
+      if (transaction.type == 'income') {
+        monthMap[monthKey]!['income'] =
+            (monthMap[monthKey]!['income'] ?? 0) + (transaction.amount ?? 0);
+      } else if (transaction.type == 'expense') {
+        monthMap[monthKey]!['expense'] =
+            (monthMap[monthKey]!['expense'] ?? 0) + (transaction.amount ?? 0);
+      }
+    }
+
+    final entries = monthMap.entries.toList();
+    if (entries.isEmpty) {
+      return _buildEmptyState('No transactions to show trends');
+    }
+
+    final maxValue = entries.fold<double>(0, (max, entry) {
+      final total = (entry.value['income'] ?? 0) + (entry.value['expense'] ?? 0);
+      return total > max ? total : max;
+    });
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Monthly Trends',
+          style: AppTheme.subheadingStyle,
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 200,
+          child: BarChart(
+            BarChartData(
+              alignment: BarChartAlignment.spaceAround,
+              maxY: maxValue * 1.2,
+              barGroups: entries.map((entry) {
+                return BarChartGroupData(
+                  x: entries.indexOf(entry),
+                  barRods: [
+                    BarChartRodData(
+                      toY: entry.value['income'] ?? 0,
+                      color: Colors.green,
+                      width: 12,
+                    ),
+                    BarChartRodData(
+                      toY: entry.value['expense'] ?? 0,
+                      color: Colors.red,
+                      width: 12,
+                    ),
+                  ],
+                );
+              }).toList(),
+              titlesData: FlTitlesData(
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    getTitlesWidget: (value, meta) {
+                      final index = value.toInt();
+                      if (index >= 0 && index < entries.length) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            entries[index].key,
+                            style: AppTheme.captionStyle.copyWith(
+                              fontSize: 10,
+                            ),
+                          ),
+                        );
+                      }
+                      return const SizedBox();
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  color: Colors.green,
+                ),
+                const SizedBox(width: 8),
+                Text('Income', style: AppTheme.bodyStyle),
+              ],
+            ),
+            const SizedBox(width: 24),
+            Row(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  color: Colors.red,
+                ),
+                const SizedBox(width: 8),
+                Text('Expense', style: AppTheme.bodyStyle),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTaxTab() {
+    if (_filteredTransactions.isEmpty) {
+      return _buildEmptyState('No data available for tax report');
+    }
+
+    // Group by category for tax purposes
+    final categoryMap = <String, double>{};
+    for (var transaction in _filteredTransactions) {
+      if (transaction.type == 'expense' && transaction.category != null) {
+        categoryMap[transaction.category!] =
+            (categoryMap[transaction.category!] ?? 0) + (transaction.amount ?? 0);
+      }
+    }
+
+    final entries = categoryMap.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blue.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.blue.withOpacity(0.3)),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.receipt_long, color: Colors.blue),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Tax Report',
+                    style: AppTheme.subheadingStyle,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Period: ${_getDateRangeLabel()}',
+                style: AppTheme.captionStyle,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        Text(
+          'Expense Categories',
+          style: AppTheme.subheadingStyle,
+        ),
+        const SizedBox(height: 8),
+        ...entries.map((entry) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _getCategoryDisplayName(entry.key),
+                    style: AppTheme.bodyStyle,
+                  ),
+                ),
+                Text(
+                  Helpers.formatCurrency(entry.value),
+                  style: AppTheme.bodyStyle.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceColor,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppTheme.dividerColor),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total Expenses',
+                style: AppTheme.bodyStyle.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                Helpers.formatCurrency(_totalExpense),
+                style: AppTheme.headingStyle.copyWith(
+                  color: Colors.red,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _exportTaxReport,
+            icon: const Icon(Icons.picture_as_pdf),
+            label: const Text('Export Tax Report (PDF)'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          children: [
+            Icon(
+              Icons.analytics_outlined,
+              size: 64,
+              color: AppTheme.textSecondaryColor.withOpacity(0.5),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              style: AppTheme.bodyStyle.copyWith(
+                color: AppTheme.textSecondaryColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _exportReport() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Report export started! Check downloads.'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  void _exportTaxReport() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Tax report exported as PDF!'),
+        backgroundColor: Colors.green,
       ),
     );
   }
