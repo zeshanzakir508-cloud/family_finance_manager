@@ -2,12 +2,21 @@ import '../services/remote_config_service.dart';
 
 class AppConfig {
   // ============================================================
+  // 🧪 TEST MODE - Set to false before release
+  // ============================================================
+  
+  static const bool isTestMode = false;
+
+  // ============================================================
   // 👑 OWNER & MODERATOR SETTINGS
   // ============================================================
   
   static const String ownerEmail = 'zeshanzakir508@gmail.com';
   static const List<String> moderatorEmails = [
     'mrszeshanzakir508@gmail.com',
+    // Add more moderators here as needed
+    // 'sister@gmail.com',
+    // 'brother@gmail.com',
   ];
 
   static bool isOwner(String? email) {
@@ -124,4 +133,36 @@ class AppConfig {
   static bool isOwnerUser(String? email) => isOwner(email);
   static bool isModeratorUser(String? email) => isModerator(email);
   static bool isAdminUser(String? email) => hasAdminAccess(email);
+
+  // ============================================================
+  // 🚀 HELPER METHODS
+  // ============================================================
+  
+  static String getCurrencySymbol(String currencyCode) {
+    switch (currencyCode) {
+      case 'USD': return '\$';
+      case 'EUR': return '€';
+      case 'GBP': return '£';
+      case 'PKR': return 'Rs';
+      case 'INR': return '₹';
+      case 'AED': return 'د.إ';
+      case 'SAR': return '﷼';
+      case 'CAD': return 'C\$';
+      case 'AUD': return 'A\$';
+      case 'JPY': return '¥';
+      default: return '\$';
+    }
+  }
+
+  // ============================================================
+  // 📱 TEST MODE HELPERS
+  // ============================================================
+  
+  static bool get isTestEnvironment => isTestMode;
+  
+  static void log(String message) {
+    if (isTestMode) {
+      print('🔍 [TEST] $message');
+    }
+  }
 }
