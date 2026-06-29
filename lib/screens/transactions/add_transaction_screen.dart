@@ -6,10 +6,13 @@ import '../../providers/mode_provider.dart';
 import '../../providers/family_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
+import '../../services/notification_service.dart';
 import '../../models/transaction_model.dart';
+import '../../models/user_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/helpers.dart';
+import '../../utils/app_config.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   const AddTransactionScreen({super.key});
@@ -29,6 +32,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   bool _isLoading = false;
   String? _selectedMemberId;
   String? _selectedMemberName;
+  String? _sourceMemberId; // For income: who gave the money
+  String? _sourceMemberName;
+  bool _showSourceField = false;
 
   @override
   Widget build(BuildContext context) {
@@ -67,6 +73,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Mode Indicator
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
@@ -76,7 +83,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      isFamilyMode ? 'Family Transaction' : 'Personal Transaction',
+                      isFamilyMode ? '👨‍👩‍👦 Family Transaction' : '👤 Personal Transaction',
                       style: AppTheme.bodyStyle.copyWith(
                         color: isFamilyMode ? Colors.teal : AppTheme.primaryColor,
                         fontWeight: FontWeight.w600,
@@ -85,29 +92,43 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   ),
                   const SizedBox(height: 16),
 
+                  // Type Toggle
                   _buildTypeToggle(),
                   const SizedBox(height: 24),
 
+                  // Member Selector (Family Mode Only)
                   if (isFamilyMode && familyProvider.hasFamily)
                     _buildMemberSelector(familyProvider),
                   if (isFamilyMode && familyProvider.hasFamily)
                     const SizedBox(height: 16),
 
+                  // Source Selector (For Income in Family Mode)
+                  if (isFamilyMode && familyProvider.hasFamily && _selectedType == 'income')
+                    _buildSourceSelector(familyProvider),
+                  if (isFamilyMode && familyProvider.hasFamily && _selectedType == 'income')
+                    const SizedBox(height: 16),
+
+                  // Amount
                   _buildAmountField(),
                   const SizedBox(height: 16),
 
+                  // Category
                   _buildCategoryDropdown(),
                   const SizedBox(height: 16),
 
+                  // Description
                   _buildDescriptionField(),
                   const SizedBox(height: 16),
 
+                  // Date
                   _buildDatePicker(),
                   const SizedBox(height: 16),
 
+                  // Notes
                   _buildNotesField(),
                   const SizedBox(height: 24),
 
+                  // Save Button
                   _buildSaveButton(userId),
                 ],
               ),
@@ -140,6 +161,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
           setState(() {
             _selectedType = value;
             _selectedCategory = null;
+            _sourceMemberId = null;
+            _sourceMemberName = null;
           });
         },
         child: Container(
@@ -176,13 +199,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
     return DropdownButtonFormField<String>(
       value: _selectedMemberId,
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         labelText: 'Select Member *',
         hintText: 'Who is this transaction for?',
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderRadius: BorderRadius.circular(12),
         ),
         filled: true,
+        fillColor: AppTheme.surfaceColor,
       ),
       items: members.map((member) {
         return DropdownMenuItem<String>(
@@ -223,20 +247,99 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     );
   }
 
+  Widget _buildSourceSelector(FamilyProvider familyProvider) {
+    final members = familyProvider.familyMembers;
+    final currentUserId = Provider.of<AuthService>(context, listen: false).userId;
+
+    return DropdownButtonFormField<String>(
+      value: _sourceMemberId,
+      decoration: InputDecoration(
+        labelText: '💰 Source of Income *',
+        hintText: 'Who gave this money?',
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        filled: true,
+        fillColor: AppTheme.surfaceColor,
+        prefixIcon: const Icon(Icons.person_outline, color: Colors.green),
+      ),
+      items: members.where((m) => m.id != _selectedMemberId).map((member) {
+        final isCurrentUser = member.id == currentUserId;
+        return DropdownMenuItem<String>(
+          value: member.id,
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 12,
+                backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                child: Text(
+                  member.initials,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppTheme.primaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(member.displayName),
+              if (isCurrentUser) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'You',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.green,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      }).toList(),
+      onChanged: (value) {
+        setState(() {
+          _sourceMemberId = value;
+          final member = members.firstWhere((m) => m.id == value);
+          _sourceMemberName = member.displayName;
+        });
+      },
+      validator: (value) {
+        if (value == null) {
+          return 'Please select who gave this money';
+        }
+        return null;
+      },
+    );
+  }
+
   Widget _buildAmountField() {
     return TextField(
       controller: _amountController,
       keyboardType: TextInputType.numberWithOptions(decimal: true),
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         labelText: 'Amount *',
         hintText: '0.00',
         prefixText: '\$ ',
+        prefixStyle: AppTheme.bodyStyle.copyWith(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderRadius: BorderRadius.circular(12),
         ),
         filled: true,
+        fillColor: AppTheme.surfaceColor,
       ),
-      style: TextStyle(fontSize: 24),
+      style: AppTheme.headingStyle.copyWith(fontSize: 24),
     );
   }
 
@@ -247,13 +350,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
     return DropdownButtonFormField<String>(
       value: _selectedCategory,
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         labelText: 'Category *',
         hintText: 'Select a category',
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderRadius: BorderRadius.circular(12),
         ),
         filled: true,
+        fillColor: AppTheme.surfaceColor,
       ),
       items: categories.map((category) {
         return DropdownMenuItem<String>(
@@ -278,13 +382,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   Widget _buildDescriptionField() {
     return TextField(
       controller: _descriptionController,
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         labelText: 'Description *',
         hintText: 'What was this transaction for?',
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderRadius: BorderRadius.circular(12),
         ),
         filled: true,
+        fillColor: AppTheme.surfaceColor,
       ),
     );
   }
@@ -338,13 +443,14 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     return TextField(
       controller: _notesController,
       maxLines: 3,
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         labelText: 'Notes (Optional)',
         hintText: 'Add any additional notes',
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderRadius: BorderRadius.circular(12),
         ),
         filled: true,
+        fillColor: AppTheme.surfaceColor,
       ),
     );
   }
@@ -378,6 +484,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }
 
   Future<void> _saveTransaction(String? userId) async {
+    // Validate
     if (_amountController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -422,6 +529,17 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       return;
     }
 
+    // For income in family mode, source is required
+    if (isFamilyMode && _selectedType == 'income' && _sourceMemberId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select who gave this money'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -443,9 +561,15 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         memberId: isFamilyMode ? _selectedMemberId : null,
         memberName: isFamilyMode ? _selectedMemberName : null,
         isFamilyTransaction: isFamilyMode,
+        sourceMemberId: isFamilyMode && _selectedType == 'income' ? _sourceMemberId : null,
+        sourceMemberName: isFamilyMode && _selectedType == 'income' ? _sourceMemberName : null,
       );
 
       await DatabaseService.saveTransaction(transaction);
+
+      if (userId != null) {
+        await NotificationService.notifyTransactionAdded(userId, transaction);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
