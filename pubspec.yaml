@@ -1,5 +1,5 @@
-name: family_finance_manager
-description: A family finance management application
+name: finfam
+description: Family Finance Manager
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -46,6 +46,9 @@ dependencies:
   # Biometric
   local_auth: ^2.3.0
 
+  # In-App Purchase
+  in_app_purchase: ^3.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -53,6 +56,7 @@ dev_dependencies:
   build_runner: ^2.4.11
   hive_generator: ^2.0.1
   analyzer: ^6.4.0
+  flutter_launcher_icons: ^0.14.3
 
 flutter:
   uses-material-design: true
@@ -60,3 +64,12 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/fonts/
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icons/app_icon.png"
+  min_sdk_android: 23
+  adaptive_icon_background: "#1A73E8"
+  adaptive_icon_foreground: "assets/icons/app_icon_foreground.png"
+  remove_alpha_ios: true
