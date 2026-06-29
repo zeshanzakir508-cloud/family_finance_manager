@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.family_finance_manager"
+    namespace = "com.finfam.app"
     compileSdk = 36
     ndkVersion = "28.2.13676358"
 
@@ -23,7 +23,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.family_finance_manager"
+        applicationId = "com.finfam.app"
         minSdk = 23
         targetSdk = 36
         versionCode = 1
