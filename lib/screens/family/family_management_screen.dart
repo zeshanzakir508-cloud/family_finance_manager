@@ -920,3 +920,358 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                     ? '$remainingSlots slots available'
                     : 'Family is full (${AppConfig.maxMembersPerFamily} members)',
                 style: AppTheme.captionStyle.copyWith(
+                  color: remainingSlots > 0 ? Colors.green : Colors.red,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: remainingSlots > 0 ? _addMember : null,
+            style: TextButton.styleFrom(
+              foregroundColor: remainingSlots > 0 ? AppTheme.primaryColor : Colors.grey,
+            ),
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _addMember() async {
+    if (_memberEmailController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter an email address'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
+      final family = familyProvider.currentFamily;
+
+      if (family == null) {
+        throw Exception('No family found');
+      }
+
+      if (!familyProvider.canFamilyAddMember(family.id!)) {
+        throw Exception('Family is full (max ${AppConfig.maxMembersPerFamily} members)');
+      }
+
+      final allUsers = DatabaseService.getAllUsers();
+      final user = allUsers.firstWhere(
+        (u) => u.email == _memberEmailController.text.trim(),
+        orElse: () => throw Exception('User not found. They need to sign up first.'),
+      );
+
+      if (family.memberIds?.contains(user.id) ?? false) {
+        throw Exception('User is already a member of this family');
+      }
+
+      final updatedFamily = family.copyWith(
+        memberIds: [...?family.memberIds, user.id!],
+      );
+      await updatedFamily.save();
+
+      final updatedUser = user.copyWith(familyId: family.id);
+      await DatabaseService.saveUser(updatedUser);
+
+      await NotificationService.notifyFamilyInvite(user.id!, family);
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Member added successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+        familyProvider.setCurrentFamily(family.id!);
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _removeMember(String memberId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Member'),
+        content: const Text(
+          'Are you sure you want to remove this member from the family?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.errorColor,
+            ),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
+      final family = familyProvider.currentFamily;
+
+      if (family == null) {
+        throw Exception('No family found');
+      }
+
+      final updatedFamily = family.copyWith(
+        memberIds: family.memberIds?.where((id) => id != memberId).toList(),
+      );
+      await updatedFamily.save();
+
+      final user = DatabaseService.getUser(memberId);
+      if (user != null) {
+        final updatedUser = user.copyWith(familyId: null);
+        await DatabaseService.saveUser(updatedUser);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Member removed successfully'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+        familyProvider.setCurrentFamily(family.id!);
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showTransferAdminDialog() {
+    final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
+    final members = familyProvider.familyMembers;
+    final currentUserId = Provider.of<AuthService>(context, listen: false).userId;
+
+    if (members.isEmpty || members.length == 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No other members to transfer admin to.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Transfer Admin'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Select a member to transfer admin rights to:'),
+            const SizedBox(height: 12),
+            ...members.where((m) => m.id != currentUserId).map((member) {
+              return ListTile(
+                title: Text(member.displayName),
+                subtitle: Text(member.email ?? 'No email'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _transferAdmin(member.id!);
+                },
+              );
+            }),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _transferAdmin(String newAdminId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Transfer Admin'),
+        content: const Text(
+          'Are you sure you want to transfer admin rights? You will no longer be able to manage this family.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.orange,
+            ),
+            child: const Text('Transfer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final userId = authService.userId;
+
+      if (userId == null) {
+        throw Exception('User not logged in');
+      }
+
+      final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
+      await familyProvider.transferAdmin(userId, newAdminId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Admin rights transferred successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _deleteFamily() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Family'),
+        content: const Text(
+          'Are you sure you want to delete this family? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.errorColor,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
+      final family = familyProvider.currentFamily;
+
+      if (family == null) {
+        throw Exception('No family found');
+      }
+
+      // Remove family from all members
+      for (var memberId in family.memberIds ?? []) {
+        final user = DatabaseService.getUser(memberId);
+        if (user != null) {
+          final updatedUser = user.copyWith(familyId: null);
+          await DatabaseService.saveUser(updatedUser);
+        }
+      }
+
+      await DatabaseService.deleteFamily(family);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Family deleted successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+        Navigator.pushReplacementNamed(context, '/financial-dashboard');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
