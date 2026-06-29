@@ -1,484 +1,334 @@
+import '../models/notification_model.dart';
+import '../models/transfer_model.dart';
+import '../models/family_model.dart';
+import '../models/transaction_model.dart';
+import 'database_service.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import '../../services/auth_service.dart';
-import '../../services/database_service.dart';
-import '../../services/notification_service.dart';
-import '../../models/notification_model.dart';
-import '../../models/transfer_model.dart';
-import '../../models/transaction_model.dart';
-import '../../utils/app_theme.dart';
-import '../../utils/helpers.dart';
 
-class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({super.key});
+class NotificationService {
+  // ============================================================
+  // TRANSFER NOTIFICATIONS
+  // ============================================================
 
-  @override
-  State<NotificationsScreen> createState() => _NotificationsScreenState();
-}
-
-class _NotificationsScreenState extends State<NotificationsScreen> {
-  String _filterType = 'all';
-
-  @override
-  void initState() {
-    super.initState();
-    _addSampleNotifications();
+  static Future<void> notifyTransferRequest(
+    String fromName,
+    String toName,
+    double amount,
+    String transferId,
+    String toUserId,
+  ) async {
+    final notification = NotificationModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: toUserId,
+      title: '💰 Transfer Request',
+      message: '$fromName requested \$${amount.toStringAsFixed(2)} from you',
+      type: NotificationType.transfer,
+      createdAt: DateTime.now(),
+      isRead: false,
+      actionData: transferId,
+      relatedId: transferId,
+    );
+    await DatabaseService.saveNotification(notification);
   }
 
-  Future<void> _addSampleNotifications() async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final userId = authService.userId;
-    
-    if (userId == null) return;
+  static Future<void> notifyTransferApproved(
+    String transferId,
+    String fromUserId,
+  ) async {
+    final notification = NotificationModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: fromUserId,
+      title: '✅ Transfer Approved',
+      message: 'Your transfer request has been approved!',
+      type: NotificationType.transfer,
+      createdAt: DateTime.now(),
+      isRead: false,
+      actionData: transferId,
+      relatedId: transferId,
+    );
+    await DatabaseService.saveNotification(notification);
+  }
 
-    final box = Hive.box<NotificationModel>('notifications');
-    
-    if (box.isEmpty) {
-      final notifications = [
-        NotificationModel(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          userId: userId,
-          title: 'Welcome to FinFam!',
-          message: 'Start managing your family finances today.',
-          type: NotificationType.system,
-          createdAt: DateTime.now(),
-          isRead: false,
-        ),
-        NotificationModel(
-          id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
-          userId: userId,
-          title: 'Add Your First Transaction',
-          message: 'Tap the + button to add your first income or expense.',
-          type: NotificationType.transaction,
-          createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-          isRead: false,
-        ),
-        NotificationModel(
-          id: (DateTime.now().millisecondsSinceEpoch + 2).toString(),
-          userId: userId,
-          title: 'Family Feature Ready!',
-          message: 'Create a family group and invite members to manage finances together.',
-          type: NotificationType.family,
-          createdAt: DateTime.now().subtract(const Duration(days: 1)),
-          isRead: true,
-        ),
-      ];
+  static Future<void> notifyTransferRejected(
+    String transferId,
+    String fromUserId,
+  ) async {
+    final notification = NotificationModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: fromUserId,
+      title: '❌ Transfer Rejected',
+      message: 'Your transfer request has been rejected.',
+      type: NotificationType.transfer,
+      createdAt: DateTime.now(),
+      isRead: false,
+      actionData: transferId,
+      relatedId: transferId,
+    );
+    await DatabaseService.saveNotification(notification);
+  }
 
-      for (var notification in notifications) {
-        await box.add(notification);
+  static Future<void> notifyTransferCompleted(
+    String transferId,
+    String fromUserId,
+    String toUserId,
+  ) async {
+    final notification1 = NotificationModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: fromUserId,
+      title: '✅ Transfer Completed',
+      message: 'Your transfer has been completed successfully!',
+      type: NotificationType.transfer,
+      createdAt: DateTime.now(),
+      isRead: false,
+      actionData: transferId,
+      relatedId: transferId,
+    );
+    await DatabaseService.saveNotification(notification1);
+
+    final notification2 = NotificationModel(
+      id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
+      userId: toUserId,
+      title: '✅ Transfer Completed',
+      message: 'The transfer has been completed successfully!',
+      type: NotificationType.transfer,
+      createdAt: DateTime.now(),
+      isRead: false,
+      actionData: transferId,
+      relatedId: transferId,
+    );
+    await DatabaseService.saveNotification(notification2);
+  }
+
+  // ============================================================
+  // FAMILY NOTIFICATIONS
+  // ============================================================
+
+  static Future<void> notifyFamilyInvite(String userId, FamilyModel family) async {
+    final notification = NotificationModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: userId,
+      title: '👨‍👩‍👦 Family Invite',
+      message: 'You have been invited to join "${family.name}"',
+      type: NotificationType.family,
+      createdAt: DateTime.now(),
+      isRead: false,
+      actionData: family.id,
+      relatedId: family.id,
+    );
+    await DatabaseService.saveNotification(notification);
+  }
+
+  static Future<void> notifyMemberJoined(FamilyModel family, String memberName, String adminId) async {
+    final notification = NotificationModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: adminId,
+      title: '👋 New Member Joined',
+      message: '$memberName has joined "${family.name}"',
+      type: NotificationType.family,
+      createdAt: DateTime.now(),
+      isRead: false,
+      actionData: family.id,
+      relatedId: family.id,
+    );
+    await DatabaseService.saveNotification(notification);
+  }
+
+  static Future<void> notifyMemberRemoved(FamilyModel family, String memberName, String adminId) async {
+    final notification = NotificationModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: adminId,
+      title: '👋 Member Removed',
+      message: '$memberName has left "${family.name}"',
+      type: NotificationType.family,
+      createdAt: DateTime.now(),
+      isRead: false,
+      actionData: family.id,
+      relatedId: family.id,
+    );
+    await DatabaseService.saveNotification(notification);
+  }
+
+  // ============================================================
+  // TRANSACTION NOTIFICATIONS
+  // ============================================================
+
+  static Future<void> notifyTransactionAdded(String userId, TransactionModel transaction) async {
+    final notification = NotificationModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: userId,
+      title: '💳 Transaction Added',
+      message: '${transaction.typeDisplay} of \$${transaction.amount?.toStringAsFixed(2)} added: ${transaction.description}',
+      type: NotificationType.transaction,
+      createdAt: DateTime.now(),
+      isRead: false,
+      actionData: transaction.id,
+      relatedId: transaction.id,
+    );
+    await DatabaseService.saveNotification(notification);
+  }
+
+  static Future<void> notifyTransactionDeleted(String userId, TransactionModel transaction) async {
+    final notification = NotificationModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: userId,
+      title: '🗑️ Transaction Deleted',
+      message: '${transaction.typeDisplay} of \$${transaction.amount?.toStringAsFixed(2)} was deleted: ${transaction.description}',
+      type: NotificationType.transaction,
+      createdAt: DateTime.now(),
+      isRead: false,
+      actionData: transaction.id,
+      relatedId: transaction.id,
+    );
+    await DatabaseService.saveNotification(notification);
+  }
+
+  static Future<void> notifyBudgetAlert(String userId, String category, double spent, double budget) async {
+    final notification = NotificationModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: userId,
+      title: '⚠️ Budget Alert',
+      message: 'You have spent \$${spent.toStringAsFixed(2)} on "$category". Budget is \$${budget.toStringAsFixed(2)}',
+      type: NotificationType.system,
+      createdAt: DateTime.now(),
+      isRead: false,
+    );
+    await DatabaseService.saveNotification(notification);
+  }
+
+  // ============================================================
+  // SYSTEM NOTIFICATIONS
+  // ============================================================
+
+  static Future<void> notifySystemMessage(String userId, String title, String message) async {
+    final notification = NotificationModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: userId,
+      title: title,
+      message: message,
+      type: NotificationType.system,
+      createdAt: DateTime.now(),
+      isRead: false,
+    );
+    await DatabaseService.saveNotification(notification);
+  }
+
+  static Future<void> notifyAppUpdate(String userId, String version, String changes) async {
+    final notification = NotificationModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: userId,
+      title: '📱 App Update v$version',
+      message: changes,
+      type: NotificationType.system,
+      createdAt: DateTime.now(),
+      isRead: false,
+    );
+    await DatabaseService.saveNotification(notification);
+  }
+
+  static Future<void> notifyAnnouncement(String userId, String title, String message) async {
+    final notification = NotificationModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: userId,
+      title: '📢 $title',
+      message: message,
+      type: NotificationType.system,
+      createdAt: DateTime.now(),
+      isRead: false,
+    );
+    await DatabaseService.saveNotification(notification);
+  }
+
+  // ============================================================
+  // HELPER METHODS
+  // ============================================================
+
+  static Future<int> getUnreadCount(String userId) async {
+    final notifications = await DatabaseService.getUserNotifications(userId);
+    return notifications.where((n) => n.isUnread).length;
+  }
+
+  static Future<void> markAllAsRead(String userId) async {
+    final notifications = await DatabaseService.getUserNotifications(userId);
+    for (var notification in notifications) {
+      if (notification.isUnread) {
+        await DatabaseService.markNotificationAsRead(notification);
       }
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Notifications'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.done_all_outlined),
-            onPressed: _markAllAsRead,
-            tooltip: 'Mark all as read',
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Filter Tabs
-          _buildFilterTabs(),
-          // Notifications List
-          Expanded(
-            child: ValueListenableBuilder(
-              valueListenable: Hive.box<NotificationModel>('notifications').listenable(),
-              builder: (context, Box<NotificationModel> box, _) {
-                final authService = Provider.of<AuthService>(context);
-                final userId = authService.userId;
-                
-                var notifications = box.values
-                    .where((n) => n.userId == userId)
-                    .toList()
-                  ..sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
-                
-                final filteredNotifications = _filterType == 'all'
-                    ? notifications
-                    : notifications.where((n) => n.type?.name == _filterType).toList();
-
-                if (filteredNotifications.isEmpty) {
-                  return _buildEmptyState();
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(8),
-                  itemCount: filteredNotifications.length,
-                  itemBuilder: (context, index) {
-                    final notification = filteredNotifications[index];
-                    return _buildNotificationTile(notification);
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterTabs() {
-    final types = ['all', 'transfer', 'family', 'transaction', 'system'];
-    final displayNames = ['All', 'Transfer', 'Family', 'Transaction', 'System'];
-
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: types.length,
-        itemBuilder: (context, index) {
-          final isSelected = _filterType == types[index];
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: FilterChip(
-              label: Text(
-                displayNames[index],
-                style: AppTheme.bodyStyle.copyWith(
-                  fontSize: 13,
-                  color: isSelected ? Colors.white : AppTheme.textSecondaryColor,
-                ),
-              ),
-              selected: isSelected,
-              onSelected: (selected) {
-                setState(() {
-                  _filterType = types[index];
-                });
-              },
-              backgroundColor: AppTheme.surfaceColor,
-              selectedColor: AppTheme.primaryColor,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildNotificationTile(NotificationModel notification) {
-    final isTransfer = notification.type == NotificationType.transfer;
-    final isPending = notification.actionData != null && notification.actionData!.contains('pending');
-
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-      color: notification.isUnread 
-          ? AppTheme.primaryColor.withOpacity(0.05)
-          : null,
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: notification.typeColor.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            notification.typeIcon,
-            color: notification.typeColor,
-            size: 24,
-          ),
-        ),
-        title: Text(
-          notification.title ?? 'Notification',
-          style: AppTheme.bodyStyle.copyWith(
-            fontWeight: notification.isUnread ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              notification.message ?? '',
-              style: AppTheme.captionStyle,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              Helpers.timeAgo(notification.createdAt ?? DateTime.now()),
-              style: AppTheme.captionStyle.copyWith(
-                fontSize: 11,
-                color: AppTheme.textSecondaryColor,
-              ),
-            ),
-          ],
-        ),
-        trailing: notification.isUnread
-            ? IconButton(
-                icon: Icon(
-                  Icons.mark_as_unread,
-                  color: AppTheme.primaryColor,
-                  size: 20,
-                ),
-                onPressed: () => _markAsRead(notification),
-                tooltip: 'Mark as read',
-              )
-            : null,
-        onTap: () {
-          _markAsRead(notification);
-          _handleNotificationTap(notification);
-        },
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.notifications_off_outlined,
-            size: 64,
-            color: AppTheme.textSecondaryColor.withOpacity(0.5),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No notifications yet',
-            style: AppTheme.headingStyle.copyWith(
-              fontSize: 18,
-              color: AppTheme.textSecondaryColor,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'We\'ll notify you when something important happens',
-            style: AppTheme.bodyStyle.copyWith(
-              color: AppTheme.textSecondaryColor,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _markAsRead(NotificationModel notification) async {
-    if (notification.isUnread == true) {
-      await DatabaseService.markNotificationAsRead(notification);
-      setState(() {});
+  static Future<void> deleteAllNotifications(String userId) async {
+    final notifications = await DatabaseService.getUserNotifications(userId);
+    for (var notification in notifications) {
+      await DatabaseService.deleteNotification(notification);
     }
   }
 
-  Future<void> _markAllAsRead() async {
-    final box = Hive.box<NotificationModel>('notifications');
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final userId = authService.userId;
-    
-    final unreadNotifications = box.values
-        .where((n) => n.isUnread && n.userId == userId)
+  static Future<void> sendBulkNotification(List<String> userIds, String title, String message) async {
+    for (var userId in userIds) {
+      await notifySystemMessage(userId, title, message);
+    }
+  }
+
+  // ============================================================
+  // SCHEDULED NOTIFICATIONS
+  // ============================================================
+
+  static Future<void> scheduleDailyReminder(String userId) async {
+    final notification = NotificationModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: userId,
+      title: '📊 Daily Finance Check',
+      message: 'Don\'t forget to check your finances today!',
+      type: NotificationType.system,
+      createdAt: DateTime.now(),
+      isRead: false,
+    );
+    await DatabaseService.saveNotification(notification);
+  }
+
+  static Future<void> scheduleWeeklyReport(String userId, double income, double expense) async {
+    final notification = NotificationModel(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      userId: userId,
+      title: '📈 Weekly Report',
+      message: 'Income: \$${income.toStringAsFixed(2)} | Expenses: \$${expense.toStringAsFixed(2)} | Balance: \$${(income - expense).toStringAsFixed(2)}',
+      type: NotificationType.system,
+      createdAt: DateTime.now(),
+      isRead: false,
+    );
+    await DatabaseService.saveNotification(notification);
+  }
+
+  // ============================================================
+  // TRANSFER STATUS CHECKS
+  // ============================================================
+
+  static Future<void> checkPendingTransfers() async {
+    final box = Hive.box<TransactionModel>('transactions');
+    final pendingTransfers = box.values
+        .where((t) => t.transferStatus == 'pending' && t.type == 'transfer')
         .toList();
+
+    // Group by transferId to avoid duplicates
+    final transferIds = pendingTransfers.map((t) => t.transferId).toSet();
     
-    for (var notification in unreadNotifications) {
-      await DatabaseService.markNotificationAsRead(notification);
-    }
-
-    setState(() {});
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${unreadNotifications.length} notifications marked as read'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  void _handleNotificationTap(NotificationModel notification) {
-    if (notification.type == NotificationType.transfer && notification.relatedId != null) {
-      _showTransferActionsDialog(notification);
-    } else if (notification.type == NotificationType.family && notification.relatedId != null) {
-      Navigator.pushNamed(context, '/family-management');
-    }
-  }
-
-  void _showTransferActionsDialog(NotificationModel notification) {
-    final transferId = notification.relatedId;
-    if (transferId == null) return;
-
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Transfer Request',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              notification.message ?? '',
-              style: const TextStyle(fontSize: 14),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _approveTransfer(transferId);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('✅ Approve'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _rejectTransfer(transferId);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('❌ Reject'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _approveTransfer(String transferId) async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final userId = authService.userId;
-
-    try {
-      // Find the transfer transactions
-      final box = Hive.box<TransactionModel>('transactions');
-      final transactions = box.values
-          .where((t) => t.transferId == transferId)
-          .toList();
-
-      if (transactions.isEmpty) {
-        throw Exception('Transfer not found');
-      }
-
-      // Update both transactions to 'approved'
-      for (var t in transactions) {
-        final updated = t.copyWith(transferStatus: 'approved');
-        await updated.save();
-      }
-
-      // Update notification
-      final notificationBox = Hive.box<NotificationModel>('notifications');
-      for (var n in notificationBox.values) {
-        if (n.relatedId == transferId) {
-          final updated = n.copyWith(
-            title: 'Transfer Approved ✅',
-            message: 'You have approved the transfer.',
-            isRead: true,
-          );
-          await updated.save();
-          break;
+    for (var transferId in transferIds) {
+      if (transferId == null) continue;
+      
+      // Check if transfer is older than 7 days
+      final transfer = pendingTransfers.firstWhere((t) => t.transferId == transferId);
+      if (transfer.createdAt != null) {
+        final days = DateTime.now().difference(transfer.createdAt!).inDays;
+        if (days >= 7) {
+          // Auto-reject old pending transfers
+          final transactions = box.values
+              .where((t) => t.transferId == transferId)
+              .toList();
+          for (var t in transactions) {
+            final updated = t.copyWith(transferStatus: 'rejected');
+            await updated.save();
+          }
         }
-      }
-
-      // Create completion notification
-      await NotificationService.notifyTransferApproved(
-        transferId,
-        userId!,
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Transfer approved successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        setState(() {});
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _rejectTransfer(String transferId) async {
-    try {
-      // Find the transfer transactions
-      final box = Hive.box<TransactionModel>('transactions');
-      final transactions = box.values
-          .where((t) => t.transferId == transferId)
-          .toList();
-
-      if (transactions.isEmpty) {
-        throw Exception('Transfer not found');
-      }
-
-      // Update both transactions to 'rejected'
-      for (var t in transactions) {
-        final updated = t.copyWith(transferStatus: 'rejected');
-        await updated.save();
-      }
-
-      // Update notification
-      final notificationBox = Hive.box<NotificationModel>('notifications');
-      for (var n in notificationBox.values) {
-        if (n.relatedId == transferId) {
-          final updated = n.copyWith(
-            title: 'Transfer Rejected ❌',
-            message: 'You have rejected the transfer.',
-            isRead: true,
-          );
-          await updated.save();
-          break;
-        }
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Transfer rejected.'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        setState(() {});
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
       }
     }
   }
