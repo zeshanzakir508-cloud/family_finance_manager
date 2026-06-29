@@ -10,8 +10,7 @@ import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'screens/mode_selection/mode_selection_screen.dart';
-import 'screens/dashboard/personal_dashboard.dart';
-import 'screens/dashboard/family_dashboard.dart';
+import 'screens/dashboard/financial_dashboard.dart';
 import 'screens/transactions/add_transaction_screen.dart';
 import 'screens/transactions/transfer_screen.dart';
 import 'screens/reports/reports_screen.dart';
@@ -20,85 +19,61 @@ import 'screens/family/add_member_screen.dart';
 import 'screens/notifications/notifications_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/backup/backup_screen.dart';
+import 'screens/owner/owner_dashboard.dart';
+import 'screens/goals/goals_screen.dart';
 import 'services/auth_service.dart';
+import 'services/remote_config_service.dart';
 import 'models/user_model.dart';
 import 'models/transaction_model.dart';
 import 'models/family_model.dart';
 import 'models/transfer_model.dart';
 import 'models/notification_model.dart';
 import 'models/backup_model.dart';
+import 'models/goal_model.dart';
 import 'utils/app_theme.dart';
 import 'utils/constants.dart';
+import 'utils/app_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    // Check if Firebase is already initialized
-    FirebaseApp? existingApp;
-    try {
-      existingApp = Firebase.app();
-    } catch (e) {
-      // Firebase not initialized yet
-    }
+    // Initialize Firebase
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+        apiKey: "AIzaSyC2PqPJ9E1VJj2lPtM06qYwD7xGZ5kR9nQ",
+        authDomain: "family-finance-manager.firebaseapp.com",
+        projectId: "family-finance-manager",
+        storageBucket: "family-finance-manager.appspot.com",
+        messagingSenderId: "808843357815",
+        appId: "1:808843357815:android:8edf9e5b7c6a4d2f",
+      ),
+    );
 
-    if (existingApp == null) {
-      await Firebase.initializeApp(
-        options: const FirebaseOptions(
-          apiKey: "AIzaSyC2PqPJ9E1VJj2lPtM06qYwD7xGZ5kR9nQ",
-          authDomain: "family-finance-manager.firebaseapp.com",
-          projectId: "family-finance-manager",
-          storageBucket: "family-finance-manager.appspot.com",
-          messagingSenderId: "808843357815",
-          appId: "1:808843357815:android:8edf9e5b7c6a4d2f",
-        ),
-      );
-    }
+    // Load Remote Config
+    await RemoteConfigService.init();
 
+    // Initialize Hive
     await Hive.initFlutter();
     
-    // Register adapters safely
-    try {
-      Hive.registerAdapter(UserModelAdapter());
-    } catch (e) {}
-    try {
-      Hive.registerAdapter(TransactionModelAdapter());
-    } catch (e) {}
-    try {
-      Hive.registerAdapter(FamilyModelAdapter());
-    } catch (e) {}
-    try {
-      Hive.registerAdapter(TransferModelAdapter());
-    } catch (e) {}
-    try {
-      Hive.registerAdapter(NotificationModelAdapter());
-    } catch (e) {}
-    try {
-      Hive.registerAdapter(BackupModelAdapter());
-    } catch (e) {}
+    // Register adapters
+    Hive.registerAdapter(UserModelAdapter());
+    Hive.registerAdapter(TransactionModelAdapter());
+    Hive.registerAdapter(FamilyModelAdapter());
+    Hive.registerAdapter(TransferModelAdapter());
+    Hive.registerAdapter(NotificationModelAdapter());
+    Hive.registerAdapter(BackupModelAdapter());
+    Hive.registerAdapter(GoalModelAdapter());
     
-    // Open boxes safely
-    try {
-      await Hive.openBox<UserModel>('users');
-    } catch (e) {}
-    try {
-      await Hive.openBox<TransactionModel>('transactions');
-    } catch (e) {}
-    try {
-      await Hive.openBox<FamilyModel>('families');
-    } catch (e) {}
-    try {
-      await Hive.openBox<TransferModel>('transfers');
-    } catch (e) {}
-    try {
-      await Hive.openBox<NotificationModel>('notifications');
-    } catch (e) {}
-    try {
-      await Hive.openBox<BackupModel>('backups');
-    } catch (e) {}
-    try {
-      await Hive.openBox<dynamic>('appSettings');
-    } catch (e) {}
+    // Open boxes
+    await Hive.openBox<UserModel>('users');
+    await Hive.openBox<TransactionModel>('transactions');
+    await Hive.openBox<FamilyModel>('families');
+    await Hive.openBox<TransferModel>('transfers');
+    await Hive.openBox<NotificationModel>('notifications');
+    await Hive.openBox<BackupModel>('backups');
+    await Hive.openBox<GoalModel>('goals');
+    await Hive.openBox<dynamic>('appSettings');
 
     runApp(const MyApp());
   } catch (e) {
@@ -169,8 +144,7 @@ class MyApp extends StatelessWidget {
           '/signup': (context) => const SignUpScreen(),
           '/forgot-password': (context) => const ForgotPasswordScreen(),
           '/mode-selection': (context) => const ModeSelectionScreen(),
-          '/personal-dashboard': (context) => const PersonalDashboard(),
-          '/family-dashboard': (context) => const FamilyDashboard(),
+          '/financial-dashboard': (context) => const FinancialDashboard(),
           '/add-transaction': (context) => const AddTransactionScreen(),
           '/transfer': (context) => const TransferScreen(),
           '/reports': (context) => const ReportsScreen(),
@@ -179,6 +153,8 @@ class MyApp extends StatelessWidget {
           '/notifications': (context) => const NotificationsScreen(),
           '/settings': (context) => const SettingsScreen(),
           '/backup': (context) => const BackupScreen(),
+          '/owner-dashboard': (context) => const OwnerDashboard(),
+          '/goals': (context) => const GoalsScreen(),
         },
       ),
     );
@@ -243,7 +219,7 @@ class AuthWrapper extends StatelessWidget {
         }
 
         if (snapshot.hasData && snapshot.data != null) {
-          return const ModeSelectionScreen();
+          return const FinancialDashboard();
         }
 
         return const LoginScreen();
