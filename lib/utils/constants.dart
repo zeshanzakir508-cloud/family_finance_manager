@@ -1,5 +1,6 @@
 class Constants {
-  static const String appName = 'Family Finance Manager';
+  static const String appName = 'FinFam';
+  static const String appSubtitle = 'Family Finance Manager';
   static const String appVersion = '1.0.0';
 
   // Hive Box Names
@@ -10,6 +11,7 @@ class Constants {
   static const String notificationsBox = 'notifications';
   static const String backupsBox = 'backups';
   static const String settingsBox = 'appSettings';
+  static const String goalsBox = 'goals';
 
   // SharedPreferences Keys
   static const String rememberModeKey = 'remember_mode';
@@ -36,7 +38,7 @@ class Constants {
   ];
 
   // Family Limits
-  static const int maxFamilyMembers = 15;
+  static const int maxFamilyMembers = 10;
 
   // Transfer Status
   static const String transferPending = 'pending';
@@ -47,4 +49,7 @@ class Constants {
   // Modes
   static const String modePersonal = 'personal';
   static const String modeFamily = 'family';
+
+  // Owner
+  static const String ownerEmail = 'zeshanzakir508@gmail.com';
 }
