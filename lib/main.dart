@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'providers/mode_provider.dart';
 import 'providers/family_provider.dart';
@@ -37,8 +38,19 @@ import 'utils/app_config.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Show splash/loading
+  runApp(
+    const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: SplashScreen(),
+    ),
+  );
+
   try {
-    // Check if Firebase is already initialized
+    // Request permissions first
+    await _requestPermissions();
+
+    // Initialize Firebase
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp(
         options: const FirebaseOptions(
@@ -77,41 +89,122 @@ void main() async {
     await Hive.openBox<GoalModel>(Constants.goalsBox);
     await Hive.openBox<dynamic>(Constants.settingsBox);
 
+    // Run main app
     runApp(const MyApp());
-  } catch (e) {
+  } catch (e, stackTrace) {
+    print('INITIALIZATION ERROR: $e');
+    print('STACK TRACE: $stackTrace');
+    
     runApp(
       MaterialApp(
         debugShowCheckedModeBanner: false,
-        home: Scaffold(
-          body: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'App Initialization Failed',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Error: $e',
-                    style: const TextStyle(color: Colors.grey),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () {
-                      // Restart app
-                      main();
-                    },
-                    child: const Text('Retry'),
-                  ),
-                ],
+        home: ErrorScreen(error: e.toString()),
+      ),
+    );
+  }
+}
+
+// Request all permissions
+Future<void> _requestPermissions() async {
+  final permissions = [
+    Permission.storage,
+    Permission.camera,
+    Permission.contacts,
+    Permission.notification,
+    Permission.vibration,
+    Permission.location,
+  ];
+
+  // For Android 13+ (API 33+)
+  if (await Permission.storage.isRestricted) {
+    await [
+      Permission.photos,
+      Permission.videos,
+      Permission.audio,
+    ].request();
+  }
+
+  await permissions.request();
+}
+
+class SplashScreen extends StatelessWidget {
+  const SplashScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Color(0xFF1976D2),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+            SizedBox(height: 24),
+            Text(
+              'FinFam',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
             ),
+            SizedBox(height: 8),
+            Text(
+              'Family Finance Manager',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.white70,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ErrorScreen extends StatelessWidget {
+  final String error;
+
+  const ErrorScreen({super.key, required this.error});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              const Text(
+                'App Initialization Failed',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                error,
+                style: const TextStyle(color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  main();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(200, 50),
+                ),
+                child: const Text('Retry'),
+              ),
+            ],
           ),
         ),
       ),
