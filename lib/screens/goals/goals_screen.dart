@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../models/transaction_model.dart';
+import '../../models/goal_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
 
@@ -19,7 +20,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
   final TextEditingController _goalAmountController = TextEditingController();
   final TextEditingController _goalNoteController = TextEditingController();
 
-  List<Goal> _goals = [];
+  List<GoalModel> _goals = [];
   double _currentSavings = 0;
 
   @override
@@ -47,9 +48,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
       _currentSavings = income - expense;
 
       // Load goals from Hive
-      final goalsBox = Hive.box<dynamic>('goals');
+      final goalsBox = Hive.box<GoalModel>('goals');
       _goals = goalsBox.values
-          .whereType<Goal>()
           .where((g) => g.userId == userId)
           .toList();
     }
@@ -124,9 +124,10 @@ class _GoalsScreenState extends State<GoalsScreen> {
     );
   }
 
-  Widget _buildGoalCard(Goal goal) {
-    final progress = goal.totalAmount > 0
-        ? (_currentSavings / goal.totalAmount).clamp(0.0, 1.0)
+  Widget _buildGoalCard(GoalModel goal) {
+    final totalAmount = goal.totalAmount ?? 0;
+    final progress = totalAmount > 0
+        ? (_currentSavings / totalAmount).clamp(0.0, 1.0)
         : 0.0;
 
     final isAchieved = progress >= 1.0;
@@ -160,13 +161,13 @@ class _GoalsScreenState extends State<GoalsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        goal.name,
+                        goal.name ?? 'Goal',
                         style: AppTheme.bodyStyle.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       Text(
-                        'Target: ${Helpers.formatCurrency(goal.totalAmount)}',
+                        'Target: ${Helpers.formatCurrency(totalAmount)}',
                         style: AppTheme.captionStyle,
                       ),
                     ],
@@ -209,7 +210,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                       ),
                     ),
                     Text(
-                      '${Helpers.formatCurrency(_currentSavings)} / ${Helpers.formatCurrency(goal.totalAmount)}',
+                      '${Helpers.formatCurrency(_currentSavings)} / ${Helpers.formatCurrency(totalAmount)}',
                       style: AppTheme.captionStyle,
                     ),
                   ],
@@ -240,7 +241,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Text(
-                  'Created: ${Helpers.formatDate(goal.createdAt)}',
+                  'Created: ${Helpers.formatDate(goal.createdAt ?? DateTime.now())}',
                   style: AppTheme.captionStyle.copyWith(
                     fontSize: 10,
                   ),
@@ -351,7 +352,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
     if (userId == null) return;
 
-    final goal = Goal(
+    final goal = GoalModel(
       id: Helpers.generateId(),
       userId: userId,
       name: _goalNameController.text.trim(),
@@ -362,7 +363,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
       createdAt: DateTime.now(),
     );
 
-    final goalsBox = Hive.box<dynamic>('goals');
+    final goalsBox = Hive.box<GoalModel>('goals');
     await goalsBox.add(goal);
 
     _loadData();
@@ -378,12 +379,12 @@ class _GoalsScreenState extends State<GoalsScreen> {
     }
   }
 
-  void _deleteGoal(Goal goal) async {
+  void _deleteGoal(GoalModel goal) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Goal'),
-        content: Text('Delete "${goal.name}"?'),
+        content: Text('Delete "${goal.name ?? 'Goal'}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -401,7 +402,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
     );
 
     if (confirm == true) {
-      final goalsBox = Hive.box<dynamic>('goals');
+      final goalsBox = Hive.box<GoalModel>('goals');
       await goalsBox.delete(goal.key);
       _loadData();
       if (mounted) {
@@ -414,26 +415,4 @@ class _GoalsScreenState extends State<GoalsScreen> {
       }
     }
   }
-}
-
-// Goal Model
-@HiveType(typeId: 8)
-class Goal extends HiveObject {
-  @HiveField(0)
-  String? id;
-
-  @HiveField(1)
-  String? userId;
-
-  @HiveField(2)
-  String? name;
-
-  @HiveField(3)
-  double? totalAmount;
-
-  @HiveField(4)
-  String? note;
-
-  @HiveField(5)
-  DateTime? createdAt;
 }
