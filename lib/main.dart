@@ -111,7 +111,6 @@ Future<void> _requestPermissions() async {
     Permission.camera,
     Permission.contacts,
     Permission.notification,
-    Permission.vibration,
     Permission.location,
   ];
 
