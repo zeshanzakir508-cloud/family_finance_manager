@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../providers/mode_provider.dart';
+import '../../providers/family_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../models/transaction_model.dart';
@@ -23,7 +24,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   String _selectedPeriod = 'monthly';
   DateTime _selectedMonth = DateTime.now();
   DateTime _selectedYear = DateTime.now();
-  int _selectedTab = 0; // 0: Overview, 1: Categories, 2: Trends, 3: Tax
+  int _selectedTab = 0;
 
   String? _selectedType;
   String? _selectedCategory;
@@ -34,11 +35,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
   double _totalExpense = 0;
   double _balance = 0;
 
-  // Colors for charts
   final List<Color> _categoryColors = [
     Colors.blue, Colors.green, Colors.red, Colors.orange, Colors.purple,
     Colors.teal, Colors.pink, Colors.amber, Colors.indigo, Colors.lime,
-    Colors.cyan, Colors.brown, Colors.grey, Colors.deepPurple, Colors.deepOrange,
   ];
 
   @override
@@ -57,8 +56,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
     if (modeProvider.isPersonalMode) {
       _allTransactions = DatabaseService.getUserTransactions(userId);
     } else {
-      final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
-      final family = familyProvider.currentFamily;
+      // Family mode - get all family transactions
+      final family = Provider.of<FamilyProvider>(context, listen: false).currentFamily;
       if (family != null) {
         _allTransactions = DatabaseService.getFamilyTransactions(family.id!);
       } else {
@@ -372,7 +371,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -651,7 +650,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Recent Transactions List
         Text(
           'All Transactions (${_filteredTransactions.length})',
           style: AppTheme.subheadingStyle,
@@ -718,7 +716,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
       return _buildEmptyState('No transactions to analyze');
     }
 
-    // Group by category for expenses
     final categoryMap = <String, double>{};
     for (var transaction in _filteredTransactions) {
       if (transaction.type == 'expense' && transaction.category != null) {
@@ -738,7 +735,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
     return Column(
       children: [
-        // Pie Chart
         SizedBox(
           height: 200,
           child: PieChart(
@@ -765,8 +761,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ),
         ),
         const SizedBox(height: 16),
-
-        // Category List
         ...entries.map((entry) {
           final percentage = totalExpense > 0 ? (entry.value / totalExpense) * 100 : 0;
           final colorIndex = entries.indexOf(entry) % _categoryColors.length;
@@ -813,7 +807,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
       return _buildEmptyState('No data available for trends');
     }
 
-    // Group by month for the selected year
     final monthMap = <String, Map<String, double>>{};
     for (var transaction in _filteredTransactions) {
       if (transaction.date == null) continue;
@@ -934,7 +927,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
       return _buildEmptyState('No data available for tax report');
     }
 
-    // Group by category for tax purposes
     final categoryMap = <String, double>{};
     for (var transaction in _filteredTransactions) {
       if (transaction.type == 'expense' && transaction.category != null) {
@@ -978,7 +970,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ),
         ),
         const SizedBox(height: 16),
-
         Text(
           'Expense Categories',
           style: AppTheme.subheadingStyle,
@@ -1005,7 +996,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ),
           );
         }),
-
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(12),
