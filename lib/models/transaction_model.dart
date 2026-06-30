@@ -21,7 +21,7 @@ class TransactionModel extends HiveObject {
   String? description;
 
   @HiveField(5)
-  String? type; // 'income' or 'expense'
+  String? type; // 'income', 'expense', 'transfer'
 
   @HiveField(6)
   DateTime? date;
@@ -44,6 +44,18 @@ class TransactionModel extends HiveObject {
   @HiveField(12)
   bool? isFamilyTransaction;
 
+  @HiveField(13)
+  String? sourceMemberId; // For income: who gave the money
+
+  @HiveField(14)
+  String? sourceMemberName;
+
+  @HiveField(15)
+  String? transferId; // For linking transfer transactions
+
+  @HiveField(16)
+  String? transferStatus; // 'pending', 'approved', 'rejected', 'completed'
+
   TransactionModel({
     this.id,
     this.userId,
@@ -58,6 +70,10 @@ class TransactionModel extends HiveObject {
     this.memberId,
     this.memberName,
     this.isFamilyTransaction = false,
+    this.sourceMemberId,
+    this.sourceMemberName,
+    this.transferId,
+    this.transferStatus,
   });
 
   Map<String, dynamic> toJson() {
@@ -75,6 +91,10 @@ class TransactionModel extends HiveObject {
       'memberId': memberId,
       'memberName': memberName,
       'isFamilyTransaction': isFamilyTransaction,
+      'sourceMemberId': sourceMemberId,
+      'sourceMemberName': sourceMemberName,
+      'transferId': transferId,
+      'transferStatus': transferStatus,
     };
   }
 
@@ -93,6 +113,10 @@ class TransactionModel extends HiveObject {
       memberId: json['memberId'],
       memberName: json['memberName'],
       isFamilyTransaction: json['isFamilyTransaction'] ?? false,
+      sourceMemberId: json['sourceMemberId'],
+      sourceMemberName: json['sourceMemberName'],
+      transferId: json['transferId'],
+      transferStatus: json['transferStatus'],
     );
   }
 
@@ -110,6 +134,10 @@ class TransactionModel extends HiveObject {
     String? memberId,
     String? memberName,
     bool? isFamilyTransaction,
+    String? sourceMemberId,
+    String? sourceMemberName,
+    String? transferId,
+    String? transferStatus,
   }) {
     return TransactionModel(
       id: id ?? this.id,
@@ -125,6 +153,10 @@ class TransactionModel extends HiveObject {
       memberId: memberId ?? this.memberId,
       memberName: memberName ?? this.memberName,
       isFamilyTransaction: isFamilyTransaction ?? this.isFamilyTransaction,
+      sourceMemberId: sourceMemberId ?? this.sourceMemberId,
+      sourceMemberName: sourceMemberName ?? this.sourceMemberName,
+      transferId: transferId ?? this.transferId,
+      transferStatus: transferStatus ?? this.transferStatus,
     );
   }
 
@@ -140,11 +172,15 @@ class TransactionModel extends HiveObject {
   }
 
   String get typeDisplay {
-    return type == 'income' ? 'Income' : 'Expense';
+    if (type == 'income') return 'Income';
+    if (type == 'transfer') return 'Transfer';
+    return 'Expense';
   }
 
   Color get typeColor {
-    return type == 'income' ? Colors.green : Colors.red;
+    if (type == 'income') return Colors.green;
+    if (type == 'transfer') return Colors.blue;
+    return Colors.red;
   }
 
   String get categoryDisplay {
@@ -169,7 +205,17 @@ class TransactionModel extends HiveObject {
       case 'Gift': return Icons.card_giftcard;
       case 'Travel': return Icons.flight;
       case 'Insurance': return Icons.security;
+      case 'Pocket Money': return Icons.account_balance_wallet;
+      case 'Allowance': return Icons.credit_card;
       default: return Icons.category;
     }
   }
+
+  bool get isTransfer => type == 'transfer';
+  bool get isIncome => type == 'income';
+  bool get isExpense => type == 'expense';
+  bool get isPending => transferStatus == 'pending';
+  bool get isApproved => transferStatus == 'approved';
+  bool get isRejected => transferStatus == 'rejected';
+  bool get isCompleted => transferStatus == 'completed';
 }
