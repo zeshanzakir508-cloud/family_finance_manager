@@ -1,6 +1,6 @@
+// lib/screens/reports/reports_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../providers/mode_provider.dart';
@@ -11,7 +11,6 @@ import '../../models/transaction_model.dart';
 import '../../models/family_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
-import '../../utils/app_config.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -43,7 +42,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadData();
+    });
   }
 
   void _loadData() {
@@ -56,16 +57,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
     if (modeProvider.isPersonalMode) {
       _allTransactions = DatabaseService.getUserTransactions(userId);
     } else {
-      // Family mode - get all family transactions
       final family = Provider.of<FamilyProvider>(context, listen: false).currentFamily;
-      if (family != null) {
+      if (family != null && family.id != null) {
         _allTransactions = DatabaseService.getFamilyTransactions(family.id!);
       } else {
         _allTransactions = [];
       }
     }
 
-    _allTransactions.sort((a, b) => b.date!.compareTo(a.date!));
+    _allTransactions.sort((a, b) {
+      final aDate = a.date ?? DateTime.now();
+      final bDate = b.date ?? DateTime.now();
+      return bDate.compareTo(aDate);
+    });
     _applyFilters();
   }
 
@@ -82,9 +86,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       }
 
       if (_selectedType != null && _selectedType != 'all') {
-        final type = _selectedType == 'income'
-            ? 'income'
-            : 'expense';
+        final type = _selectedType == 'income' ? 'income' : 'expense';
         if (transaction.type != type) return false;
       }
 
@@ -137,7 +139,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
         title: Text(
           modeProvider.isPersonalMode ? 'Personal Reports' : 'Family Reports',
         ),
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           IconButton(
@@ -155,31 +158,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Mode Switch
             _buildModeSwitch(modeProvider),
             const SizedBox(height: 16),
-
-            // Period Selector
             _buildPeriodSelector(),
             const SizedBox(height: 16),
-
-            // Date Picker
             _buildDatePicker(),
             const SizedBox(height: 16),
-
-            // Filters
             _buildFilters(),
             const SizedBox(height: 16),
-
-            // Summary Cards
             _buildSummaryCards(),
             const SizedBox(height: 16),
-
-            // Tabs
             _buildTabs(),
             const SizedBox(height: 16),
-
-            // Tab Content
             _buildTabContent(),
           ],
         ),
@@ -371,7 +361,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
@@ -392,7 +382,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
       spacing: 8,
       runSpacing: 8,
       children: [
-        // Type Filter
         DecoratedBox(
           decoration: BoxDecoration(
             border: Border.all(color: AppTheme.dividerColor),
@@ -413,13 +402,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   _applyFilters();
                 });
               },
-              style: AppTheme.bodyStyle,
               icon: Icon(Icons.arrow_drop_down, color: AppTheme.primaryColor),
               underline: const SizedBox(),
             ),
           ),
         ),
-        // Category Filter
         DecoratedBox(
           decoration: BoxDecoration(
             border: Border.all(color: AppTheme.dividerColor),
@@ -434,7 +421,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 ..._getUniqueCategories().map((category) {
                   return DropdownMenuItem(
                     value: category,
-                    child: Text(_getCategoryDisplayName(category)),
+                    child: Text(category),
                   );
                 }),
               ],
@@ -444,13 +431,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   _applyFilters();
                 });
               },
-              style: AppTheme.bodyStyle,
               icon: Icon(Icons.arrow_drop_down, color: AppTheme.primaryColor),
               underline: const SizedBox(),
             ),
           ),
         ),
-        // Clear Filters
         if (_selectedType != 'all' || _selectedCategory != 'all')
           TextButton(
             onPressed: () {
@@ -477,12 +462,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
       }
     }
     return categories.toList();
-  }
-
-  String _getCategoryDisplayName(String category) {
-    return category.split('_').map((word) =>
-      word[0].toUpperCase() + word.substring(1)
-    ).join(' ');
   }
 
   Widget _buildSummaryCards() {
@@ -595,35 +574,42 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Widget _buildTabs() {
     final tabs = ['Overview', 'Categories', 'Trends', 'Tax'];
-    return Row(
-      children: List.generate(tabs.length, (index) {
-        final isSelected = _selectedTab == index;
-        return Expanded(
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedTab = index;
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: isSelected ? AppTheme.primaryColor : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Text(
-                  tabs[index],
-                  style: AppTheme.bodyStyle.copyWith(
-                    color: isSelected ? Colors.white : AppTheme.textSecondaryColor,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.dividerColor),
+      ),
+      child: Row(
+        children: List.generate(tabs.length, (index) {
+          final isSelected = _selectedTab == index;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedTab = index;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppTheme.primaryColor : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: Text(
+                    tabs[index],
+                    style: AppTheme.bodyStyle.copyWith(
+                      color: isSelected ? Colors.white : AppTheme.textSecondaryColor,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        );
-      }),
+          );
+        }),
+      ),
     );
   }
 
@@ -680,31 +666,30 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Widget _buildTransactionTile(TransactionModel transaction) {
     final isIncome = transaction.type == 'income';
+    final color = isIncome ? Colors.green : Colors.red;
+    final icon = isIncome ? Icons.arrow_upward : Icons.arrow_downward;
+    
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: transaction.typeColor.withOpacity(0.1),
+          color: color.withOpacity(0.1),
           shape: BoxShape.circle,
         ),
-        child: Icon(
-          transaction.categoryIcon,
-          color: transaction.typeColor,
-          size: 20,
-        ),
+        child: Icon(icon, color: color, size: 20),
       ),
       title: Text(
         transaction.description ?? 'Transaction',
         style: AppTheme.bodyStyle,
       ),
       subtitle: Text(
-        '${transaction.memberName ?? 'You'} • ${transaction.categoryDisplay} • ${transaction.formattedDate}',
+        '${transaction.memberName ?? 'You'} • ${transaction.category ?? 'Uncategorized'} • ${transaction.formattedDate}',
         style: AppTheme.captionStyle,
       ),
       trailing: Text(
         '${isIncome ? '+' : '-'}${transaction.formattedAmount}',
         style: AppTheme.bodyStyle.copyWith(
-          color: transaction.typeColor,
+          color: color,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -779,7 +764,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    _getCategoryDisplayName(entry.key),
+                    entry.key,
                     style: AppTheme.bodyStyle,
                   ),
                 ),
@@ -982,7 +967,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    _getCategoryDisplayName(entry.key),
+                    entry.key,
                     style: AppTheme.bodyStyle,
                   ),
                 ),
