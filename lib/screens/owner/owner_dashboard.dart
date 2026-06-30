@@ -810,9 +810,9 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
     final userIds = userBox.values.map((u) => u.id).where((id) => id != null).cast<String>().toList();
 
     for (var userId in userIds) {
-      await NotificationService.notifyAppUpdate(
+      await NotificationService.notifySystemMessage(
         userId,
-        Constants.appVersion,
+        '📱 New Update Available!',
         'New features added: Family Budget, Monthly Reports, and more!',
       );
     }
@@ -826,9 +826,6 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
   }
 
   Future<void> _exportData() async {
-    final userBox = Hive.box<UserModel>('users');
-    final users = userBox.values.toList();
-
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Data exported! Check device storage.'),
