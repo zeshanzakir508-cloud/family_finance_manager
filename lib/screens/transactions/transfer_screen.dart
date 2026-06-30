@@ -420,6 +420,20 @@ class _TransferScreenState extends State<TransferScreen> {
 
       final transferId = Helpers.generateId();
 
+      // Create TransferModel for notification
+      final transfer = TransferModel(
+        id: transferId,
+        familyId: family.id,
+        fromMemberId: _fromMemberId,
+        fromMemberName: fromMember.displayName,
+        toMemberId: _toMemberId,
+        toMemberName: toMember.displayName,
+        amount: amount,
+        note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+        status: TransferStatus.pending,
+        createdAt: DateTime.now(),
+      );
+
       // Sender's transaction (Expense - Transfer)
       final senderTransaction = TransactionModel(
         id: Helpers.generateId(),
@@ -463,14 +477,8 @@ class _TransferScreenState extends State<TransferScreen> {
       await DatabaseService.saveTransaction(senderTransaction);
       await DatabaseService.saveTransaction(receiverTransaction);
 
-      // Send notification to receiver
-      await NotificationService.notifyTransferRequest(
-        fromMember.displayName,
-        toMember.displayName,
-        amount,
-        transferId,
-        toMember.id!,
-      );
+      // Send notification to receiver using TransferModel
+      await NotificationService.notifyTransferRequest(transfer);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
