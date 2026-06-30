@@ -38,19 +38,8 @@ import 'utils/app_config.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Show splash/loading
-  runApp(
-    const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: SplashScreen(),
-    ),
-  );
-
   try {
-    // Request permissions first
-    await _requestPermissions();
-
-    // Initialize Firebase
+    // STEP 1: Initialize Firebase FIRST
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp(
         options: const FirebaseOptions(
@@ -64,10 +53,10 @@ void main() async {
       );
     }
 
-    // Load Remote Config
+    // STEP 2: Load Remote Config
     await RemoteConfigService.init();
 
-    // Initialize Hive
+    // STEP 3: Initialize Hive
     await Hive.initFlutter();
     
     // Register adapters
@@ -89,7 +78,10 @@ void main() async {
     await Hive.openBox<GoalModel>(Constants.goalsBox);
     await Hive.openBox<dynamic>(Constants.settingsBox);
 
-    // Run main app
+    // STEP 4: Request permissions (AFTER Firebase)
+    await _requestPermissions();
+
+    // STEP 5: Run main app
     runApp(const MyApp());
   } catch (e, stackTrace) {
     print('INITIALIZATION ERROR: $e');
@@ -106,24 +98,26 @@ void main() async {
 
 // Request all permissions
 Future<void> _requestPermissions() async {
-  final permissions = [
-    Permission.storage,
-    Permission.camera,
-    Permission.contacts,
-    Permission.notification,
-    Permission.location,
-  ];
-
-  // For Android 13+ (API 33+)
+  // Android 13+ uses different storage permissions
   if (await Permission.storage.isRestricted) {
+    // For Android 13+ (API 33+)
     await [
       Permission.photos,
       Permission.videos,
       Permission.audio,
     ].request();
+  } else {
+    // For Android 12 and below
+    await Permission.storage.request();
   }
 
-  await permissions.request();
+  // Request other permissions
+  await [
+    Permission.camera,
+    Permission.contacts,
+    Permission.notification,
+    Permission.location,
+  ].request();
 }
 
 class SplashScreen extends StatelessWidget {
