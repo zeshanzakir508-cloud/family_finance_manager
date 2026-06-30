@@ -40,15 +40,15 @@ dependencies:
   url_launcher: ^6.2.1
   share_plus: ^7.2.1
 
-  # Charts & PDF
-  pdf: ^3.10.4
-  printing: ^5.11.1
+  # Charts & PDF - COMMENTED OUT FOR NOW
+  # pdf: ^3.11.1
+  # printing: ^5.12.1
   csv: ^5.1.1
 
   # In-App Purchase
   in_app_purchase: ^3.1.10
 
-  # Google Ads - UPDATED VERSION
+  # Google Ads
   google_mobile_ads: ^4.0.0
 
   # Other
@@ -73,12 +73,6 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/fonts/
-
-  # Fonts (optional - uncomment if you have custom fonts)
-  # fonts:
-  #   - family: CustomFont
-  #     fonts:
-  #       - asset: assets/fonts/custom_font.ttf
 
 flutter_icons:
   android: true
