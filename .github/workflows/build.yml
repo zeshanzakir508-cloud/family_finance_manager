@@ -154,6 +154,7 @@ jobs:
                   release {
                       signingConfig = signingConfigs.getByName("release")
                       isMinifyEnabled = true
+                      isShrinkResources = true
                       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
                   }
                   debug {
@@ -315,7 +316,9 @@ jobs:
         run: flutter pub run flutter_launcher_icons:main
 
       - name: Build APK
-        run: flutter build apk --release
+        run: |
+          echo "org.gradle.jvmargs=-Xmx4g" >> android/gradle.properties
+          flutter build apk --release --no-tree-shake-icons
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
