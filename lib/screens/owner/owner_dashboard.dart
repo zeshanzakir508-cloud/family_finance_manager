@@ -8,6 +8,7 @@ import '../../models/transaction_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 import '../../utils/app_config.dart';
+import '../../utils/helpers.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../services/notification_service.dart';
@@ -38,7 +39,6 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
     _isModerator = AppConfig.isModerator(_currentUserEmail);
 
     if (!_isOwner && !_isModerator) {
-      // Redirect if not authorized
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Navigator.pushReplacementNamed(context, '/financial-dashboard');
         ScaffoldMessenger.of(context).showSnackBar(
@@ -71,7 +71,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.gold,
+                  color: Colors.amber,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Text(
@@ -454,7 +454,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
           child: ListTile(
             leading: CircleAvatar(
               backgroundColor: isOwner
-                  ? Colors.gold
+                  ? Colors.amber
                   : isModerator
                       ? Colors.blue
                       : AppTheme.primaryColor.withOpacity(0.1),
@@ -477,7 +477,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.gold,
+                      color: Colors.amber,
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: const Text(
@@ -794,7 +794,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
     final userIds = userBox.values.map((u) => u.id).where((id) => id != null).cast<String>().toList();
 
     for (var userId in userIds) {
-      await NotificationService.notifyAnnouncement(userId, title, message);
+      await NotificationService.notifySystemMessage(userId, title, message);
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -829,7 +829,6 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
     final userBox = Hive.box<UserModel>('users');
     final users = userBox.values.toList();
 
-    // Simple export for now
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Data exported! Check device storage.'),
