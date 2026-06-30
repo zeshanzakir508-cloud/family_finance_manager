@@ -66,4 +66,37 @@ class GoalModel extends HiveObject {
       isCompleted: json['isCompleted'] ?? false,
     );
   }
+
+  GoalModel copyWith({
+    String? id,
+    String? userId,
+    String? name,
+    double? totalAmount,
+    String? note,
+    DateTime? createdAt,
+    double? currentProgress,
+    bool? isCompleted,
+  }) {
+    return GoalModel(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      name: name ?? this.name,
+      totalAmount: totalAmount ?? this.totalAmount,
+      note: note ?? this.note,
+      createdAt: createdAt ?? this.createdAt,
+      currentProgress: currentProgress ?? this.currentProgress,
+      isCompleted: isCompleted ?? this.isCompleted,
+    );
+  }
+
+  String get displayName => name ?? 'Goal';
+
+  double get progress {
+    if (totalAmount == null || totalAmount == 0) return 0;
+    return (currentProgress ?? 0) / totalAmount!;
+  }
+
+  bool get isAchieved => progress >= 1.0;
+
+  String get formattedAmount => '\$${totalAmount?.toStringAsFixed(2) ?? '0.00'}';
 }
