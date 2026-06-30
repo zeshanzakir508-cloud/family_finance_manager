@@ -38,17 +38,19 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    // Initialize Firebase
-    await Firebase.initializeApp(
-      options: const FirebaseOptions(
-        apiKey: "AIzaSyC2PqPJ9E1VJj2lPtM06qYwD7xGZ5kR9nQ",
-        authDomain: "family-finance-manager.firebaseapp.com",
-        projectId: "family-finance-manager",
-        storageBucket: "family-finance-manager.appspot.com",
-        messagingSenderId: "808843357815",
-        appId: "1:808843357815:android:8edf9e5b7c6a4d2f",
-      ),
-    );
+    // Check if Firebase is already initialized
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: const FirebaseOptions(
+          apiKey: "AIzaSyC2PqPJ9E1VJj2lPtM06qYwD7xGZ5kR9nQ",
+          authDomain: "family-finance-manager.firebaseapp.com",
+          projectId: "family-finance-manager",
+          storageBucket: "family-finance-manager.appspot.com",
+          messagingSenderId: "808843357815",
+          appId: "1:808843357815:android:8edf9e5b7c6a4d2f",
+        ),
+      );
+    }
 
     // Load Remote Config
     await RemoteConfigService.init();
@@ -66,19 +68,20 @@ void main() async {
     Hive.registerAdapter(GoalModelAdapter());
     
     // Open boxes
-    await Hive.openBox<UserModel>('users');
-    await Hive.openBox<TransactionModel>('transactions');
-    await Hive.openBox<FamilyModel>('families');
-    await Hive.openBox<TransferModel>('transfers');
-    await Hive.openBox<NotificationModel>('notifications');
-    await Hive.openBox<BackupModel>('backups');
-    await Hive.openBox<GoalModel>('goals');
-    await Hive.openBox<dynamic>('appSettings');
+    await Hive.openBox<UserModel>(Constants.usersBox);
+    await Hive.openBox<TransactionModel>(Constants.transactionsBox);
+    await Hive.openBox<FamilyModel>(Constants.familiesBox);
+    await Hive.openBox<TransferModel>(Constants.transfersBox);
+    await Hive.openBox<NotificationModel>(Constants.notificationsBox);
+    await Hive.openBox<BackupModel>(Constants.backupsBox);
+    await Hive.openBox<GoalModel>(Constants.goalsBox);
+    await Hive.openBox<dynamic>(Constants.settingsBox);
 
     runApp(const MyApp());
   } catch (e) {
     runApp(
       MaterialApp(
+        debugShowCheckedModeBanner: false,
         home: Scaffold(
           body: Center(
             child: Padding(
@@ -101,6 +104,7 @@ void main() async {
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: () {
+                      // Restart app
                       main();
                     },
                     child: const Text('Retry'),
@@ -189,30 +193,33 @@ class AuthWrapper extends StatelessWidget {
         if (snapshot.hasError) {
           return Scaffold(
             body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Authentication Error',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${snapshot.error}',
-                    style: const TextStyle(color: Colors.grey),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () {
-                      final authService = Provider.of<AuthService>(context, listen: false);
-                      authService.signOut();
-                    },
-                    child: const Text('Retry'),
-                  ),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Authentication Error',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${snapshot.error}',
+                      style: const TextStyle(color: Colors.grey),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () {
+                        final authService = Provider.of<AuthService>(context, listen: false);
+                        authService.signOut();
+                      },
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
               ),
             ),
           );
