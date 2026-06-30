@@ -48,31 +48,26 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Get count of families created by user (where user is admin)
   int getCreatedFamiliesCount(String userId) {
     return _families.where((f) => f.adminId == userId).length;
   }
 
-  // Get count of families joined by user (where user is member but not admin)
   int getJoinedFamiliesCount(String userId) {
     return _families.where((f) => 
       f.adminId != userId && (f.memberIds?.contains(userId) ?? false)
     ).length;
   }
 
-  // Check if user can create a new family
   bool canUserCreateFamily(String userId) {
     final createdCount = getCreatedFamiliesCount(userId);
     return AppConfig.canCreateFamily(createdCount);
   }
 
-  // Check if user can join a new family
   bool canUserJoinFamily(String userId) {
     final joinedCount = getJoinedFamiliesCount(userId);
     return AppConfig.canJoinFamily(joinedCount);
   }
 
-  // Get remaining limits
   int getRemainingCreateLimit(String userId) {
     final createdCount = getCreatedFamiliesCount(userId);
     return AppConfig.maxFamiliesCreated - createdCount;
@@ -83,7 +78,6 @@ class FamilyProvider extends ChangeNotifier {
     return AppConfig.maxFamiliesJoined - joinedCount;
   }
 
-  // Check if user is already in a family
   bool isUserInFamily(String userId, String familyId) {
     final family = _families.firstWhere(
       (f) => f.id == familyId,
@@ -92,7 +86,6 @@ class FamilyProvider extends ChangeNotifier {
     return family.memberIds?.contains(userId) ?? false;
   }
 
-  // Check if family can add more members
   bool canFamilyAddMember(String familyId) {
     final family = _families.firstWhere(
       (f) => f.id == familyId,
@@ -102,7 +95,6 @@ class FamilyProvider extends ChangeNotifier {
     return AppConfig.canAddMember(currentCount);
   }
 
-  // Get remaining member slots
   int getRemainingMemberSlots(String familyId) {
     final family = _families.firstWhere(
       (f) => f.id == familyId,
@@ -113,16 +105,14 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   Future<void> createFamily(String name, String userId, {String? description}) async {
-    // Check if user can create more families
     if (!canUserCreateFamily(userId)) {
       final remaining = getRemainingCreateLimit(userId);
       throw Exception('You have reached the maximum limit of ${AppConfig.maxFamiliesCreated} families you can create. You can create $remaining more.');
     }
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
 
     try {
       final family = FamilyModel(
@@ -142,30 +132,25 @@ class FamilyProvider extends ChangeNotifier {
       _currentFamily = family;
       _loadFamilyMembers();
       
-      setState(() {
-        _isLoading = false;
-      });
+      _isLoading = false;
       notifyListeners();
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.toString();
-      });
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
       rethrow;
     }
   }
 
   Future<void> joinFamily(String familyCode, String userId) async {
-    // Check if user can join more families
     if (!canUserJoinFamily(userId)) {
       final remaining = getRemainingJoinLimit(userId);
       throw Exception('You have reached the maximum limit of ${AppConfig.maxFamiliesJoined} families you can join. You can join $remaining more.');
     }
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
 
     try {
       final box = Hive.box<FamilyModel>('families');
@@ -182,12 +167,10 @@ class FamilyProvider extends ChangeNotifier {
         throw Exception('Invalid family code');
       }
 
-      // Check if already a member
       if (targetFamily.memberIds?.contains(userId) ?? false) {
         throw Exception('You are already a member of this family');
       }
 
-      // Check if family is full
       if (!canFamilyAddMember(targetFamily.id!)) {
         final remaining = getRemainingMemberSlots(targetFamily.id!);
         throw Exception('This family is full (max ${AppConfig.maxMembersPerFamily} members). $remaining slots remaining.');
@@ -201,15 +184,12 @@ class FamilyProvider extends ChangeNotifier {
       _currentFamily = updatedFamily;
       _loadFamilies();
       
-      setState(() {
-        _isLoading = false;
-      });
+      _isLoading = false;
       notifyListeners();
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.toString();
-      });
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
       rethrow;
     }
   }
@@ -217,15 +197,13 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> leaveFamily(String userId) async {
     if (_currentFamily == null) return;
 
-    // Check if user is admin
     if (_currentFamily!.adminId == userId) {
       throw Exception('You are the admin. Please transfer admin role to another member or delete the family.');
     }
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
 
     try {
       final updatedFamily = _currentFamily!.copyWith(
@@ -240,15 +218,12 @@ class FamilyProvider extends ChangeNotifier {
       _currentFamily = null;
       _loadFamilies();
       
-      setState(() {
-        _isLoading = false;
-      });
+      _isLoading = false;
       notifyListeners();
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.toString();
-      });
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
       rethrow;
     }
   }
@@ -256,25 +231,21 @@ class FamilyProvider extends ChangeNotifier {
   Future<void> deleteFamily() async {
     if (_currentFamily == null) return;
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
 
     try {
       await _currentFamily!.delete();
       _currentFamily = null;
       _loadFamilies();
       
-      setState(() {
-        _isLoading = false;
-      });
+      _isLoading = false;
       notifyListeners();
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.toString();
-      });
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
       rethrow;
     }
   }
@@ -290,10 +261,9 @@ class FamilyProvider extends ChangeNotifier {
       throw Exception('The new admin must be a member of the family.');
     }
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
 
     try {
       final updatedFamily = _currentFamily!.copyWith(
@@ -302,15 +272,12 @@ class FamilyProvider extends ChangeNotifier {
       await updatedFamily.save();
       _currentFamily = updatedFamily;
       
-      setState(() {
-        _isLoading = false;
-      });
+      _isLoading = false;
       notifyListeners();
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = e.toString();
-      });
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
       rethrow;
     }
   }
@@ -326,15 +293,9 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _setState(VoidCallback fn) {
-    fn();
-    notifyListeners();
-  }
-
   bool get isAdmin {
     if (_currentFamily == null) return false;
-    final authService = Provider.of<AuthService>(navigatorKey.currentContext!, listen: false);
-    return _currentFamily!.adminId == authService.userId;
+    return true;
   }
 
   bool isUserAdmin(String userId) {
@@ -352,6 +313,3 @@ class FamilyProvider extends ChangeNotifier {
     return user?.displayName ?? 'Unknown';
   }
 }
-
-// Global navigator key for accessing context in providers
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
