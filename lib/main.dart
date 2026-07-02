@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'providers/mode_provider.dart';
 import 'providers/family_provider.dart';
@@ -51,6 +52,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
+    // Initialize Firebase
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp(
         options: const FirebaseOptions(
@@ -83,6 +85,9 @@ void main() async {
     await Hive.openBox<BackupModel>(Constants.backupsBox);
     await Hive.openBox<GoalModel>(Constants.goalsBox);
     await Hive.openBox<dynamic>(Constants.settingsBox);
+
+    // Initialize AdMob
+    await MobileAds.instance.initialize();
 
     runApp(const MyApp());
   } catch (e) {
