@@ -136,19 +136,6 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
                     ),
                   ),
                 ),
-
-                const SizedBox(height: 16),
-
-                // Logout Button
-                TextButton(
-                  onPressed: () {
-                    _showLogoutDialog(context);
-                  },
-                  child: const Text(
-                    'Logout',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                ),
               ],
             ),
           ),
@@ -234,31 +221,5 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
     } else {
       Navigator.pushReplacementNamed(context, '/family-dashboard');
     }
-  }
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pushReplacementNamed(context, '/login');
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
-            ),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
   }
 }
