@@ -48,7 +48,7 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
         _nameController.text.trim(),
         userId,
         description: _descriptionController.text.trim(),
-        baseCurrency: _selectedCurrency,
+        // ✅ REMOVED: baseCurrency parameter
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
