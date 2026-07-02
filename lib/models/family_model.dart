@@ -20,19 +20,16 @@ class FamilyModel extends HiveObject {
   List<String>? memberIds;
 
   @HiveField(5)
-  DateTime? createdAt;
-
-  @HiveField(6)
   String? familyCode;
 
+  @HiveField(6)
+  String? baseCurrency;  // ✅ ADDED
+
   @HiveField(7)
-  bool? isActive;
+  DateTime? createdAt;
 
   @HiveField(8)
-  String? currency;
-
-  @HiveField(9)
-  double? monthlyBudget;
+  DateTime? updatedAt;
 
   FamilyModel({
     this.id,
@@ -40,12 +37,17 @@ class FamilyModel extends HiveObject {
     this.description,
     this.adminId,
     this.memberIds,
-    this.createdAt,
     this.familyCode,
-    this.isActive = true,
-    this.currency = 'USD',
-    this.monthlyBudget,
+    this.baseCurrency = 'USD',  // ✅ ADDED
+    this.createdAt,
+    this.updatedAt,
   });
+
+  int get memberCount => memberIds?.length ?? 0;
+
+  bool isAdmin(String userId) => adminId == userId;
+
+  bool isMember(String userId) => memberIds?.contains(userId) ?? false;
 
   Map<String, dynamic> toJson() {
     return {
@@ -54,11 +56,10 @@ class FamilyModel extends HiveObject {
       'description': description,
       'adminId': adminId,
       'memberIds': memberIds,
-      'createdAt': createdAt?.toIso8601String(),
       'familyCode': familyCode,
-      'isActive': isActive,
-      'currency': currency,
-      'monthlyBudget': monthlyBudget,
+      'baseCurrency': baseCurrency,  // ✅ ADDED
+      'createdAt': createdAt?.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
     };
   }
 
@@ -68,16 +69,11 @@ class FamilyModel extends HiveObject {
       name: json['name'],
       description: json['description'],
       adminId: json['adminId'],
-      memberIds: json['memberIds'] != null
-          ? List<String>.from(json['memberIds'])
-          : null,
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : null,
+      memberIds: json['memberIds'] != null ? List<String>.from(json['memberIds']) : null,
       familyCode: json['familyCode'],
-      isActive: json['isActive'],
-      currency: json['currency'] ?? 'USD',
-      monthlyBudget: json['monthlyBudget'],
+      baseCurrency: json['baseCurrency'] ?? 'USD',  // ✅ ADDED
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
+      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
     );
   }
 
@@ -87,11 +83,10 @@ class FamilyModel extends HiveObject {
     String? description,
     String? adminId,
     List<String>? memberIds,
-    DateTime? createdAt,
     String? familyCode,
-    bool? isActive,
-    String? currency,
-    double? monthlyBudget,
+    String? baseCurrency,  // ✅ ADDED
+    DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return FamilyModel(
       id: id ?? this.id,
@@ -99,15 +94,10 @@ class FamilyModel extends HiveObject {
       description: description ?? this.description,
       adminId: adminId ?? this.adminId,
       memberIds: memberIds ?? this.memberIds,
-      createdAt: createdAt ?? this.createdAt,
       familyCode: familyCode ?? this.familyCode,
-      isActive: isActive ?? this.isActive,
-      currency: currency ?? this.currency,
-      monthlyBudget: monthlyBudget ?? this.monthlyBudget,
+      baseCurrency: baseCurrency ?? this.baseCurrency,  // ✅ ADDED
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
-
-  String get displayName => name ?? 'Family';
-  
-  int get memberCount => memberIds?.length ?? 0;
 }
