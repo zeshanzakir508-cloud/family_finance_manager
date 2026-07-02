@@ -10,20 +10,32 @@ import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'screens/mode_selection/mode_selection_screen.dart';
-import 'screens/dashboard/financial_dashboard.dart';
-import 'screens/transactions/add_transaction_screen.dart';
+import 'screens/dashboard/personal_dashboard.dart';
+import 'screens/dashboard/family_dashboard.dart';
+import 'screens/transactions/add_income_screen.dart';
+import 'screens/transactions/add_expense_screen.dart';
+import 'screens/transactions/transaction_detail_screen.dart';
+import 'screens/transactions/edit_transaction_screen.dart';
 import 'screens/transactions/transfer_screen.dart';
 import 'screens/reports/reports_screen.dart';
 import 'screens/family/family_management_screen.dart';
+import 'screens/family/family_creation_screen.dart';
 import 'screens/family/add_member_screen.dart';
 import 'screens/notifications/notifications_screen.dart';
 import 'screens/settings/settings_screen.dart';
+import 'screens/settings/currency_settings_screen.dart';
+import 'screens/settings/theme_settings_screen.dart';
+import 'screens/settings/notification_settings_screen.dart';
+import 'screens/settings/security_settings_screen.dart';
+import 'screens/settings/about_screen.dart';
+import 'screens/profile/profile_screen.dart';
 import 'screens/backup/backup_screen.dart';
 import 'screens/owner/owner_dashboard.dart';
 import 'screens/goals/goals_screen.dart';
+import 'screens/splash/splash_screen.dart';
+import 'screens/onboarding/onboarding_screen.dart';
 import 'services/auth_service.dart';
 import 'services/remote_config_service.dart';
-// import 'services/notification_service.dart';  // COMMENTED OUT
 import 'models/user_model.dart';
 import 'models/transaction_model.dart';
 import 'models/family_model.dart';
@@ -53,33 +65,24 @@ void main() async {
     }
 
     await RemoteConfigService.init();
-
-    // Hive with error handling
-    try {
-      await Hive.initFlutter();
-      
-      Hive.registerAdapter(UserModelAdapter());
-      Hive.registerAdapter(TransactionModelAdapter());
-      Hive.registerAdapter(FamilyModelAdapter());
-      Hive.registerAdapter(TransferModelAdapter());
-      Hive.registerAdapter(NotificationModelAdapter());
-      Hive.registerAdapter(BackupModelAdapter());
-      Hive.registerAdapter(GoalModelAdapter());
-      
-      await Hive.openBox<UserModel>(Constants.usersBox);
-      await Hive.openBox<TransactionModel>(Constants.transactionsBox);
-      await Hive.openBox<FamilyModel>(Constants.familiesBox);
-      await Hive.openBox<TransferModel>(Constants.transfersBox);
-      await Hive.openBox<NotificationModel>(Constants.notificationsBox);
-      await Hive.openBox<BackupModel>(Constants.backupsBox);
-      await Hive.openBox<GoalModel>(Constants.goalsBox);
-      await Hive.openBox<dynamic>(Constants.settingsBox);
-    } catch (hiveError) {
-      print('HIVE ERROR: $hiveError');
-    }
-
-    // NotificationService.init() - REMOVED/COMMENTED
-    // await NotificationService.init();
+    await Hive.initFlutter();
+    
+    Hive.registerAdapter(UserModelAdapter());
+    Hive.registerAdapter(TransactionModelAdapter());
+    Hive.registerAdapter(FamilyModelAdapter());
+    Hive.registerAdapter(TransferModelAdapter());
+    Hive.registerAdapter(NotificationModelAdapter());
+    Hive.registerAdapter(BackupModelAdapter());
+    Hive.registerAdapter(GoalModelAdapter());
+    
+    await Hive.openBox<UserModel>(Constants.usersBox);
+    await Hive.openBox<TransactionModel>(Constants.transactionsBox);
+    await Hive.openBox<FamilyModel>(Constants.familiesBox);
+    await Hive.openBox<TransferModel>(Constants.transfersBox);
+    await Hive.openBox<NotificationModel>(Constants.notificationsBox);
+    await Hive.openBox<BackupModel>(Constants.backupsBox);
+    await Hive.openBox<GoalModel>(Constants.goalsBox);
+    await Hive.openBox<dynamic>(Constants.settingsBox);
 
     runApp(const MyApp());
   } catch (e) {
@@ -127,20 +130,32 @@ class MyApp extends StatelessWidget {
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.system,
         debugShowCheckedModeBanner: false,
-        home: const LoginScreen(),
+        home: const SplashScreen(),
         routes: {
           '/login': (context) => const LoginScreen(),
           '/signup': (context) => const SignUpScreen(),
           '/forgot-password': (context) => const ForgotPasswordScreen(),
+          '/onboarding': (context) => const OnboardingScreen(),
           '/mode-selection': (context) => const ModeSelectionScreen(),
-          '/financial-dashboard': (context) => const FinancialDashboard(),
-          '/add-transaction': (context) => const AddTransactionScreen(),
+          '/personal-dashboard': (context) => const PersonalDashboard(),
+          '/family-dashboard': (context) => const FamilyDashboard(),
+          '/add-income': (context) => const AddIncomeScreen(),
+          '/add-expense': (context) => const AddExpenseScreen(),
+          '/transaction-detail': (context) => const TransactionDetailScreen(),
+          '/edit-transaction': (context) => const EditTransactionScreen(),
           '/transfer': (context) => const TransferScreen(),
           '/reports': (context) => const ReportsScreen(),
           '/family-management': (context) => const FamilyManagementScreen(),
+          '/family-create': (context) => const FamilyCreationScreen(),
           '/add-member': (context) => const AddMemberScreen(),
           '/notifications': (context) => const NotificationsScreen(),
           '/settings': (context) => const SettingsScreen(),
+          '/currency-settings': (context) => const CurrencySettingsScreen(),
+          '/theme-settings': (context) => const ThemeSettingsScreen(),
+          '/notification-settings': (context) => const NotificationSettingsScreen(),
+          '/security-settings': (context) => const SecuritySettingsScreen(),
+          '/about': (context) => const AboutScreen(),
+          '/profile': (context) => const ProfileScreen(),
           '/backup': (context) => const BackupScreen(),
           '/owner-dashboard': (context) => const OwnerDashboard(),
           '/goals': (context) => const GoalsScreen(),
