@@ -107,6 +107,7 @@ class ExchangeRateService {
 
   static Map<String, double>? _loadRatesFromCache() {
     try {
+      // ✅ FIXED: Added await
       final prefs = SharedPreferences.getInstance();
       final json = prefs.getString(_cacheKey);
       if (json == null) return null;
@@ -130,6 +131,8 @@ class ExchangeRateService {
     final diff = DateTime.now().difference(_lastUpdateTime!);
     return diff < _cacheValidity;
   }
+
+  static DateTime? get lastUpdateTime => _lastUpdateTime;
 
   static Future<void> forceRefresh() async {
     if (await _isConnected()) {
