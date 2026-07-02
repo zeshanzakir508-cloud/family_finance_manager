@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Colors
   static const Color primaryColor = Color(0xFF1A73E8);
   static const Color secondaryColor = Color(0xFF34A853);
   static const Color errorColor = Color(0xFFEA4335);
@@ -101,7 +100,7 @@ class AppTheme {
         ),
       ),
     ),
-    cardTheme: CardThemeData(
+    cardTheme: CardTheme(
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
@@ -213,7 +212,7 @@ class AppTheme {
         ),
       ),
     ),
-    cardTheme: CardThemeData(
+    cardTheme: CardTheme(
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
@@ -238,7 +237,6 @@ class AppTheme {
     ),
   );
 
-  // Text styles
   static TextStyle get headingStyle => GoogleFonts.inter(
     fontSize: 28,
     fontWeight: FontWeight.bold,
