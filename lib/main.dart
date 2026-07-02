@@ -52,7 +52,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    // Initialize Firebase
+    // ✅ CORRECT Firebase config from google-services.json
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp(
         options: const FirebaseOptions(
@@ -67,24 +67,30 @@ void main() async {
     }
 
     await RemoteConfigService.init();
-    await Hive.initFlutter();
-    
-    Hive.registerAdapter(UserModelAdapter());
-    Hive.registerAdapter(TransactionModelAdapter());
-    Hive.registerAdapter(FamilyModelAdapter());
-    Hive.registerAdapter(TransferModelAdapter());
-    Hive.registerAdapter(NotificationModelAdapter());
-    Hive.registerAdapter(BackupModelAdapter());
-    Hive.registerAdapter(GoalModelAdapter());
-    
-    await Hive.openBox<UserModel>(Constants.usersBox);
-    await Hive.openBox<TransactionModel>(Constants.transactionsBox);
-    await Hive.openBox<FamilyModel>(Constants.familiesBox);
-    await Hive.openBox<TransferModel>(Constants.transfersBox);
-    await Hive.openBox<NotificationModel>(Constants.notificationsBox);
-    await Hive.openBox<BackupModel>(Constants.backupsBox);
-    await Hive.openBox<GoalModel>(Constants.goalsBox);
-    await Hive.openBox<dynamic>(Constants.settingsBox);
+
+    // Hive initialization with error handling
+    try {
+      await Hive.initFlutter();
+      
+      Hive.registerAdapter(UserModelAdapter());
+      Hive.registerAdapter(TransactionModelAdapter());
+      Hive.registerAdapter(FamilyModelAdapter());
+      Hive.registerAdapter(TransferModelAdapter());
+      Hive.registerAdapter(NotificationModelAdapter());
+      Hive.registerAdapter(BackupModelAdapter());
+      Hive.registerAdapter(GoalModelAdapter());
+      
+      await Hive.openBox<UserModel>(Constants.usersBox);
+      await Hive.openBox<TransactionModel>(Constants.transactionsBox);
+      await Hive.openBox<FamilyModel>(Constants.familiesBox);
+      await Hive.openBox<TransferModel>(Constants.transfersBox);
+      await Hive.openBox<NotificationModel>(Constants.notificationsBox);
+      await Hive.openBox<BackupModel>(Constants.backupsBox);
+      await Hive.openBox<GoalModel>(Constants.goalsBox);
+      await Hive.openBox<dynamic>(Constants.settingsBox);
+    } catch (hiveError) {
+      print('❌ HIVE ERROR: $hiveError');
+    }
 
     // Initialize AdMob
     await MobileAds.instance.initialize();
@@ -107,7 +113,10 @@ void main() async {
                   const SizedBox(height: 8),
                   Text('Error: $e', style: const TextStyle(color: Colors.grey)),
                   const SizedBox(height: 24),
-                  ElevatedButton(onPressed: () => main(), child: const Text('Retry')),
+                  ElevatedButton(
+                    onPressed: () => main(),
+                    child: const Text('Retry'),
+                  ),
                 ],
               ),
             ),
