@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
-import '../../models/user_profile.dart';
+import '../../services/database_service.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/helpers.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -13,86 +15,84 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final TextEditingController _fullNameController = TextEditingController();
-  final TextEditingController _fatherNameController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _addressController = TextEditingController();
-  final TextEditingController _occupationController = TextEditingController();
-  final TextEditingController _dateOfBirthController = TextEditingController();
-  
-  bool _isLoading = false;
-  bool _isEditing = false;
-  String? _userId;
-  UserProfile? _userProfile;
+  final _formKey = GlobalKey<FormState>();
+  final _displayNameController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _phoneController = TextEditingController();
+
+  UserModel? _user;
+  bool _isLoading = true;
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    _loadUserProfile();
+    _loadUser();
   }
 
-  Future<void> _loadUserProfile() async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    _userId = authService.userId;
+  @override
+  void dispose() {
+    _displayNameController.dispose();
+    _usernameController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
 
-    if (_userId != null) {
-      final box = Hive.box<UserProfile>('userProfile');
-      final user = box.get(_userId!);
-      if (user != null) {
-        setState(() {
-          _userProfile = user;
-          _fullNameController.text = user.fullName ?? '';
-          _fatherNameController.text = user.fatherOrHusbandName ?? '';
-          _phoneController.text = user.phoneNumber ?? '';
-          _addressController.text = user.address ?? '';
-          _occupationController.text = user.occupation ?? '';
-          _dateOfBirthController.text = user.dateOfBirth ?? '';
-        });
+  Future<void> _loadUser() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userId = authService.userId;
+    
+    if (userId != null) {
+      _user = await DatabaseService.getUser(userId);
+      if (_user != null) {
+        _displayNameController.text = _user!.displayName ?? '';
+        _usernameController.text = _user!.username ?? '';
+        _phoneController.text = _user!.phoneNumber ?? '';
       }
     }
+    
+    setState(() => _isLoading = false);
   }
 
   Future<void> _saveProfile() async {
-    if (_userId == null) return;
+    if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isSaving = true);
 
     try {
-      final box = Hive.box<UserProfile>('userProfile');
-      final updatedUser = _userProfile!.copyWith(
-        fullName: _fullNameController.text.trim(),
-        fatherOrHusbandName: _fatherNameController.text.trim(),
+      final updatedUser = _user!.copyWith(
+        displayName: _displayNameController.text.trim(),
+        username: _usernameController.text.trim(),
         phoneNumber: _phoneController.text.trim(),
-        address: _addressController.text.trim(),
-        occupation: _occupationController.text.trim(),
-        dateOfBirth: _dateOfBirthController.text.trim(),
       );
       
-      await box.put(_userId!, updatedUser);
+      await DatabaseService.saveUser(updatedUser);
       
-      setState(() {
-        _userProfile = updatedUser;
-        _isEditing = false;
-        _isLoading = false;
-      });
-
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Profile updated successfully!'),
+          content: Text('Profile updated successfully'),
           backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
         ),
       );
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error updating profile: $e'),
+          content: Text('Error: $e'),
           backgroundColor: Colors.red,
+        ),
+      );
+    }
+
+    setState(() => _isSaving = false);
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Image selected. Upload feature coming soon.'),
         ),
       );
     }
@@ -100,299 +100,191 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authService = Provider.of<AuthService>(context);
-    final userEmail = authService.userEmail ?? 'No email';
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_user == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Profile'),
+          backgroundColor: AppTheme.primaryColor,
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(
+          child: Text('User not found'),
+        ),
+      );
+    }
 
     return Scaffold(
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: Text(
-          _isEditing ? 'Edit Profile' : 'Profile',
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          if (!_isEditing)
-            IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              onPressed: () {
-                setState(() {
-                  _isEditing = true;
-                });
-              },
-            ),
-          if (_isEditing)
-            TextButton(
-              onPressed: _isLoading ? null : _saveProfile,
-              child: Text(
-                'Save',
-                style: AppTheme.bodyStyle.copyWith(
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-        ],
+        title: const Text('Profile'),
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  // Profile Image
-                  _buildProfileImage(),
-                  const SizedBox(height: 24),
-
-                  // User Info Card
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          _buildInfoTile(
-                            icon: Icons.email_outlined,
-                            label: 'Email',
-                            value: userEmail,
-                            isEditable: false,
-                          ),
-                          const Divider(),
-                          _buildInfoTile(
-                            icon: Icons.person_outline,
-                            label: 'Full Name',
-                            value: _fullNameController.text,
-                            controller: _fullNameController,
-                            isEditable: _isEditing,
-                          ),
-                          const Divider(),
-                          _buildInfoTile(
-                            icon: Icons.family_restroom,
-                            label: 'Father/Husband Name',
-                            value: _fatherNameController.text,
-                            controller: _fatherNameController,
-                            isEditable: _isEditing,
-                          ),
-                          const Divider(),
-                          _buildInfoTile(
-                            icon: Icons.phone_outlined,
-                            label: 'Phone Number',
-                            value: _phoneController.text,
-                            controller: _phoneController,
-                            isEditable: _isEditing,
-                            keyboardType: TextInputType.phone,
-                          ),
-                          const Divider(),
-                          _buildInfoTile(
-                            icon: Icons.home_outlined,
-                            label: 'Address',
-                            value: _addressController.text,
-                            controller: _addressController,
-                            isEditable: _isEditing,
-                          ),
-                          const Divider(),
-                          _buildInfoTile(
-                            icon: Icons.work_outline,
-                            label: 'Occupation',
-                            value: _occupationController.text,
-                            controller: _occupationController,
-                            isEditable: _isEditing,
-                          ),
-                          const Divider(),
-                          _buildInfoTile(
-                            icon: Icons.calendar_today,
-                            label: 'Date of Birth',
-                            value: _dateOfBirthController.text,
-                            controller: _dateOfBirthController,
-                            isEditable: _isEditing,
-                            isDatePicker: true,
-                          ),
-                        ],
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              // Profile Picture
+              Center(
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 60,
+                      backgroundColor: AppTheme.primaryColor,
+                      backgroundImage: _user?.photoUrl != null
+                          ? NetworkImage(_user!.photoUrl!)
+                          : null,
+                      child: _user?.photoUrl == null
+                          ? Text(
+                              _user?.initials ?? 'U',
+                              style: const TextStyle(
+                                fontSize: 40,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            )
+                          : null,
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                          onPressed: _pickImage,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
 
-                  const SizedBox(height: 24),
-
-                  // Account Status
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
+              // Email (read-only)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.email, color: Colors.grey),
+                    const SizedBox(width: 12),
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          const Text(
+                            'Email',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
                           Text(
-                            'Account Status',
-                            style: AppTheme.subheadingStyle,
-                          ),
-                          const SizedBox(height: 12),
-                          _buildStatusTile(
-                            label: 'Email Verified',
-                            value: _userProfile?.isEmailVerified ?? false,
-                          ),
-                          const SizedBox(height: 8),
-                          _buildStatusTile(
-                            label: 'Account Approved',
-                            value: _userProfile?.isApproved ?? false,
+                            _user?.email ?? 'Not set',
+                            style: const TextStyle(fontWeight: FontWeight.w500),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-    );
-  }
+              const SizedBox(height: 16),
 
-  Widget _buildProfileImage() {
-    return Stack(
-      children: [
-        CircleAvatar(
-          radius: 60,
-          backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-          child: Text(
-            _userProfile?.initials ?? 'U',
-            style: TextStyle(
-              fontSize: 40,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.primaryColor,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInfoTile({
-    required IconData icon,
-    required String label,
-    required String value,
-    TextEditingController? controller,
-    bool isEditable = false,
-    TextInputType keyboardType = TextInputType.text,
-    bool isDatePicker = false,
-  }) {
-    return Row(
-      children: [
-        Icon(
-          icon,
-          color: AppTheme.primaryColor,
-          size: 20,
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: AppTheme.captionStyle,
+              // Display Name
+              TextFormField(
+                controller: _displayNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Full Name',
+                  prefixIcon: Icon(Icons.person),
+                  border: OutlineInputBorder(),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your name';
+                  }
+                  return null;
+                },
               ),
-              const SizedBox(height: 4),
-              isEditable
-                  ? isDatePicker
-                      ? GestureDetector(
-                          onTap: () async {
-                            DateTime? pickedDate = await showDatePicker(
-                              context: context,
-                              initialDate: DateTime.now(),
-                              firstDate: DateTime(1900),
-                              lastDate: DateTime.now(),
-                            );
-                            if (pickedDate != null) {
-                              setState(() {
-                                controller?.text = 
-                                    '${pickedDate.day}/${pickedDate.month}/${pickedDate.year}';
-                              });
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: AppTheme.dividerColor),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              value.isEmpty ? 'Tap to select date' : value,
-                              style: AppTheme.bodyStyle.copyWith(
-                                color: value.isEmpty 
-                                    ? AppTheme.textSecondaryColor 
-                                    : null,
-                              ),
-                            ),
-                          ),
-                        )
-                      : TextFormField(
-                          controller: controller,
-                          keyboardType: keyboardType,
-                          decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(vertical: 8),
-                          ),
-                          style: AppTheme.bodyStyle,
-                        )
-                  : Text(
-                      value.isEmpty ? 'Not set' : value,
-                      style: AppTheme.bodyStyle.copyWith(
-                        color: value.isEmpty 
-                            ? AppTheme.textSecondaryColor 
-                            : null,
-                      ),
+              const SizedBox(height: 16),
+
+              // Username
+              TextFormField(
+                controller: _usernameController,
+                decoration: const InputDecoration(
+                  labelText: 'Username',
+                  prefixIcon: Icon(Icons.alternate_email),
+                  border: OutlineInputBorder(),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a username';
+                  }
+                  if (value.length < 3) {
+                    return 'Username must be at least 3 characters';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Phone
+              TextFormField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number',
+                  prefixIcon: Icon(Icons.phone),
+                  border: OutlineInputBorder(),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Save Button
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isSaving ? null : _saveProfile,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                  ),
+                  child: _isSaving
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('Save Profile'),
+                ),
+              ),
             ],
           ),
         ),
-      ],
+      ),
     );
-  }
-
-  Widget _buildStatusTile({
-    required String label,
-    required bool value,
-  }) {
-    return Row(
-      children: [
-        Icon(
-          value ? Icons.check_circle : Icons.pending_outlined,
-          color: value ? Colors.green : Colors.orange,
-          size: 20,
-        ),
-        const SizedBox(width: 12),
-        Text(
-          label,
-          style: AppTheme.bodyStyle,
-        ),
-        const Spacer(),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: value ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            value ? 'Verified' : 'Pending',
-            style: TextStyle(
-              color: value ? Colors.green : Colors.orange,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  @override
-  void dispose() {
-    _fullNameController.dispose();
-    _fatherNameController.dispose();
-    _phoneController.dispose();
-    _addressController.dispose();
-    _occupationController.dispose();
-    _dateOfBirthController.dispose();
-    super.dispose();
   }
 }
