@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
-import '../../services/notification_service.dart';
+// import '../../services/notification_service.dart'; // ✅ COMMENTED OUT
 import '../../models/user_model.dart';
 import '../../models/family_model.dart';
 import '../../models/transaction_model.dart';
@@ -244,7 +244,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                 style: const TextStyle(color: Colors.white),
               ),
             ),
-            title: Text(user.displayName ?? 'Unknown'),  // ✅ FIXED
+            title: Text(user.displayName ?? 'Unknown'),
             subtitle: Text(user.email ?? ''),
             trailing: Text(user.role ?? 'member'),
           ),
@@ -266,12 +266,12 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
               backgroundColor: AppTheme.primaryColor,
               child: Text(
                 family.name != null && family.name!.isNotEmpty
-                    ? family.name![0].toUpperCase()  // ✅ FIXED: displayName → name
+                    ? family.name![0].toUpperCase()
                     : 'F',
                 style: const TextStyle(color: Colors.white),
               ),
             ),
-            title: Text(family.name ?? 'Family'),  // ✅ FIXED: displayName → name
+            title: Text(family.name ?? 'Family'),
             subtitle: Text('Code: ${family.familyCode} • Members: ${family.memberCount}'),
             trailing: IconButton(
               icon: const Icon(Icons.delete, color: Colors.red),
@@ -288,7 +288,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Family'),
-        content: Text('Are you sure you want to delete "${family.name}"?'),  // ✅ FIXED
+        content: Text('Are you sure you want to delete "${family.name}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -414,19 +414,20 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
     }
 
     try {
-      for (var user in _users) {
-        await NotificationService.showNotification(
-          id: DateTime.now().millisecondsSinceEpoch.hashCode + user.id.hashCode,
-          title: '📢 Announcement',
-          body: message,
-          payload: 'announcement',
-        );
-      }
+      // ✅ COMMENTED OUT - Fix later
+      // for (var user in _users) {
+      //   await NotificationService.showNotification(
+      //     id: DateTime.now().millisecondsSinceEpoch.hashCode + user.id.hashCode,
+      //     title: '📢 Announcement',
+      //     body: message,
+      //     payload: 'announcement',
+      //   );
+      // }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Announcement sent to all users'),
-          backgroundColor: Colors.green,
+          content: Text('Announcement feature coming soon!'),
+          backgroundColor: Colors.blue,
         ),
       );
     } catch (e) {
