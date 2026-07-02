@@ -23,7 +23,7 @@ import 'screens/owner/owner_dashboard.dart';
 import 'screens/goals/goals_screen.dart';
 import 'services/auth_service.dart';
 import 'services/remote_config_service.dart';
-import 'services/notification_service.dart';
+// import 'services/notification_service.dart';  // COMMENTED OUT
 import 'models/user_model.dart';
 import 'models/transaction_model.dart';
 import 'models/family_model.dart';
@@ -78,7 +78,9 @@ void main() async {
       print('HIVE ERROR: $hiveError');
     }
 
-    await NotificationService.init();
+    // NotificationService.init() - REMOVED/COMMENTED
+    // await NotificationService.init();
+
     runApp(const MyApp());
   } catch (e) {
     runApp(
