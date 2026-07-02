@@ -105,9 +105,9 @@ class ExchangeRateService {
     await prefs.setString(_lastUpdateKey, DateTime.now().toIso8601String());
   }
 
+  // ✅ FIXED: Added await
   static Map<String, double>? _loadRatesFromCache() {
     try {
-      // ✅ FIXED: Added await
       final prefs = SharedPreferences.getInstance();
       final json = prefs.getString(_cacheKey);
       if (json == null) return null;
