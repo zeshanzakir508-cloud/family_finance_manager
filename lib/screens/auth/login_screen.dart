@@ -39,12 +39,9 @@ class _LoginScreenState extends State<LoginScreen> {
       final isDeviceSupported = await _localAuth.isDeviceSupported();
       _fingerprintSupported = isAvailable && isDeviceSupported;
       
-      // Check if fingerprint is enabled in settings
       _fingerprintEnabled = RemoteConfigService.enableFingerprint;
       
-      // Auto-authenticate if fingerprint is enabled
       if (_fingerprintSupported && _fingerprintEnabled) {
-        // Try to authenticate
         _authenticateWithBiometric();
       }
       
@@ -65,7 +62,6 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (authenticated) {
-        // Auto-login with saved credentials (implement as needed)
         print('Biometric authentication successful');
       }
     } catch (e) {
@@ -357,7 +353,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (user != null) {
         if (mounted) {
-          Navigator.pushReplacementNamed(context, '/financial-dashboard');
+          // ✅ FIXED: Navigate to Mode Selection
+          Navigator.pushReplacementNamed(context, '/mode-selection');
         }
       } else {
         setState(() {
