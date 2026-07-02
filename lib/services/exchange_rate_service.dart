@@ -29,7 +29,7 @@ class ExchangeRateService {
       }
     }
 
-    return _getOfflineRate(fromCurrency, toCurrency);
+    return await _getOfflineRate(fromCurrency, toCurrency);
   }
 
   static Future<double> convertAmount(
@@ -49,12 +49,12 @@ class ExchangeRateService {
     return await _fetchRates();
   }
 
-  static double _getOfflineRate(String fromCurrency, String toCurrency) {
+  static Future<double> _getOfflineRate(String fromCurrency, String toCurrency) async {
     if (_cachedRates != null) {
       return _getRateFromRates(_cachedRates!, fromCurrency, toCurrency);
     }
 
-    final cached = _loadRatesFromCache();
+    final cached = await _loadRatesFromCache();
     if (cached != null) {
       _cachedRates = cached;
       return _getRateFromRates(cached, fromCurrency, toCurrency);
@@ -105,10 +105,8 @@ class ExchangeRateService {
     await prefs.setString(_lastUpdateKey, DateTime.now().toIso8601String());
   }
 
-  // ✅ THIS IS THE CORRECT FIXED METHOD
   static Future<Map<String, double>?> _loadRatesFromCache() async {
     try {
-      // ✅ CORRECT: Added await
       final prefs = await SharedPreferences.getInstance();
       final json = prefs.getString(_cacheKey);
       if (json == null) return null;
