@@ -1,17 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import '../../models/transfer_model.dart';
+import '../../models/user_model.dart';
 import '../../providers/family_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
-import '../../services/notification_service.dart';
-import '../../models/transfer_model.dart';
-import '../../models/transaction_model.dart';
-import '../../models/user_model.dart';
 import '../../utils/app_theme.dart';
-import '../../utils/constants.dart';
 import '../../utils/helpers.dart';
-import '../../utils/app_config.dart';
 
 class TransferScreen extends StatefulWidget {
   const TransferScreen({super.key});
@@ -21,480 +16,271 @@ class TransferScreen extends StatefulWidget {
 }
 
 class _TransferScreenState extends State<TransferScreen> {
-  final TextEditingController _amountController = TextEditingController();
-  final TextEditingController _noteController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _amountController = TextEditingController();
+  final _notesController = TextEditingController();
 
-  String? _fromMemberId;
-  String? _toMemberId;
+  String? _selectedFromMember;
+  String? _selectedToMember;
   bool _isLoading = false;
-  String? _errorMessage;
-  bool _isRecurring = false;
+  List<UserModel> _members = [];
 
   @override
-  Widget build(BuildContext context) {
-    final authService = Provider.of<AuthService>(context);
-    final familyProvider = Provider.of<FamilyProvider>(context);
-    final members = familyProvider.familyMembers;
-    final userId = authService.userId;
+  void initState() {
+    super.initState();
+    _loadMembers();
+  }
 
-    if (_fromMemberId == null && userId != null) {
-      _fromMemberId = userId;
+  Future<void> _loadMembers() async {
+    final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
+    final family = familyProvider.currentFamily;
+    
+    if (family != null && family.memberIds != null) {
+      final members = <UserModel>[];
+      for (var id in family.memberIds!) {
+        final user = await DatabaseService.getUser(id);
+        if (user != null) members.add(user);
+      }
+      setState(() => _members = members);
     }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Transfer Money'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          TextButton(
-            onPressed: _isLoading ? null : _sendTransfer,
-            child: Text(
-              'Send',
-              style: AppTheme.bodyStyle.copyWith(
-                color: AppTheme.primaryColor,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Info Banner
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Colors.blue.withOpacity(0.3),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.info_outline,
-                          color: Colors.blue,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Transfer money between family members. Receiver must approve the transfer.',
-                            style: AppTheme.bodyStyle.copyWith(
-                              fontSize: 14,
-                              color: Colors.blue,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  if (_errorMessage != null)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.errorColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: AppTheme.errorColor.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            color: AppTheme.errorColor,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _errorMessage!,
-                              style: TextStyle(
-                                color: AppTheme.errorColor,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  const SizedBox(height: 16),
-
-                  // From Member
-                  _buildFromDropdown(members, userId),
-                  const SizedBox(height: 16),
-
-                  // To Member
-                  _buildToDropdown(members, userId),
-                  const SizedBox(height: 16),
-
-                  // Amount
-                  _buildAmountField(),
-                  const SizedBox(height: 16),
-
-                  // Note
-                  _buildNoteField(),
-                  const SizedBox(height: 16),
-
-                  // Recurring Option
-                  _buildRecurringToggle(),
-                  const SizedBox(height: 24),
-
-                  // Send Button
-                  _buildSendButton(),
-                ],
-              ),
-            ),
-    );
   }
 
-  Widget _buildFromDropdown(List<UserModel> members, String? userId) {
-    return DropdownButtonFormField<String>(
-      value: _fromMemberId,
-      decoration: const InputDecoration(
-        labelText: 'From *',
-        hintText: 'Select sender',
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12)),
+  Future<void> _submitTransfer() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedFromMember == _selectedToMember) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot transfer to yourself'),
+          backgroundColor: Colors.orange,
         ),
-        filled: true,
-        prefixIcon: Icon(Icons.person_outline),
-      ),
-      items: members.map((member) {
-        final isCurrentUser = member.id == userId;
-        return DropdownMenuItem<String>(
-          value: member.id,
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                child: Text(
-                  member.initials,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.primaryColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(member.displayName),
-              if (isCurrentUser) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'You',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.green,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        );
-      }).toList(),
-      onChanged: (value) {
-        setState(() {
-          _fromMemberId = value;
-        });
-      },
-      validator: (value) {
-        if (value == null) {
-          return 'Please select a sender';
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildToDropdown(List<UserModel> members, String? userId) {
-    final filteredMembers = members.where((m) => m.id != userId).toList();
-
-    return DropdownButtonFormField<String>(
-      value: _toMemberId,
-      decoration: const InputDecoration(
-        labelText: 'To *',
-        hintText: 'Select receiver',
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12)),
-        ),
-        filled: true,
-        prefixIcon: Icon(Icons.person_outline),
-      ),
-      items: filteredMembers.map((member) {
-        return DropdownMenuItem<String>(
-          value: member.id,
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                child: Text(
-                  member.initials,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.primaryColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(member.displayName),
-            ],
-          ),
-        );
-      }).toList(),
-      onChanged: (value) {
-        setState(() {
-          _toMemberId = value;
-        });
-      },
-      validator: (value) {
-        if (value == null) {
-          return 'Please select a receiver';
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildAmountField() {
-    return TextField(
-      controller: _amountController,
-      keyboardType: TextInputType.numberWithOptions(decimal: true),
-      decoration: const InputDecoration(
-        labelText: 'Amount *',
-        hintText: '0.00',
-        prefixText: '\$ ',
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12)),
-        ),
-        filled: true,
-      ),
-      style: TextStyle(fontSize: 24),
-    );
-  }
-
-  Widget _buildNoteField() {
-    return TextField(
-      controller: _noteController,
-      maxLines: 3,
-      decoration: const InputDecoration(
-        labelText: 'Note (Optional)',
-        hintText: 'Add a note for this transfer',
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12)),
-        ),
-        filled: true,
-      ),
-    );
-  }
-
-  Widget _buildRecurringToggle() {
-    return Row(
-      children: [
-        Switch(
-          value: _isRecurring,
-          onChanged: (value) {
-            setState(() {
-              _isRecurring = value;
-            });
-          },
-          activeColor: AppTheme.primaryColor,
-        ),
-        Text(
-          'Recurring Transfer',
-          style: AppTheme.bodyStyle,
-        ),
-        const SizedBox(width: 8),
-        const Icon(
-          Icons.repeat,
-          size: 16,
-          color: Colors.grey,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSendButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: _sendTransfer,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.primaryColor,
-          foregroundColor: Colors.white,
-          minimumSize: const Size(double.infinity, 50),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: Text(
-          'Request Transfer',
-          style: AppTheme.bodyStyle.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _sendTransfer() async {
-    if (_fromMemberId == null) {
-      setState(() {
-        _errorMessage = 'Please select a sender';
-      });
+      );
       return;
     }
 
-    if (_toMemberId == null) {
-      setState(() {
-        _errorMessage = 'Please select a receiver';
-      });
-      return;
-    }
-
-    if (_fromMemberId == _toMemberId) {
-      setState(() {
-        _errorMessage = 'Sender and receiver cannot be the same';
-      });
-      return;
-    }
-
-    if (_amountController.text.isEmpty) {
-      setState(() {
-        _errorMessage = 'Please enter an amount';
-      });
-      return;
-    }
-
-    final amount = double.tryParse(_amountController.text.trim());
-    if (amount == null || amount <= 0) {
-      setState(() {
-        _errorMessage = 'Please enter a valid amount';
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
       final userId = authService.userId;
-
-      final fromMember = DatabaseService.getUser(_fromMemberId!);
-      final toMember = DatabaseService.getUser(_toMemberId!);
       final family = familyProvider.currentFamily;
 
-      if (fromMember == null || toMember == null || family == null) {
-        throw Exception('Invalid member or family');
-      }
+      if (userId == null) throw Exception('Not logged in');
+      if (family == null) throw Exception('No family found');
 
-      final transferId = Helpers.generateId();
+      final amount = double.parse(_amountController.text);
 
-      // Create TransferModel for notification
       final transfer = TransferModel(
-        id: transferId,
-        familyId: family.id,
-        fromMemberId: _fromMemberId,
-        fromMemberName: fromMember.displayName,
-        toMemberId: _toMemberId,
-        toMemberName: toMember.displayName,
-        amount: amount,
-        note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
-        status: TransferStatus.pending,
-        createdAt: DateTime.now(),
-      );
-
-      // Sender's transaction (Expense - Transfer)
-      final senderTransaction = TransactionModel(
         id: Helpers.generateId(),
-        userId: userId,
+        familyId: family.id!,
+        fromMemberId: _selectedFromMember!,
+        toMemberId: _selectedToMember!,
         amount: amount,
-        category: 'Transfer',
-        description: 'Transfer to ${toMember.displayName}',
-        type: 'transfer',
-        date: DateTime.now(),
-        notes: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
+        currency: family.baseCurrency ?? 'USD',
+        status: 'pending',
+        notes: _notesController.text.trim(),
         createdAt: DateTime.now(),
-        familyId: family.id,
-        memberId: _fromMemberId,
-        memberName: fromMember.displayName,
-        isFamilyTransaction: true,
-        transferId: transferId,
-        transferStatus: 'pending',
+        createdBy: userId,
       );
 
-      // Receiver's transaction (Income)
-      final receiverTransaction = TransactionModel(
-        id: Helpers.generateId(),
-        userId: toMember.id,
-        amount: amount,
-        category: 'Transfer Received',
-        description: 'Received from ${fromMember.displayName}',
-        type: 'income',
-        date: DateTime.now(),
-        notes: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
-        createdAt: DateTime.now(),
-        familyId: family.id,
-        memberId: _toMemberId,
-        memberName: toMember.displayName,
-        isFamilyTransaction: true,
-        sourceMemberId: _fromMemberId,
-        sourceMemberName: fromMember.displayName,
-        transferId: transferId,
-        transferStatus: 'pending',
+      await DatabaseService.saveTransfer(transfer);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Transfer initiated! Waiting for approval.'),
+          backgroundColor: Colors.green,
+        ),
       );
-
-      await DatabaseService.saveTransaction(senderTransaction);
-      await DatabaseService.saveTransaction(receiverTransaction);
-
-      // Send notification to receiver using TransferModel
-      await NotificationService.notifyTransferRequest(transfer);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Transfer request sent successfully!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
-        );
-        Navigator.pop(context, true);
-      }
+      Navigator.pop(context, true);
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Error: $e';
-        _isLoading = false;
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
     }
+
+    setState(() => _isLoading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final familyProvider = Provider.of<FamilyProvider>(context);
+    final family = familyProvider.currentFamily;
+
+    if (family == null || _members.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Transfer Money'),
+          backgroundColor: AppTheme.primaryColor,
+          foregroundColor: Colors.white,
+        ),
+        body: const Center(
+          child: Text('No family members found. Add members first.'),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: AppTheme.backgroundColor,
+      appBar: AppBar(
+        title: const Text('Transfer Money'),
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 2,
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    // From Member
+                    DropdownButtonFormField<String>(
+                      decoration: const InputDecoration(
+                        labelText: 'From',
+                        prefixIcon: Icon(Icons.person_outline),
+                        border: OutlineInputBorder(),
+                      ),
+                      value: _selectedFromMember,
+                      items: _members.map((member) {
+                        return DropdownMenuItem(
+                          value: member.id,
+                          child: Text(member.displayName ?? 'Unknown'),  // ✅ FIXED
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() => _selectedFromMember = value);
+                      },
+                      validator: (value) {
+                        if (value == null) return 'Please select sender';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    // To Member
+                    DropdownButtonFormField<String>(
+                      decoration: const InputDecoration(
+                        labelText: 'To',
+                        prefixIcon: Icon(Icons.person_add),
+                        border: OutlineInputBorder(),
+                      ),
+                      value: _selectedToMember,
+                      items: _members.map((member) {
+                        return DropdownMenuItem(
+                          value: member.id,
+                          child: Text(member.displayName ?? 'Unknown'),  // ✅ FIXED
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() => _selectedToMember = value);
+                      },
+                      validator: (value) {
+                        if (value == null) return 'Please select receiver';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Amount
+                    TextFormField(
+                      controller: _amountController,
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Amount',
+                        prefixIcon: const Icon(Icons.attach_money),
+                        suffixText: family.baseCurrency ?? 'USD',
+                        border: const OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter amount';
+                        }
+                        if (double.tryParse(value) == null) {
+                          return 'Invalid amount';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Notes
+                    TextFormField(
+                      controller: _notesController,
+                      decoration: const InputDecoration(
+                        labelText: 'Notes (optional)',
+                        prefixIcon: Icon(Icons.note),
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 3,
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.orange.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Transfers require approval from the receiver. '
+                        'You will be notified when approved.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.orange.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _submitTransfer,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('Send Transfer'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
