@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../../providers/mode_provider.dart';
+import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
-import '../../models/user_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 
@@ -17,443 +15,376 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  UserModel? _user;
+  bool _isLoading = true;
   bool _isDarkMode = false;
-  bool _notificationsEnabled = true;
-  bool _fingerprintEnabled = false;
-  String _selectedCurrency = 'USD';
-  String? _userName;
-  String? _userEmail;
-
-  final List<String> _currencies = Constants.currencies;
 
   @override
   void initState() {
     super.initState();
-    _loadSettings();
+    _loadUser();
   }
 
-  void _loadSettings() async {
+  Future<void> _loadUser() async {
     final authService = Provider.of<AuthService>(context, listen: false);
     final userId = authService.userId;
-
     if (userId != null) {
-      final user = DatabaseService.getUser(userId);
-      if (user != null) {
-        setState(() {
-          _userName = user.displayName;
-          _userEmail = user.email;
-          _isDarkMode = user.isDarkMode ?? false;
-          _selectedCurrency = user.currency ?? 'USD';
-        });
-      }
+      _user = await DatabaseService.getUser(userId);
     }
-
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _notificationsEnabled = prefs.getBool(Constants.notificationsKey) ?? true;
-      _fingerprintEnabled = prefs.getBool(Constants.fingerprintKey) ?? false;
-    });
-  }
-
-  void _saveSettings() async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final userId = authService.userId;
-
-    if (userId != null) {
-      final user = DatabaseService.getUser(userId);
-      if (user != null) {
-        final updatedUser = UserModel(
-          id: user.id,
-          email: user.email,
-          fullName: user.fullName,
-          phoneNumber: user.phoneNumber,
-          fatherOrHusbandName: user.fatherOrHusbandName,
-          createdAt: user.createdAt,
-          familyId: user.familyId,
-          isEmailVerified: user.isEmailVerified,
-          currency: _selectedCurrency,
-          isDarkMode: _isDarkMode,
-        );
-        await DatabaseService.saveUser(updatedUser);
-      }
-    }
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(Constants.notificationsKey, _notificationsEnabled);
-    await prefs.setBool(Constants.fingerprintKey, _fingerprintEnabled);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Settings saved successfully!'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
+    setState(() => _isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
     final modeProvider = Provider.of<ModeProvider>(context);
+    final authService = Provider.of<AuthService>(context);
+
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('Settings'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
+      ),
+      body: ListView(
+        children: [
+          // User Info Section
+          _buildUserInfoSection(context),
+          
+          const Divider(),
+          
+          // Mode Section
+          _buildModeSection(context, modeProvider),
+          
+          const Divider(),
+          
+          // General Settings
+          _buildGeneralSettings(context),
+          
+          const Divider(),
+          
+          // Security
+          _buildSecuritySettings(context),
+          
+          const Divider(),
+          
+          // App Settings
+          _buildAppSettings(context),
+          
+          const Divider(),
+          
+          // Logout
+          _buildLogoutButton(context, authService),
+          
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserInfoSection(BuildContext context) {
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundColor: AppTheme.primaryColor,
+        child: Text(
+          _user?.initials ?? 'U',
+          style: const TextStyle(color: Colors.white),
+        ),
+      ),
+      title: Text(_user?.displayName ?? 'User'),
+      subtitle: Text(_user?.email ?? 'No email'),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () {
+        Navigator.pushNamed(context, '/profile');
+      },
+    );
+  }
+
+  Widget _buildModeSection(BuildContext context, ModeProvider modeProvider) {
+    final isPersonal = modeProvider.isPersonalMode;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text(
+            'Mode',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey,
+            ),
+          ),
+        ),
+        ListTile(
+          leading: Icon(
+            isPersonal ? Icons.person : Icons.family_restroom,
+            color: AppTheme.primaryColor,
+          ),
+          title: Text(
+            isPersonal ? 'Personal Mode' : 'Family Mode',
+            style: const TextStyle(fontWeight: FontWeight.w500),
+          ),
+          subtitle: Text(
+            isPersonal 
+                ? 'Managing personal finances' 
+                : 'Managing family finances',
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  isPersonal ? 'Active' : 'Active',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.primaryColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+          onTap: () {
+            _showModeSwitchDialog(context);
+          },
+        ),
+      ],
+    );
+  }
+
+  void _showModeSwitchDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Switch Mode'),
+        content: const Text(
+          'Changing mode will navigate you to the mode selection screen. '
+          'Your data will be preserved.',
+        ),
         actions: [
           TextButton(
-            onPressed: _saveSettings,
-            child: Text(
-              'Save',
-              style: AppTheme.bodyStyle.copyWith(
-                color: AppTheme.primaryColor,
-                fontWeight: FontWeight.w600,
-              ),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushReplacementNamed(context, '/mode-selection');
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.primaryColor,
             ),
+            child: const Text('Switch Mode'),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildProfileSection(),
-            const SizedBox(height: 24),
-            _buildPreferencesSection(),
-            const SizedBox(height: 24),
-            _buildNotificationsSection(),
-            const SizedBox(height: 24),
-            _buildSecuritySection(),
-            const SizedBox(height: 24),
-            _buildModeSection(modeProvider),
-            const SizedBox(height: 24),
-            _buildAboutSection(),
-          ],
+    );
+  }
+
+  Widget _buildGeneralSettings(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text(
+            'General',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey,
+            ),
+          ),
         ),
+        ListTile(
+          leading: const Icon(Icons.currency_exchange),
+          title: const Text('Currency'),
+          subtitle: Text(_user?.currency ?? 'USD'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            Navigator.pushNamed(context, '/currency-settings');
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.palette),
+          title: const Text('Theme'),
+          subtitle: Text(_isDarkMode ? 'Dark' : 'Light'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            Navigator.pushNamed(context, '/theme-settings');
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.language),
+          title: const Text('Language'),
+          subtitle: const Text('English'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            // TODO: Language settings
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSecuritySettings(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text(
+            'Security',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey,
+            ),
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.fingerprint),
+          title: const Text('Fingerprint Login'),
+          trailing: Switch(
+            value: false,
+            onChanged: (value) {},
+            activeColor: AppTheme.primaryColor,
+          ),
+          onTap: () {
+            Navigator.pushNamed(context, '/security-settings');
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.lock),
+          title: const Text('PIN Lock'),
+          trailing: Switch(
+            value: false,
+            onChanged: (value) {},
+            activeColor: AppTheme.primaryColor,
+          ),
+          onTap: () {
+            Navigator.pushNamed(context, '/security-settings');
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.lock_reset),
+          title: const Text('Change Password'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            // TODO: Change password
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAppSettings(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text(
+            'App',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey,
+            ),
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.notifications),
+          title: const Text('Notifications'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            Navigator.pushNamed(context, '/notification-settings');
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.backup),
+          title: const Text('Backup & Restore'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            Navigator.pushNamed(context, '/backup');
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.privacy_tip),
+          title: const Text('Privacy Policy'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            Navigator.pushNamed(context, '/privacy-policy');
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.info),
+          title: const Text('About'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            Navigator.pushNamed(context, '/about');
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLogoutButton(BuildContext context, AuthService authService) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: ElevatedButton(
+        onPressed: () {
+          _showLogoutDialog(context, authService);
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.red.shade50,
+          foregroundColor: Colors.red,
+          elevation: 0,
+        ),
+        child: const Text('Logout'),
       ),
     );
   }
 
-  Widget _buildProfileSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Profile',
-          style: AppTheme.bodyStyle.copyWith(
-            color: AppTheme.textSecondaryColor,
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
+  void _showLogoutDialog(BuildContext context, AuthService authService) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
           ),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-              radius: 28,
-              child: Text(
-                _userName?.substring(0, 1).toUpperCase() ?? 'U',
-                style: TextStyle(
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                ),
-              ),
-            ),
-            title: Text(
-              _userName ?? 'User',
-              style: AppTheme.bodyStyle.copyWith(
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
-            ),
-            subtitle: Text(
-              _userEmail ?? 'No email',
-              style: AppTheme.captionStyle,
-            ),
-            trailing: const Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-            ),
-            onTap: () {},
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPreferencesSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Preferences',
-          style: AppTheme.bodyStyle.copyWith(
-            color: AppTheme.textSecondaryColor,
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: Column(
-            children: [
-              SwitchListTile(
-                title: const Text('Dark Mode'),
-                subtitle: const Text('Switch between light and dark theme'),
-                value: _isDarkMode,
-                onChanged: (value) {
-                  setState(() {
-                    _isDarkMode = value;
-                  });
-                },
-                secondary: Icon(
-                  _isDarkMode ? Icons.dark_mode : Icons.light_mode,
-                  color: AppTheme.primaryColor,
-                ),
-              ),
-              const Divider(height: 1),
-              ListTile(
-                title: const Text('Currency'),
-                subtitle: const Text('Select your preferred currency'),
-                trailing: DropdownButton<String>(
-                  value: _selectedCurrency,
-                  items: _currencies.map((currency) {
-                    return DropdownMenuItem<String>(
-                      value: currency,
-                      child: Text(currency),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _selectedCurrency = value;
-                      });
-                    }
-                  },
-                  underline: const SizedBox(),
-                  icon: Icon(
-                    Icons.arrow_drop_down,
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNotificationsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Notifications',
-          style: AppTheme.bodyStyle.copyWith(
-            color: AppTheme.textSecondaryColor,
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: SwitchListTile(
-            title: const Text('Push Notifications'),
-            subtitle: const Text('Receive notifications for important updates'),
-            value: _notificationsEnabled,
-            onChanged: (value) {
-              setState(() {
-                _notificationsEnabled = value;
-              });
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await authService.signOut();
+              Navigator.pushReplacementNamed(context, '/login');
             },
-            secondary: Icon(
-              _notificationsEnabled
-                  ? Icons.notifications_active
-                  : Icons.notifications_off,
-              color: AppTheme.primaryColor,
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
             ),
+            child: const Text('Logout'),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSecuritySection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Security',
-          style: AppTheme.bodyStyle.copyWith(
-            color: AppTheme.textSecondaryColor,
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: Column(
-            children: [
-              SwitchListTile(
-                title: const Text('Fingerprint Login'),
-                subtitle: const Text('Enable fingerprint or face recognition'),
-                value: _fingerprintEnabled,
-                onChanged: (value) {
-                  setState(() {
-                    _fingerprintEnabled = value;
-                  });
-                },
-                secondary: Icon(
-                  _fingerprintEnabled ? Icons.fingerprint : Icons.fingerprint_outlined,
-                  color: AppTheme.primaryColor,
-                ),
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: Icon(
-                  Icons.lock_outline,
-                  color: AppTheme.primaryColor,
-                ),
-                title: const Text('Change Password'),
-                trailing: const Icon(
-                  Icons.arrow_forward_ios,
-                  size: 16,
-                ),
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Change Password coming soon!'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                },
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: Icon(
-                  Icons.delete_outline,
-                  color: AppTheme.errorColor,
-                ),
-                title: Text(
-                  'Delete Account',
-                  style: AppTheme.bodyStyle.copyWith(
-                    color: AppTheme.errorColor,
-                  ),
-                ),
-                trailing: const Icon(
-                  Icons.arrow_forward_ios,
-                  size: 16,
-                ),
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Delete Account coming soon!'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildModeSection(ModeProvider modeProvider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Mode',
-          style: AppTheme.bodyStyle.copyWith(
-            color: AppTheme.textSecondaryColor,
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: ListTile(
-            leading: Icon(
-              modeProvider.isPersonalMode ? Icons.person : Icons.family_restroom,
-              color: AppTheme.primaryColor,
-            ),
-            title: const Text('Current Mode'),
-            subtitle: Text(
-              modeProvider.isPersonalMode ? 'Personal Mode' : 'Family Mode',
-            ),
-            trailing: DropdownButton<String>(
-              value: modeProvider.isPersonalMode ? 'personal' : 'family',
-              items: const [
-                DropdownMenuItem(value: 'personal', child: Text('Personal')),
-                DropdownMenuItem(value: 'family', child: Text('Family')),
-              ],
-              onChanged: (value) {
-                if (value != null) {
-                  modeProvider.setMode(value);
-                  setState(() {});
-                  if (value == 'personal') {
-                    Navigator.pushReplacementNamed(context, '/personal-dashboard');
-                  } else {
-                    Navigator.pushReplacementNamed(context, '/family-dashboard');
-                  }
-                }
-              },
-              underline: const SizedBox(),
-              icon: Icon(
-                Icons.arrow_drop_down,
-                color: AppTheme.primaryColor,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAboutSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'About',
-          style: AppTheme.bodyStyle.copyWith(
-            color: AppTheme.textSecondaryColor,
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: ListTile(
-            leading: Icon(
-              Icons.info_outline,
-              color: AppTheme.primaryColor,
-            ),
-            title: const Text('App Version'),
-            subtitle: const Text(Constants.appVersion),
-            trailing: const Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-            ),
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('${Constants.appName} v${Constants.appVersion}'),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
