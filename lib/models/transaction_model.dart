@@ -21,7 +21,7 @@ class TransactionModel extends HiveObject {
   String? description;
 
   @HiveField(5)
-  String? type; // 'income', 'expense', 'transfer'
+  String? type;
 
   @HiveField(6)
   DateTime? date;
@@ -45,16 +45,50 @@ class TransactionModel extends HiveObject {
   bool? isFamilyTransaction;
 
   @HiveField(13)
-  String? sourceMemberId; // For income: who gave the money
+  String? sourceMemberId;
 
   @HiveField(14)
   String? sourceMemberName;
 
   @HiveField(15)
-  String? transferId; // For linking transfer transactions
+  String? transferId;
 
   @HiveField(16)
-  String? transferStatus; // 'pending', 'approved', 'rejected', 'completed'
+  String? transferStatus;
+
+  // ✅ NEW FIELDS FOR CURRENCY
+  @HiveField(17)
+  String? originalCurrency;
+
+  @HiveField(18)
+  double? originalAmount;
+
+  @HiveField(19)
+  String? baseCurrency;
+
+  @HiveField(20)
+  double? amountInBaseCurrency;
+
+  @HiveField(21)
+  double? exchangeRateUsed;
+
+  @HiveField(22)
+  bool? isRecurring;
+
+  @HiveField(23)
+  String? recurringInterval;
+
+  @HiveField(24)
+  List<String>? attachments;
+
+  @HiveField(25)
+  List<String>? tags;
+
+  @HiveField(26)
+  bool? isDeleted;
+
+  @HiveField(27)
+  DateTime? deletedAt;
 
   TransactionModel({
     this.id,
@@ -74,93 +108,20 @@ class TransactionModel extends HiveObject {
     this.sourceMemberName,
     this.transferId,
     this.transferStatus,
+    // ✅ NEW
+    this.originalCurrency,
+    this.originalAmount,
+    this.baseCurrency,
+    this.amountInBaseCurrency,
+    this.exchangeRateUsed,
+    this.isRecurring = false,
+    this.recurringInterval,
+    this.attachments,
+    this.tags,
+    this.isDeleted = false,
+    this.deletedAt,
   });
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'userId': userId,
-      'amount': amount,
-      'category': category,
-      'description': description,
-      'type': type,
-      'date': date?.toIso8601String(),
-      'notes': notes,
-      'createdAt': createdAt?.toIso8601String(),
-      'familyId': familyId,
-      'memberId': memberId,
-      'memberName': memberName,
-      'isFamilyTransaction': isFamilyTransaction,
-      'sourceMemberId': sourceMemberId,
-      'sourceMemberName': sourceMemberName,
-      'transferId': transferId,
-      'transferStatus': transferStatus,
-    };
-  }
-
-  factory TransactionModel.fromJson(Map<String, dynamic> json) {
-    return TransactionModel(
-      id: json['id'],
-      userId: json['userId'],
-      amount: json['amount']?.toDouble(),
-      category: json['category'],
-      description: json['description'],
-      type: json['type'],
-      date: json['date'] != null ? DateTime.parse(json['date']) : null,
-      notes: json['notes'],
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-      familyId: json['familyId'],
-      memberId: json['memberId'],
-      memberName: json['memberName'],
-      isFamilyTransaction: json['isFamilyTransaction'] ?? false,
-      sourceMemberId: json['sourceMemberId'],
-      sourceMemberName: json['sourceMemberName'],
-      transferId: json['transferId'],
-      transferStatus: json['transferStatus'],
-    );
-  }
-
-  TransactionModel copyWith({
-    String? id,
-    String? userId,
-    double? amount,
-    String? category,
-    String? description,
-    String? type,
-    DateTime? date,
-    String? notes,
-    DateTime? createdAt,
-    String? familyId,
-    String? memberId,
-    String? memberName,
-    bool? isFamilyTransaction,
-    String? sourceMemberId,
-    String? sourceMemberName,
-    String? transferId,
-    String? transferStatus,
-  }) {
-    return TransactionModel(
-      id: id ?? this.id,
-      userId: userId ?? this.userId,
-      amount: amount ?? this.amount,
-      category: category ?? this.category,
-      description: description ?? this.description,
-      type: type ?? this.type,
-      date: date ?? this.date,
-      notes: notes ?? this.notes,
-      createdAt: createdAt ?? this.createdAt,
-      familyId: familyId ?? this.familyId,
-      memberId: memberId ?? this.memberId,
-      memberName: memberName ?? this.memberName,
-      isFamilyTransaction: isFamilyTransaction ?? this.isFamilyTransaction,
-      sourceMemberId: sourceMemberId ?? this.sourceMemberId,
-      sourceMemberName: sourceMemberName ?? this.sourceMemberName,
-      transferId: transferId ?? this.transferId,
-      transferStatus: transferStatus ?? this.transferStatus,
-    );
-  }
-
-  // Helper methods
   String get formattedAmount {
     if (amount == null) return '\$0.00';
     return '\$${amount!.toStringAsFixed(2)}';
@@ -218,4 +179,136 @@ class TransactionModel extends HiveObject {
   bool get isApproved => transferStatus == 'approved';
   bool get isRejected => transferStatus == 'rejected';
   bool get isCompleted => transferStatus == 'completed';
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'userId': userId,
+      'amount': amount,
+      'category': category,
+      'description': description,
+      'type': type,
+      'date': date?.toIso8601String(),
+      'notes': notes,
+      'createdAt': createdAt?.toIso8601String(),
+      'familyId': familyId,
+      'memberId': memberId,
+      'memberName': memberName,
+      'isFamilyTransaction': isFamilyTransaction,
+      'sourceMemberId': sourceMemberId,
+      'sourceMemberName': sourceMemberName,
+      'transferId': transferId,
+      'transferStatus': transferStatus,
+      // ✅ NEW
+      'originalCurrency': originalCurrency,
+      'originalAmount': originalAmount,
+      'baseCurrency': baseCurrency,
+      'amountInBaseCurrency': amountInBaseCurrency,
+      'exchangeRateUsed': exchangeRateUsed,
+      'isRecurring': isRecurring,
+      'recurringInterval': recurringInterval,
+      'attachments': attachments,
+      'tags': tags,
+      'isDeleted': isDeleted,
+      'deletedAt': deletedAt?.toIso8601String(),
+    };
+  }
+
+  factory TransactionModel.fromJson(Map<String, dynamic> json) {
+    return TransactionModel(
+      id: json['id'],
+      userId: json['userId'],
+      amount: json['amount']?.toDouble(),
+      category: json['category'],
+      description: json['description'],
+      type: json['type'],
+      date: json['date'] != null ? DateTime.parse(json['date']) : null,
+      notes: json['notes'],
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
+      familyId: json['familyId'],
+      memberId: json['memberId'],
+      memberName: json['memberName'],
+      isFamilyTransaction: json['isFamilyTransaction'] ?? false,
+      sourceMemberId: json['sourceMemberId'],
+      sourceMemberName: json['sourceMemberName'],
+      transferId: json['transferId'],
+      transferStatus: json['transferStatus'],
+      // ✅ NEW
+      originalCurrency: json['originalCurrency'],
+      originalAmount: json['originalAmount']?.toDouble(),
+      baseCurrency: json['baseCurrency'],
+      amountInBaseCurrency: json['amountInBaseCurrency']?.toDouble(),
+      exchangeRateUsed: json['exchangeRateUsed']?.toDouble(),
+      isRecurring: json['isRecurring'] ?? false,
+      recurringInterval: json['recurringInterval'],
+      attachments: json['attachments'] != null ? List<String>.from(json['attachments']) : null,
+      tags: json['tags'] != null ? List<String>.from(json['tags']) : null,
+      isDeleted: json['isDeleted'] ?? false,
+      deletedAt: json['deletedAt'] != null ? DateTime.parse(json['deletedAt']) : null,
+    );
+  }
+
+  TransactionModel copyWith({
+    String? id,
+    String? userId,
+    double? amount,
+    String? category,
+    String? description,
+    String? type,
+    DateTime? date,
+    String? notes,
+    DateTime? createdAt,
+    String? familyId,
+    String? memberId,
+    String? memberName,
+    bool? isFamilyTransaction,
+    String? sourceMemberId,
+    String? sourceMemberName,
+    String? transferId,
+    String? transferStatus,
+    // ✅ NEW
+    String? originalCurrency,
+    double? originalAmount,
+    String? baseCurrency,
+    double? amountInBaseCurrency,
+    double? exchangeRateUsed,
+    bool? isRecurring,
+    String? recurringInterval,
+    List<String>? attachments,
+    List<String>? tags,
+    bool? isDeleted,
+    DateTime? deletedAt,
+  }) {
+    return TransactionModel(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      amount: amount ?? this.amount,
+      category: category ?? this.category,
+      description: description ?? this.description,
+      type: type ?? this.type,
+      date: date ?? this.date,
+      notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+      familyId: familyId ?? this.familyId,
+      memberId: memberId ?? this.memberId,
+      memberName: memberName ?? this.memberName,
+      isFamilyTransaction: isFamilyTransaction ?? this.isFamilyTransaction,
+      sourceMemberId: sourceMemberId ?? this.sourceMemberId,
+      sourceMemberName: sourceMemberName ?? this.sourceMemberName,
+      transferId: transferId ?? this.transferId,
+      transferStatus: transferStatus ?? this.transferStatus,
+      // ✅ NEW
+      originalCurrency: originalCurrency ?? this.originalCurrency,
+      originalAmount: originalAmount ?? this.originalAmount,
+      baseCurrency: baseCurrency ?? this.baseCurrency,
+      amountInBaseCurrency: amountInBaseCurrency ?? this.amountInBaseCurrency,
+      exchangeRateUsed: exchangeRateUsed ?? this.exchangeRateUsed,
+      isRecurring: isRecurring ?? this.isRecurring,
+      recurringInterval: recurringInterval ?? this.recurringInterval,
+      attachments: attachments ?? this.attachments,
+      tags: tags ?? this.tags,
+      isDeleted: isDeleted ?? this.isDeleted,
+      deletedAt: deletedAt ?? this.deletedAt,
+    );
+  }
 }
