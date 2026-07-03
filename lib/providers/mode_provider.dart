@@ -1,48 +1,30 @@
+// lib/providers/mode_provider.dart
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../utils/constants.dart';
+
+// Add this enum at the top
+enum AppMode { personal, family }
 
 class ModeProvider extends ChangeNotifier {
-  String _currentMode = 'personal';
-  bool _rememberChoice = false;
+  AppMode _currentMode = AppMode.personal;
 
-  ModeProvider() {
-    _loadSavedMode();
+  AppMode get currentMode => _currentMode;
+
+  bool get isPersonalMode => _currentMode == AppMode.personal;
+  bool get isFamilyMode => _currentMode == AppMode.family;
+
+  void toggleMode(AppMode mode) {
+    if (_currentMode != mode) {
+      _currentMode = mode;
+      notifyListeners();
+    }
   }
 
-  String get currentMode => _currentMode;
-  bool get rememberChoice => _rememberChoice;
-
-  Future<void> _loadSavedMode() async {
-    final prefs = await SharedPreferences.getInstance();
-    _rememberChoice = prefs.getBool(Constants.rememberModeKey) ?? false;
-    if (_rememberChoice) {
-      _currentMode = prefs.getString(Constants.selectedModeKey) ?? 'personal';
+  void setMode(String mode) {
+    if (mode == 'personal') {
+      _currentMode = AppMode.personal;
+    } else if (mode == 'family') {
+      _currentMode = AppMode.family;
     }
     notifyListeners();
   }
-
-  Future<void> setMode(String mode, {bool remember = false}) async {
-    _currentMode = mode;
-    _rememberChoice = remember;
-    
-    final prefs = await SharedPreferences.getInstance();
-    if (remember) {
-      await prefs.setString(Constants.selectedModeKey, mode);
-      await prefs.setBool(Constants.rememberModeKey, true);
-    } else {
-      await prefs.remove(Constants.selectedModeKey);
-      await prefs.setBool(Constants.rememberModeKey, false);
-    }
-    
-    notifyListeners();
-  }
-
-  Future<void> toggleMode() async {
-    final newMode = _currentMode == 'personal' ? 'family' : 'personal';
-    await setMode(newMode, remember: _rememberChoice);
-  }
-
-  bool get isPersonalMode => _currentMode == 'personal';
-  bool get isFamilyMode => _currentMode == 'family';
 }
