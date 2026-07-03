@@ -8,7 +8,7 @@ import '../../providers/family_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../models/transaction_model.dart';
-import '../../models/family_model.dart';  // <-- ADD THIS IMPORT
+import '../../models/family_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
 
@@ -754,7 +754,6 @@ class _FamilyDashboardState extends State<FamilyDashboard>
   // ==================== MEMBERS TAB ====================
 
   Widget _buildMembersTab() {
-    // Use getFamilyMembers from FamilyProvider
     final familyProvider = Provider.of<FamilyProvider>(context);
     final members = familyProvider.getFamilyMembers();
     
