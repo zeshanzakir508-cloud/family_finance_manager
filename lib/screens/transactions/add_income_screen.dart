@@ -7,6 +7,7 @@ import '../../providers/family_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../models/transaction_model.dart';
+import '../../models/family_model.dart';  // <-- ADD THIS IMPORT
 import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
 
@@ -425,7 +426,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
               ),
               if (members.isNotEmpty)
                 ...members.map((member) {
-                  return DropdownMenuItem(
+                  return DropdownMenuItem<String>(
                     value: member.id,
                     child: Text(member.displayName),
                   );
