@@ -236,7 +236,7 @@ class _AboutScreenState extends State<AboutScreen> {
                     icon: Icons.email,
                     title: 'Contact Support',
                     onTap: () {
-                      _launchEmail();
+                      _launchEmail(context);
                     },
                   ),
                   _buildLinkItem(
@@ -255,21 +255,21 @@ class _AboutScreenState extends State<AboutScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.gold.withOpacity(0.05),
+                color: const Color(0xFFD4AF37).withOpacity(0.05),  // FIXED: Colors.gold replaced
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.gold.withOpacity(0.2)),
+                border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.2)),  // FIXED: Colors.gold replaced
               ),
               child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.gold.withOpacity(0.1),
+                      color: const Color(0xFFD4AF37).withOpacity(0.1),  // FIXED: Colors.gold replaced
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
                       Icons.verified,
-                      color: Colors.gold,
+                      color: Color(0xFFD4AF37),  // FIXED: Colors.gold replaced
                       size: 20,
                     ),
                   ),
@@ -385,7 +385,7 @@ class _AboutScreenState extends State<AboutScreen> {
           children: [
             Icon(
               Icons.star,
-              color: Colors.gold,
+              color: Color(0xFFD4AF37),  // FIXED: Colors.gold replaced
               size: 48,
             ),
             SizedBox(height: 8),
@@ -430,7 +430,7 @@ class _AboutScreenState extends State<AboutScreen> {
     );
   }
 
-  Future<void> _launchEmail() async {
+  Future<void> _launchEmail(BuildContext context) async {
     final Uri emailUri = Uri(
       scheme: 'mailto',
       path: 'zeshanzakir508@gmail.com',
