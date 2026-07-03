@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/family_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
-import '../../models/family_model.dart';  // <-- ADD THIS IMPORT
+import '../../models/family_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
 
@@ -122,7 +122,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                       isActive: true,
                     ),
                   ],
-                  settings: FamilySettings(
+                  settings: const FamilySettings(
                     currency: 'USD',
                     allowMembersToAdd: true,
                     requireApproval: true,
@@ -256,8 +256,9 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
   String _generateFamilyCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     String code = '';
+    final now = DateTime.now().millisecondsSinceEpoch;
     for (int i = 0; i < 6; i++) {
-      code += chars[DateTime.now().millisecondsSinceEpoch % chars.length];
+      code += chars[now % chars.length];
     }
     return code;
   }
