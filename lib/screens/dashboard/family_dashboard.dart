@@ -8,7 +8,7 @@ import '../../providers/family_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../models/transaction_model.dart';
-import '../../models/family_model.dart';
+import '../../models/family_model.dart';  // <-- ADD THIS IMPORT
 import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
 
@@ -59,7 +59,7 @@ class _FamilyDashboardState extends State<FamilyDashboard>
     if (userId != null) {
       _currentFamily = familyProvider.currentFamily;
       if (_currentFamily != null) {
-        _transactions = DatabaseService.getFamilyTransactions(_currentFamily!.id!);
+        _transactions = await DatabaseService.getFamilyTransactions(_currentFamily!.id!);
         _transactions.sort((a, b) => b.date!.compareTo(a.date!));
         _applyFilters();
       }
@@ -677,8 +677,7 @@ class _FamilyDashboardState extends State<FamilyDashboard>
             label: 'Add Income',
             color: Colors.green,
             onTap: () {
-              Navigator.pushNamed(context, '/add-transaction',
-                  arguments: {'type': 'income'});
+              Navigator.pushNamed(context, '/add-income');
             },
           ),
         ),
@@ -689,8 +688,7 @@ class _FamilyDashboardState extends State<FamilyDashboard>
             label: 'Add Expense',
             color: Colors.red,
             onTap: () {
-              Navigator.pushNamed(context, '/add-transaction',
-                  arguments: {'type': 'expense'});
+              Navigator.pushNamed(context, '/add-expense');
             },
           ),
         ),
@@ -756,7 +754,9 @@ class _FamilyDashboardState extends State<FamilyDashboard>
   // ==================== MEMBERS TAB ====================
 
   Widget _buildMembersTab() {
-    final members = _currentFamily?.members ?? [];
+    // Use getFamilyMembers from FamilyProvider
+    final familyProvider = Provider.of<FamilyProvider>(context);
+    final members = familyProvider.getFamilyMembers();
     
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
