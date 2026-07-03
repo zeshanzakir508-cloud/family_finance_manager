@@ -47,7 +47,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     });
   }
 
-  void _loadData() {
+  Future<void> _loadData() async {  // <-- ADDED async
     final modeProvider = Provider.of<ModeProvider>(context, listen: false);
     final authService = Provider.of<AuthService>(context, listen: false);
     final userId = authService.userId;
@@ -55,21 +55,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
     if (userId == null) return;
 
     if (modeProvider.isPersonalMode) {
-      _allTransactions = DatabaseService.getUserTransactions(userId);
+      _allTransactions = await DatabaseService.getUserTransactions(userId);  // <-- ADDED await
     } else {
+      // Family mode - get all family transactions
       final family = Provider.of<FamilyProvider>(context, listen: false).currentFamily;
-      if (family != null && family.id != null) {
-        _allTransactions = DatabaseService.getFamilyTransactions(family.id!);
+      if (family != null) {
+        _allTransactions = await DatabaseService.getFamilyTransactions(family.id!);  // <-- ADDED await
       } else {
         _allTransactions = [];
       }
     }
 
-    _allTransactions.sort((a, b) {
-      final aDate = a.date ?? DateTime.now();
-      final bDate = b.date ?? DateTime.now();
-      return bDate.compareTo(aDate);
-    });
+    _allTransactions.sort((a, b) => b.date!.compareTo(a.date!));
     _applyFilters();
   }
 
@@ -135,13 +132,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final modeProvider = Provider.of<ModeProvider>(context);
 
     return Scaffold(
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: Text(
           modeProvider.isPersonalMode ? 'Personal Reports' : 'Family Reports',
         ),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
-        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -158,18 +155,31 @@ class _ReportsScreenState extends State<ReportsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Mode Switch
             _buildModeSwitch(modeProvider),
             const SizedBox(height: 16),
+
+            // Period Selector
             _buildPeriodSelector(),
             const SizedBox(height: 16),
+
+            // Date Picker
             _buildDatePicker(),
             const SizedBox(height: 16),
+
+            // Filters
             _buildFilters(),
             const SizedBox(height: 16),
+
+            // Summary Cards
             _buildSummaryCards(),
             const SizedBox(height: 16),
+
+            // Tabs
             _buildTabs(),
             const SizedBox(height: 16),
+
+            // Tab Content
             _buildTabContent(),
           ],
         ),
@@ -181,33 +191,33 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
+        color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.dividerColor),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Row(
         children: [
           Expanded(
             child: GestureDetector(
               onTap: () {
-                modeProvider.setMode('personal');
+                modeProvider.toggleMode(AppMode.personal);
                 _loadData();
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
                   color: modeProvider.isPersonalMode
-                      ? AppTheme.primaryColor
+                      ? Colors.blue
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
                   child: Text(
                     'Personal',
-                    style: AppTheme.bodyStyle.copyWith(
+                    style: TextStyle(
                       color: modeProvider.isPersonalMode
                           ? Colors.white
-                          : AppTheme.textSecondaryColor,
+                          : Colors.grey.shade600,
                       fontWeight: modeProvider.isPersonalMode
                           ? FontWeight.w600
                           : FontWeight.normal,
@@ -220,24 +230,24 @@ class _ReportsScreenState extends State<ReportsScreen> {
           Expanded(
             child: GestureDetector(
               onTap: () {
-                modeProvider.setMode('family');
+                modeProvider.toggleMode(AppMode.family);
                 _loadData();
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
                   color: modeProvider.isFamilyMode
-                      ? AppTheme.primaryColor
+                      ? Colors.blue
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
                   child: Text(
                     'Family',
-                    style: AppTheme.bodyStyle.copyWith(
+                    style: TextStyle(
                       color: modeProvider.isFamilyMode
                           ? Colors.white
-                          : AppTheme.textSecondaryColor,
+                          : Colors.grey.shade600,
                       fontWeight: modeProvider.isFamilyMode
                           ? FontWeight.w600
                           : FontWeight.normal,
@@ -256,9 +266,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
+        color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.dividerColor),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Row(
         children: [
@@ -282,14 +292,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? AppTheme.primaryColor : Colors.transparent,
+            color: isSelected ? Colors.blue : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Center(
             child: Text(
               label,
-              style: AppTheme.bodyStyle.copyWith(
-                color: isSelected ? Colors.white : AppTheme.textSecondaryColor,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.grey.shade600,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -303,22 +313,22 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
+        color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.dividerColor),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Row(
         children: [
           Icon(
             Icons.calendar_today,
-            color: AppTheme.primaryColor,
+            color: Colors.blue,
             size: 20,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               _getDateRangeLabel(),
-              style: AppTheme.bodyStyle,
+              style: const TextStyle(fontSize: 14),
             ),
           ),
           Row(
@@ -384,7 +394,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       children: [
         DecoratedBox(
           decoration: BoxDecoration(
-            border: Border.all(color: AppTheme.dividerColor),
+            border: Border.all(color: Colors.grey.shade300),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Padding(
@@ -402,14 +412,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   _applyFilters();
                 });
               },
-              icon: Icon(Icons.arrow_drop_down, color: AppTheme.primaryColor),
+              icon: const Icon(Icons.arrow_drop_down, color: Colors.blue),
               underline: const SizedBox(),
             ),
           ),
         ),
         DecoratedBox(
           decoration: BoxDecoration(
-            border: Border.all(color: AppTheme.dividerColor),
+            border: Border.all(color: Colors.grey.shade300),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Padding(
@@ -421,7 +431,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 ..._getUniqueCategories().map((category) {
                   return DropdownMenuItem(
                     value: category,
-                    child: Text(category),
+                    child: Text(_getCategoryDisplayName(category)),
                   );
                 }),
               ],
@@ -431,7 +441,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   _applyFilters();
                 });
               },
-              icon: Icon(Icons.arrow_drop_down, color: AppTheme.primaryColor),
+              icon: const Icon(Icons.arrow_drop_down, color: Colors.blue),
               underline: const SizedBox(),
             ),
           ),
@@ -446,7 +456,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               });
             },
             style: TextButton.styleFrom(
-              foregroundColor: AppTheme.errorColor,
+              foregroundColor: Colors.red,
             ),
             child: const Text('Clear Filters'),
           ),
@@ -462,6 +472,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
       }
     }
     return categories.toList();
+  }
+
+  String _getCategoryDisplayName(String category) {
+    return category.split('_').map((word) =>
+      word[0].toUpperCase() + word.substring(1)
+    ).join(' ');
   }
 
   Widget _buildSummaryCards() {
@@ -506,16 +522,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+              const Text(
                 'Net Balance',
-                style: AppTheme.bodyStyle.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w600),
               ),
               Text(
                 Helpers.formatCurrency(_balance),
-                style: AppTheme.headingStyle.copyWith(
+                style: TextStyle(
                   fontSize: 20,
+                  fontWeight: FontWeight.bold,
                   color: _balance >= 0 ? Colors.green : Colors.red,
                 ),
               ),
@@ -535,9 +550,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
+        color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.dividerColor),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -555,8 +570,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
               const SizedBox(width: 8),
               Text(
                 title,
-                style: AppTheme.bodyStyle.copyWith(
-                  color: AppTheme.textSecondaryColor,
+                style: TextStyle(
+                  color: Colors.grey.shade600,
                   fontSize: 12,
                 ),
               ),
@@ -565,7 +580,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           const SizedBox(height: 8),
           Text(
             Helpers.formatCurrency(amount),
-            style: AppTheme.headingStyle.copyWith(fontSize: 18),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -576,9 +591,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final tabs = ['Overview', 'Categories', 'Trends', 'Tax'];
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
+        color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.dividerColor),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Row(
         children: List.generate(tabs.length, (index) {
@@ -593,14 +608,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppTheme.primaryColor : Colors.transparent,
+                  color: isSelected ? Colors.blue : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
                   child: Text(
                     tabs[index],
-                    style: AppTheme.bodyStyle.copyWith(
-                      color: isSelected ? Colors.white : AppTheme.textSecondaryColor,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.grey.shade600,
                       fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                     ),
                   ),
@@ -638,7 +653,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       children: [
         Text(
           'All Transactions (${_filteredTransactions.length})',
-          style: AppTheme.subheadingStyle,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
         ListView.separated(
@@ -656,7 +671,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             padding: const EdgeInsets.only(top: 8),
             child: Text(
               'Showing 20 of ${_filteredTransactions.length} transactions',
-              style: AppTheme.captionStyle,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
               textAlign: TextAlign.center,
             ),
           ),
@@ -680,20 +695,24 @@ class _ReportsScreenState extends State<ReportsScreen> {
       ),
       title: Text(
         transaction.description ?? 'Transaction',
-        style: AppTheme.bodyStyle,
+        style: const TextStyle(fontSize: 14),
       ),
       subtitle: Text(
-        '${transaction.memberName ?? 'You'} • ${transaction.category ?? 'Uncategorized'} • ${transaction.formattedDate}',
-        style: AppTheme.captionStyle,
+        '${transaction.memberName ?? 'You'} • ${_getCategoryDisplayName(transaction.category ?? 'other')} • ${_formatDate(transaction.date!)}',
+        style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
       ),
       trailing: Text(
-        '${isIncome ? '+' : '-'}${transaction.formattedAmount}',
-        style: AppTheme.bodyStyle.copyWith(
+        '${isIncome ? '+' : '-'}${Helpers.formatCurrency(transaction.amount ?? 0)}',
+        style: TextStyle(
           color: color,
           fontWeight: FontWeight.w600,
         ),
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return DateFormat('MMM dd, yyyy').format(date);
   }
 
   Widget _buildCategoriesTab() {
@@ -764,20 +783,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    entry.key,
-                    style: AppTheme.bodyStyle,
+                    _getCategoryDisplayName(entry.key),
+                    style: const TextStyle(fontSize: 14),
                   ),
                 ),
                 Text(
                   Helpers.formatCurrency(entry.value),
-                  style: AppTheme.bodyStyle.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(width: 8),
                 Text(
                   '(${percentage.toStringAsFixed(1)}%)',
-                  style: AppTheme.captionStyle,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                 ),
               ],
             ),
@@ -821,9 +838,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const Text(
           'Monthly Trends',
-          style: AppTheme.subheadingStyle,
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 16),
         SizedBox(
@@ -860,7 +877,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
                             entries[index].key,
-                            style: AppTheme.captionStyle.copyWith(
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
                               fontSize: 10,
                             ),
                           ),
@@ -886,7 +904,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   color: Colors.green,
                 ),
                 const SizedBox(width: 8),
-                Text('Income', style: AppTheme.bodyStyle),
+                const Text('Income'),
               ],
             ),
             const SizedBox(width: 24),
@@ -898,7 +916,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   color: Colors.red,
                 ),
                 const SizedBox(width: 8),
-                Text('Expense', style: AppTheme.bodyStyle),
+                const Text('Expense'),
               ],
             ),
           ],
@@ -940,24 +958,24 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 children: [
                   const Icon(Icons.receipt_long, color: Colors.blue),
                   const SizedBox(width: 8),
-                  Text(
+                  const Text(
                     'Tax Report',
-                    style: AppTheme.subheadingStyle,
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
               const SizedBox(height: 4),
               Text(
                 'Period: ${_getDateRangeLabel()}',
-                style: AppTheme.captionStyle,
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
               ),
             ],
           ),
         ),
         const SizedBox(height: 16),
-        Text(
+        const Text(
           'Expense Categories',
-          style: AppTheme.subheadingStyle,
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
         ...entries.map((entry) {
@@ -967,15 +985,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    entry.key,
-                    style: AppTheme.bodyStyle,
+                    _getCategoryDisplayName(entry.key),
+                    style: const TextStyle(fontSize: 14),
                   ),
                 ),
                 Text(
                   Helpers.formatCurrency(entry.value),
-                  style: AppTheme.bodyStyle.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -985,24 +1001,20 @@ class _ReportsScreenState extends State<ReportsScreen> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppTheme.surfaceColor,
+            color: Colors.grey.shade100,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppTheme.dividerColor),
+            border: Border.all(color: Colors.grey.shade300),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
+              const Text(
                 'Total Expenses',
-                style: AppTheme.bodyStyle.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w600),
               ),
               Text(
                 Helpers.formatCurrency(_totalExpense),
-                style: AppTheme.headingStyle.copyWith(
-                  color: Colors.red,
-                ),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red),
               ),
             ],
           ),
@@ -1033,13 +1045,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
             Icon(
               Icons.analytics_outlined,
               size: 64,
-              color: AppTheme.textSecondaryColor.withOpacity(0.5),
+              color: Colors.grey.shade400,
             ),
             const SizedBox(height: 16),
             Text(
               message,
-              style: AppTheme.bodyStyle.copyWith(
-                color: AppTheme.textSecondaryColor,
+              style: TextStyle(
+                color: Colors.grey.shade600,
               ),
               textAlign: TextAlign.center,
             ),
