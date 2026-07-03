@@ -1,5 +1,5 @@
 // lib/screens/settings/security_settings_screen.dart
-import 'dart:async';  // <-- ADD THIS IMPORT
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
@@ -374,7 +374,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
       }
 
       final authenticated = await BiometricService.authenticate(
-        localizedReason: 'Authenticate to test fingerprint',
+        reason: 'Authenticate to test fingerprint',  // <-- FIXED: Added reason parameter
       );
       
       if (authenticated) {
