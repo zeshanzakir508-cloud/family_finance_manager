@@ -1,162 +1,109 @@
+// lib/services/auth_service.dart
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:local_auth/local_auth.dart';
 
 class AuthService extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final LocalAuthentication _localAuth = LocalAuthentication();
   User? _user;
-  bool _isInitialized = false;
+  bool _isFingerprintEnabled = false;
 
   AuthService() {
-    _auth.authStateChanges().listen((User? user) {
+    _auth.authStateChanges().listen((user) {
       _user = user;
-      _isInitialized = true;
       notifyListeners();
     });
+    _loadFingerprintSetting();
   }
 
-  // Stream of auth state changes
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
+  Future<void> _loadFingerprintSetting() async {
+    final prefs = await SharedPreferences.getInstance();
+    _isFingerprintEnabled = prefs.getBool('fingerprint_enabled') ?? false;
+  }
 
-  // Get current user
   User? get currentUser => _user;
-
-  // Get user ID
   String? get userId => _user?.uid;
 
-  // Get user email
-  String? get userEmail => _user?.email;
-
-  // Check if user is authenticated
-  bool get isAuthenticated => _user != null;
-
-  // Check if auth is initialized
-  bool get isInitialized => _isInitialized;
-
-  // Sign in with email and password
-  Future<User?> signInWithEmail(String email, String password) async {
+  Future<void> signInWithEmail(String email, String password) async {
     try {
-      UserCredential result = await _auth.signInWithEmailAndPassword(
-        email: email.trim(),
+      await _auth.signInWithEmailAndPassword(
+        email: email,
         password: password,
       );
-      _user = result.user;
-      notifyListeners();
-      return result.user;
     } on FirebaseAuthException catch (e) {
-      debugPrint('Sign in error: ${e.message}');
-      return null;
-    } catch (e) {
-      debugPrint('Sign in error: $e');
-      return null;
+      throw _getErrorMessage(e);
     }
   }
 
-  // Sign up with email and password
-  Future<User?> signUpWithEmail(String email, String password) async {
+  Future<void> signUpWithEmail(String email, String password, String name) async {
     try {
-      UserCredential result = await _auth.createUserWithEmailAndPassword(
-        email: email.trim(),
+      final result = await _auth.createUserWithEmailAndPassword(
+        email: email,
         password: password,
       );
-      _user = result.user;
-      notifyListeners();
-
-      // Send email verification
-      await result.user?.sendEmailVerification();
-
-      return result.user;
+      await result.user?.updateDisplayName(name);
     } on FirebaseAuthException catch (e) {
-      debugPrint('Sign up error: ${e.message}');
-      return null;
-    } catch (e) {
-      debugPrint('Sign up error: $e');
-      return null;
+      throw _getErrorMessage(e);
     }
   }
 
-  // Send password reset email
-  Future<bool> sendPasswordResetEmail(String email) async {
-    try {
-      await _auth.sendPasswordResetEmail(email: email.trim());
-      return true;
-    } catch (e) {
-      debugPrint('Password reset error: $e');
-      return false;
-    }
-  }
-
-  // Sign out
   Future<void> signOut() async {
-    try {
-      await _auth.signOut();
-      _user = null;
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Sign out error: $e');
-    }
+    await _auth.signOut();
   }
 
-  // Delete account
-  Future<bool> deleteAccount() async {
+  Future<bool> authenticateWithFingerprint() async {
+    if (!_isFingerprintEnabled) return false;
+    
     try {
-      await _user?.delete();
-      _user = null;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      debugPrint('Delete account error: $e');
-      return false;
-    }
-  }
-
-  // Update password
-  Future<bool> updatePassword(String newPassword) async {
-    try {
-      await _user?.updatePassword(newPassword);
-      return true;
-    } catch (e) {
-      debugPrint('Update password error: $e');
-      return false;
-    }
-  }
-
-  // Update email
-  Future<bool> updateEmail(String newEmail) async {
-    try {
-      await _user?.updateEmail(newEmail.trim());
-      return true;
-    } catch (e) {
-      debugPrint('Update email error: $e');
-      return false;
-    }
-  }
-
-  // Re-authenticate user
-  Future<bool> reauthenticate(String password) async {
-    try {
-      AuthCredential credential = EmailAuthProvider.credential(
-        email: _user?.email ?? '',
-        password: password,
+      final isAvailable = await _localAuth.canCheckBiometrics;
+      if (!isAvailable) return false;
+      
+      final authenticated = await _localAuth.authenticate(
+        localizedReason: 'Authenticate to access FinFam',
+        options: const AuthenticationOptions(
+          stickyAuth: true,
+          biometricOnly: true,
+        ),
       );
-      await _user?.reauthenticateWithCredential(credential);
-      return true;
+      
+      return authenticated;
     } catch (e) {
-      debugPrint('Re-authentication error: $e');
       return false;
     }
   }
 
-  // Check if email is verified
-  bool get isEmailVerified => _user?.emailVerified ?? false;
-
-  // Send email verification
-  Future<void> sendEmailVerification() async {
-    await _user?.sendEmailVerification();
+  Future<bool> isFingerprintAvailable() async {
+    try {
+      return await _localAuth.canCheckBiometrics;
+    } catch (e) {
+      return false;
+    }
   }
 
-  // Reload user
-  Future<void> reloadUser() async {
-    await _user?.reload();
+  Future<void> setFingerprintEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('fingerprint_enabled', enabled);
+    _isFingerprintEnabled = enabled;
     notifyListeners();
+  }
+
+  bool get isFingerprintEnabled => _isFingerprintEnabled;
+
+  String _getErrorMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'user-not-found':
+        return 'No user found with this email.';
+      case 'wrong-password':
+        return 'Incorrect password.';
+      case 'email-already-in-use':
+        return 'This email is already registered.';
+      case 'invalid-email':
+        return 'Invalid email address.';
+      case 'weak-password':
+        return 'Password should be at least 6 characters.';
+      default:
+        return 'An error occurred. Please try again.';
+    }
   }
 }
