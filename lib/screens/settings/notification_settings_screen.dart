@@ -1,4 +1,5 @@
 // lib/screens/settings/notification_settings_screen.dart
+import 'dart:async';  // <-- ADD THIS IMPORT
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/app_theme.dart';
@@ -179,6 +180,18 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
         Navigator.pop(context);
       }
     });
+  }
+
+  int get _activeCount {
+    return [
+      _pushNotifications,
+      _transactionAlerts && _pushNotifications,
+      _budgetAlerts && _pushNotifications,
+      _familyActivity && _pushNotifications,
+      _dailyReminders && _pushNotifications,
+      _weeklySummary && _pushNotifications,
+      _monthlySummary && _pushNotifications,
+    ].where((v) => v == true).length;
   }
 
   @override
@@ -423,15 +436,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
   }
 
   Widget _buildInfoCard() {
-    final activeCount = [
-      _pushNotifications,
-      _transactionAlerts && _pushNotifications,
-      _budgetAlerts && _pushNotifications,
-      _familyActivity && _pushNotifications,
-      _dailyReminders && _pushNotifications,
-      _weeklySummary && _pushNotifications,
-      _monthlySummary && _pushNotifications,
-    ].where((v) => v == true).length;
+    final activeCount = _activeCount;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -461,7 +466,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$_activeCount of 7 notifications active',
+                  '$activeCount of 7 notifications active',
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
