@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/family_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
-import '../../models/family_model.dart';
+import '../../models/family_model.dart';  // <-- ADD THIS IMPORT
 import '../../utils/app_theme.dart';
 
 class AddMemberScreen extends StatefulWidget {
@@ -163,7 +163,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                             ),
                           ),
                           Text(
-                            '${currentFamily?.members.length ?? 0} members',
+                            '${currentFamily?.members?.length ?? 0} members',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey.shade600,
