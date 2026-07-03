@@ -1,6 +1,6 @@
 // lib/providers/family_provider.dart
 import 'package:flutter/material.dart';
-import '../models/family_model.dart';
+import '../models/family_model.dart';  // <-- ADD THIS IMPORT
 import '../models/transaction_model.dart';
 
 class FamilyProvider extends ChangeNotifier {
