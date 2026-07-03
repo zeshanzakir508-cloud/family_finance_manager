@@ -1,81 +1,74 @@
-import 'package:hive/hive.dart';
+// lib/models/transfer_model.dart
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-part 'transfer_model.g.dart';
-
-@HiveType(typeId: 3)
-class TransferModel extends HiveObject {
-  @HiveField(0)
-  String? id;
-
-  @HiveField(1)
-  String? familyId;
-
-  @HiveField(2)
-  String? fromMemberId;
-
-  @HiveField(3)
-  String? toMemberId;
-
-  @HiveField(4)
-  double? amount;
-
-  @HiveField(5)
-  String? currency;  // ✅ ADDED
-
-  @HiveField(6)
-  String? status;
-
-  @HiveField(7)
-  String? notes;
-
-  @HiveField(8)
-  DateTime? createdAt;
-
-  @HiveField(9)
-  DateTime? approvedAt;
-
-  @HiveField(10)
-  String? createdBy;
+class TransferModel {
+  final String id;
+  final String familyId;
+  final String fromUserId;
+  final String toUserId;
+  final String fromUserName;
+  final String toUserName;
+  final double amount;
+  final DateTime date;
+  final String? description;
+  final String status; // pending, approved, rejected, completed
+  final bool isRecurring;
+  final String? recurringType; // daily, weekly, monthly, yearly
+  final String createdBy;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
 
   TransferModel({
-    this.id,
-    this.familyId,
-    this.fromMemberId,
-    this.toMemberId,
-    this.amount,
-    this.currency,  // ✅ ADDED
+    required this.id,
+    required this.familyId,
+    required this.fromUserId,
+    required this.toUserId,
+    required this.fromUserName,
+    required this.toUserName,
+    required this.amount,
+    required this.date,
+    this.description,
     this.status = 'pending',
-    this.notes,
-    this.createdAt,
-    this.approvedAt,
-    this.createdBy,
+    this.isRecurring = false,
+    this.recurringType,
+    required this.createdBy,
+    required this.createdAt,
+    this.updatedAt,
   });
 
   TransferModel copyWith({
     String? id,
     String? familyId,
-    String? fromMemberId,
-    String? toMemberId,
+    String? fromUserId,
+    String? toUserId,
+    String? fromUserName,
+    String? toUserName,
     double? amount,
-    String? currency,  // ✅ ADDED
+    DateTime? date,
+    String? description,
     String? status,
-    String? notes,
-    DateTime? createdAt,
-    DateTime? approvedAt,
+    bool? isRecurring,
+    String? recurringType,
     String? createdBy,
+    DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return TransferModel(
       id: id ?? this.id,
       familyId: familyId ?? this.familyId,
-      fromMemberId: fromMemberId ?? this.fromMemberId,
-      toMemberId: toMemberId ?? this.toMemberId,
+      fromUserId: fromUserId ?? this.fromUserId,
+      toUserId: toUserId ?? this.toUserId,
+      fromUserName: fromUserName ?? this.fromUserName,
+      toUserName: toUserName ?? this.toUserName,
       amount: amount ?? this.amount,
-      currency: currency ?? this.currency,  // ✅ ADDED
+      date: date ?? this.date,
+      description: description ?? this.description,
       status: status ?? this.status,
-      notes: notes ?? this.notes,
-      createdAt: createdAt ?? this.createdAt,
-      approvedAt: approvedAt ?? this.approvedAt,
+      isRecurring: isRecurring ?? this.isRecurring,
+      recurringType: recurringType ?? this.recurringType,
       createdBy: createdBy ?? this.createdBy,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
@@ -83,31 +76,39 @@ class TransferModel extends HiveObject {
     return {
       'id': id,
       'familyId': familyId,
-      'fromMemberId': fromMemberId,
-      'toMemberId': toMemberId,
+      'fromUserId': fromUserId,
+      'toUserId': toUserId,
+      'fromUserName': fromUserName,
+      'toUserName': toUserName,
       'amount': amount,
-      'currency': currency,  // ✅ ADDED
+      'date': Timestamp.fromDate(date),
+      'description': description,
       'status': status,
-      'notes': notes,
-      'createdAt': createdAt?.toIso8601String(),
-      'approvedAt': approvedAt?.toIso8601String(),
+      'isRecurring': isRecurring,
+      'recurringType': recurringType,
       'createdBy': createdBy,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
     };
   }
 
   factory TransferModel.fromJson(Map<String, dynamic> json) {
     return TransferModel(
-      id: json['id'],
-      familyId: json['familyId'],
-      fromMemberId: json['fromMemberId'],
-      toMemberId: json['toMemberId'],
-      amount: json['amount']?.toDouble(),
-      currency: json['currency'],  // ✅ ADDED
+      id: json['id'] ?? '',
+      familyId: json['familyId'] ?? '',
+      fromUserId: json['fromUserId'] ?? '',
+      toUserId: json['toUserId'] ?? '',
+      fromUserName: json['fromUserName'] ?? 'Unknown',
+      toUserName: json['toUserName'] ?? 'Unknown',
+      amount: (json['amount'] ?? 0).toDouble(),
+      date: (json['date'] as Timestamp).toDate(),
+      description: json['description'],
       status: json['status'] ?? 'pending',
-      notes: json['notes'],
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-      approvedAt: json['approvedAt'] != null ? DateTime.parse(json['approvedAt']) : null,
-      createdBy: json['createdBy'],
+      isRecurring: json['isRecurring'] ?? false,
+      recurringType: json['recurringType'],
+      createdBy: json['createdBy'] ?? '',
+      createdAt: (json['createdAt'] as Timestamp).toDate(),
+      updatedAt: json['updatedAt'] != null ? (json['updatedAt'] as Timestamp).toDate() : null,
     );
   }
 }
