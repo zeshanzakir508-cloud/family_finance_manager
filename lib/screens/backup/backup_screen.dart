@@ -49,8 +49,8 @@ class _BackupScreenState extends State<BackupScreen> {
       }
 
       // Get all user data
-      final transactions = DatabaseService.getUserTransactions(userId);
-      final families = DatabaseService.getUserFamilies(userId);
+      final transactions = await DatabaseService.getUserTransactions(userId);
+      final families = await DatabaseService.getUserFamilies(userId);
       
       // Create backup
       final backupData = {
@@ -64,7 +64,7 @@ class _BackupScreenState extends State<BackupScreen> {
         },
       };
 
-      // Save backup (in a real app, this would save to Firebase Storage or local file)
+      // Save backup
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('backup_data', backupData.toString());
       await prefs.setString('last_backup_date', DateTime.now().toIso8601String());
