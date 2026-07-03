@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/family_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
-import '../../models/family_model.dart';
+import '../../models/family_model.dart';  // <-- ADD THIS IMPORT
 import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
 
@@ -456,7 +456,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
 
   Widget _buildFamilyCard(Family family, {required bool isActive}) {
     final memberCount = family.members?.length ?? 0;
-    final isAdmin = family.members?.any((m) => m.role == 'admin') ?? false;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
