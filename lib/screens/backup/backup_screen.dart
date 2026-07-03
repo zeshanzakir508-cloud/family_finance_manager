@@ -52,16 +52,14 @@ class _BackupScreenState extends State<BackupScreen> {
       final transactions = await DatabaseService.getUserTransactions(userId);
       final families = await DatabaseService.getUserFamilies(userId);
       
-      // Create backup
+      // Create backup data as JSON
       final backupData = {
         'userId': userId,
         'date': DateTime.now().toIso8601String(),
         'transactionCount': transactions.length,
         'familyCount': families.length,
-        'data': {
-          'transactions': transactions.map((t) => t.toJson()).toList(),
-          'families': families.map((f) => f.toJson()).toList(),
-        },
+        'transactions': transactions.map((t) => t.toJson()).toList(),
+        'families': families.map((f) => f.toJson()).toList(),
       };
 
       // Save backup
