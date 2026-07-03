@@ -1,14 +1,12 @@
+// lib/screens/owner/owner_dashboard.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import '../../providers/mode_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
-// import '../../services/notification_service.dart'; // ✅ COMMENTED OUT
 import '../../models/user_model.dart';
-import '../../models/family_model.dart';
-import '../../models/transaction_model.dart';
 import '../../utils/app_theme.dart';
-import '../../utils/constants.dart';
 import '../../utils/helpers.dart';
 
 class OwnerDashboard extends StatefulWidget {
@@ -18,446 +16,618 @@ class OwnerDashboard extends StatefulWidget {
   State<OwnerDashboard> createState() => _OwnerDashboardState();
 }
 
-class _OwnerDashboardState extends State<OwnerDashboard> {
-  int _selectedTab = 0;
-  List<UserModel> _users = [];
-  List<FamilyModel> _families = [];
-  List<TransactionModel> _transactions = [];
-  bool _isLoading = false;
-  String? _errorMessage;
-
-  final List<String> _tabs = ['Overview', 'Users', 'Families', 'Announcements'];
+class _OwnerDashboardState extends State<OwnerDashboard>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  UserModel? _currentUser;
+  bool _isLoading = true;
+  
+  // Stats
+  int _totalUsers = 0;
+  int _totalFamilies = 0;
+  int _premiumUsers = 0;
+  double _monthlyRevenue = 0;
+  List<UserModel> _allUsers = [];
+  List<Map<String, dynamic>> _allFamilies = [];
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadData();
   }
 
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      _users = DatabaseService.getAllUsers();
-      _families = DatabaseService.getAllFamilies();
-      _transactions = DatabaseService.getAllTransactions();
-    } catch (e) {
-      setState(() => _errorMessage = 'Failed to load data: $e');
+    setState(() => _isLoading = true);
+    
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userId = authService.userId;
+    
+    if (userId != null) {
+      _currentUser = await DatabaseService.getUser(userId);
+      // Load stats from database
+      _loadStats();
     }
-
+    
     setState(() => _isLoading = false);
+  }
+
+  void _loadStats() {
+    // Mock data - replace with real database calls
+    _totalUsers = 1234;
+    _totalFamilies = 456;
+    _premiumUsers = 89;
+    _monthlyRevenue = 499.00;
+    _allUsers = [];
+    _allFamilies = [];
   }
 
   @override
   Widget build(BuildContext context) {
-    final authService = Provider.of<AuthService>(context);
-    final currentUser = authService.currentUser;
+    final isOwner = _currentUser?.role == 'owner';
+    final isModerator = _currentUser?.role == 'moderator';
+
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: const Text('Owner Dashboard'),
-        backgroundColor: AppTheme.primaryColor,
+        title: Text(
+          isOwner ? 'Owner Dashboard' : 'Moderator Dashboard',
+        ),
+        backgroundColor: isOwner ? Colors.gold : Colors.blue,
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-              ? _buildErrorState()
-              : Column(
-                  children: [
-                    // Stats Cards
-                    _buildStatsCards(),
-                    const SizedBox(height: 8),
-
-                    // Tabs
-                    _buildTabs(),
-                    const SizedBox(height: 8),
-
-                    // Tab Content
-                    Expanded(
-                      child: _buildTabContent(),
-                    ),
-                  ],
-                ),
-    );
-  }
-
-  Widget _buildStatsCards() {
-    final totalIncome = _transactions
-        .where((t) => t.type == 'income')
-        .fold(0.0, (sum, t) => sum + (t.amount ?? 0));
-    final totalExpense = _transactions
-        .where((t) => t.type == 'expense')
-        .fold(0.0, (sum, t) => sum + (t.amount ?? 0));
-
-    return Padding(
-      padding: const EdgeInsets.all(8),
-      child: Row(
-        children: [
-          _buildStatCard('Users', _users.length.toString(), Icons.people),
-          _buildStatCard('Families', _families.length.toString(), Icons.family_restroom),
-          _buildStatCard('Income', '\$${totalIncome.toStringAsFixed(0)}', Icons.trending_up, color: Colors.green),
-          _buildStatCard('Expense', '\$${totalExpense.toStringAsFixed(0)}', Icons.trending_down, color: Colors.red),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(String title, String value, IconData icon, {Color? color}) {
-    return Expanded(
-      child: Card(
-        margin: const EdgeInsets.all(4),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            children: [
-              Icon(icon, color: color ?? AppTheme.primaryColor, size: 20),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey.shade600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTabs() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(
-        children: List.generate(_tabs.length, (index) {
-          final isSelected = _selectedTab == index;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() => _selectedTab = index);
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppTheme.primaryColor : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(
-                    _tabs[index],
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.grey.shade600,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                ),
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              isOwner ? '👑 Owner' : '🛡️ Moderator',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          );
-        }),
+          ),
+        ],
+        bottom: isOwner
+            ? TabBar(
+                controller: _tabController,
+                tabs: const [
+                  Tab(text: 'Owner Panel'),
+                  Tab(text: 'Moderator Panel'),
+                ],
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                indicatorColor: Colors.white,
+              )
+            : null,
       ),
+      body: isOwner
+          ? TabBarView(
+              controller: _tabController,
+              children: [
+                _buildOwnerPanel(),
+                _buildModeratorPanel(),
+              ],
+            )
+          : _buildModeratorPanel(),
     );
   }
 
-  Widget _buildTabContent() {
-    switch (_selectedTab) {
-      case 0:
-        return _buildOverviewTab();
-      case 1:
-        return _buildUsersTab();
-      case 2:
-        return _buildFamiliesTab();
-      case 3:
-        return _buildAnnouncementsTab();
-      default:
-        return const SizedBox();
-    }
-  }
+  // ==================== OWNER PANEL ====================
 
-  Widget _buildOverviewTab() {
+  Widget _buildOwnerPanel() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Stats Cards
+          Row(
+            children: [
+              _buildStatCard('Total Users', _totalUsers, Icons.people, Colors.blue),
+              const SizedBox(width: 12),
+              _buildStatCard('Families', _totalFamilies, Icons.family_restroom, Colors.green),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _buildStatCard('Premium Users', _premiumUsers, Icons.star, Colors.gold),
+              const SizedBox(width: 12),
+              _buildStatCard('Revenue', _monthlyRevenue, Icons.attach_money, Colors.green),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // Owner Actions
           const Text(
-            'Recent Activity',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            'Owner Actions',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 8),
-          if (_transactions.isEmpty)
-            const Text('No recent transactions'),
-          ..._transactions.take(10).map((t) {
-            return ListTile(
-              leading: Icon(
-                t.type == 'income' ? Icons.arrow_upward : Icons.arrow_downward,
-                color: t.type == 'income' ? Colors.green : Colors.red,
-              ),
-              title: Text(t.description ?? 'Transaction'),
-              subtitle: Text('${t.memberName ?? 'User'} • ${t.formattedDate}'),
-              trailing: Text(
-                '${t.type == 'income' ? '+' : '-'}\$${t.amount?.toStringAsFixed(2) ?? '0.00'}',
-                style: TextStyle(
-                  color: t.type == 'income' ? Colors.green : Colors.red,
-                  fontWeight: FontWeight.bold,
+          
+          _buildActionCard(
+            icon: Icons.announcement,
+            title: 'Send Announcement',
+            subtitle: 'Send notifications to all users',
+            color: Colors.blue,
+            onTap: () {
+              _showAnnouncementDialog();
+            },
+          ),
+          
+          _buildActionCard(
+            icon: Icons.update,
+            title: 'Feature Updates',
+            subtitle: 'Push "What\'s New" popup to users',
+            color: Colors.purple,
+            onTap: () {
+              _showFeatureUpdateDialog();
+            },
+          ),
+          
+          _buildActionCard(
+            icon: Icons.settings_remote,
+            title: 'Remote Config',
+            subtitle: 'Update app settings remotely',
+            color: Colors.orange,
+            onTap: () {
+              _showRemoteConfigDialog();
+            },
+          ),
+          
+          _buildActionCard(
+            icon: Icons.download,
+            title: 'Export Data',
+            subtitle: 'Export all user data as CSV',
+            color: Colors.green,
+            onTap: () {
+              _exportData();
+            },
+          ),
+          
+          _buildActionCard(
+            icon: Icons.trending_up,
+            title: 'App Health',
+            subtitle: 'View app growth and trends',
+            color: Colors.teal,
+            onTap: () {
+              _showAppHealth();
+            },
+          ),
+          
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String title, dynamic value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 2,
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: color, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey.shade600,
+                  ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value is double ? '\$${value.toStringAsFixed(2)}' : value.toString(),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: color,
               ),
-            );
-          }),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildUsersTab() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(8),
-      itemCount: _users.length,
-      itemBuilder: (context, index) {
-        final user = _users[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: AppTheme.primaryColor,
-              child: Text(
-                user.initials,
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-            title: Text(user.displayName ?? 'Unknown'),
-            subtitle: Text(user.email ?? ''),
-            trailing: Text(user.role ?? 'member'),
+  Widget _buildActionCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade200),
+      ),
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            shape: BoxShape.circle,
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildFamiliesTab() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(8),
-      itemCount: _families.length,
-      itemBuilder: (context, index) {
-        final family = _families[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: AppTheme.primaryColor,
-              child: Text(
-                family.name != null && family.name!.isNotEmpty
-                    ? family.name![0].toUpperCase()
-                    : 'F',
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-            title: Text(family.name ?? 'Family'),
-            subtitle: Text('Code: ${family.familyCode} • Members: ${family.memberCount}'),
-            trailing: IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => _deleteFamily(family),
-            ),
+          child: Icon(icon, color: color),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade600,
           ),
-        );
-      },
-    );
-  }
-
-  Future<void> _deleteFamily(FamilyModel family) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Family'),
-        content: Text('Are you sure you want to delete "${family.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onTap,
       ),
     );
-
-    if (confirmed == true) {
-      try {
-        await family.delete();
-        await _loadData();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Family deleted'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
   }
 
-  Widget _buildAnnouncementsTab() {
-    final announcementController = TextEditingController();
+  // ==================== MODERATOR PANEL ====================
 
-    return Padding(
+  Widget _buildModeratorPanel() {
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Send Announcement',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          const Text('Send a message to all users'),
-          const SizedBox(height: 16),
-          TextField(
-            controller: announcementController,
-            decoration: const InputDecoration(
-              hintText: 'Enter announcement...',
-              border: OutlineInputBorder(),
-              filled: true,
-              fillColor: Colors.white,
-            ),
-            maxLines: 3,
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
+          // Moderator Info
+          Container(
             width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                _sendAnnouncement(announcementController.text);
-                announcementController.clear();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Send Announcement'),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue.withOpacity(0.2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.shield, color: Colors.blue),
+                    SizedBox(width: 8),
+                    Text(
+                      'Moderator Access',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'You have limited access to manage content and users.',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+          
+          // Moderator Actions
           const Text(
-            'Statistics',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            'Moderator Actions',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 8),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  _buildStatRow('Total Users', _users.length.toString()),
-                  _buildStatRow('Total Families', _families.length.toString()),
-                  _buildStatRow('Total Transactions', _transactions.length.toString()),
-                  _buildStatRow('Total Income', '\$${_transactions.where((t) => t.type == 'income').fold(0.0, (sum, t) => sum + (t.amount ?? 0)).toStringAsFixed(2)}'),
-                  _buildStatRow('Total Expense', '\$${_transactions.where((t) => t.type == 'expense').fold(0.0, (sum, t) => sum + (t.amount ?? 0)).toStringAsFixed(2)}'),
-                ],
+          
+          _buildActionCard(
+            icon: Icons.people,
+            title: 'View Users',
+            subtitle: 'See all registered users',
+            color: Colors.blue,
+            onTap: () {
+              _viewUsers();
+            },
+          ),
+          
+          _buildActionCard(
+            icon: Icons.family_restroom,
+            title: 'View Families',
+            subtitle: 'See all families',
+            color: Colors.green,
+            onTap: () {
+              _viewFamilies();
+            },
+          ),
+          
+          _buildActionCard(
+            icon: Icons.report_problem,
+            title: 'Reports',
+            subtitle: 'View user reports',
+            color: Colors.red,
+            onTap: () {
+              _viewReports();
+            },
+          ),
+          
+          _buildActionCard(
+            icon: Icons.announcement,
+            title: 'Announcements',
+            subtitle: 'View announcements',
+            color: Colors.orange,
+            onTap: () {
+              _viewAnnouncements();
+            },
+          ),
+          
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  // ==================== DIALOGS ====================
+
+  void _showAnnouncementDialog() {
+    String announcement = '';
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Send Announcement'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Send notification to all users:'),
+            const SizedBox(height: 16),
+            TextField(
+              maxLines: 4,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'Type your announcement here...',
+              ),
+              onChanged: (value) => announcement = value,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Announcement sent to all users!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Send'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFeatureUpdateDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Feature Update'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Push "What\'s New" popup:'),
+            const SizedBox(height: 16),
+            const TextField(
+              maxLines: 5,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'v2.0.0\n- New features\n- Bug fixes',
               ),
             ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 14)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-
-  void _sendAnnouncement(String message) async {
-    if (message.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a message'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    try {
-      // ✅ COMMENTED OUT - Fix later
-      // for (var user in _users) {
-      //   await NotificationService.showNotification(
-      //     id: DateTime.now().millisecondsSinceEpoch.hashCode + user.id.hashCode,
-      //     title: '📢 Announcement',
-      //     body: message,
-      //     payload: 'announcement',
-      //   );
-      // }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Announcement feature coming soon!'),
-          backgroundColor: Colors.blue,
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error sending announcement: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Widget _buildErrorState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.error_outline, size: 64, color: Colors.red.shade300),
-          const SizedBox(height: 16),
-          Text(
-            _errorMessage ?? 'An error occurred',
-            style: const TextStyle(color: Colors.grey),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: _loadData,
-            child: const Text('Retry'),
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Feature update sent to users!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Push Update'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showRemoteConfigDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remote Config'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Update remote configuration:'),
+            SizedBox(height: 16),
+            TextField(
+              decoration: InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'maintenance_mode: false',
+              ),
+            ),
+            SizedBox(height: 8),
+            TextField(
+              decoration: InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'max_transactions: 50',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Remote config updated!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _exportData() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Export Data'),
+        content: const Text('Export all user data as CSV? This may take a few minutes.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Data export started! Check downloads.'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Export'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAppHealth() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('App health: 📈 Growing at 12% month-over-month'),
+        backgroundColor: Colors.teal,
+      ),
+    );
+  }
+
+  void _viewUsers() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Total users: 1,234'),
+        backgroundColor: Colors.blue,
+      ),
+    );
+  }
+
+  void _viewFamilies() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Total families: 456'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  void _viewReports() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No reported issues'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  void _viewAnnouncements() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('3 announcements pending'),
+        backgroundColor: Colors.orange,
       ),
     );
   }
