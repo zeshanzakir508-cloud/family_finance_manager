@@ -47,7 +47,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     });
   }
 
-  Future<void> _loadData() async {  // <-- ADDED async
+  Future<void> _loadData() async {
     final modeProvider = Provider.of<ModeProvider>(context, listen: false);
     final authService = Provider.of<AuthService>(context, listen: false);
     final userId = authService.userId;
@@ -55,12 +55,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
     if (userId == null) return;
 
     if (modeProvider.isPersonalMode) {
-      _allTransactions = await DatabaseService.getUserTransactions(userId);  // <-- ADDED await
+      _allTransactions = await DatabaseService.getUserTransactions(userId);
     } else {
       // Family mode - get all family transactions
       final family = Provider.of<FamilyProvider>(context, listen: false).currentFamily;
       if (family != null) {
-        _allTransactions = await DatabaseService.getFamilyTransactions(family.id!);  // <-- ADDED await
+        _allTransactions = await DatabaseService.getFamilyTransactions(family.id!);
       } else {
         _allTransactions = [];
       }
@@ -200,7 +200,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           Expanded(
             child: GestureDetector(
               onTap: () {
-                modeProvider.toggleMode(AppMode.personal);
+                modeProvider.setMode('personal');
                 _loadData();
               },
               child: Container(
@@ -230,7 +230,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           Expanded(
             child: GestureDetector(
               onTap: () {
-                modeProvider.toggleMode(AppMode.family);
+                modeProvider.setMode('family');
                 _loadData();
               },
               child: Container(
