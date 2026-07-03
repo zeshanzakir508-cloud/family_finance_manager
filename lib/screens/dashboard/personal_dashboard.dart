@@ -38,14 +38,14 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
     _loadData();
   }
 
-  void _loadData() {
+  Future<void> _loadData() async {
     setState(() => _isLoading = true);
     
     final authService = Provider.of<AuthService>(context, listen: false);
     final userId = authService.userId;
     
     if (userId != null) {
-      _transactions = DatabaseService.getUserTransactions(userId);
+      _transactions = await DatabaseService.getUserTransactions(userId);  // <-- ADDED await
       _transactions.sort((a, b) => b.date!.compareTo(a.date!));
       _applyFilters();
     }
@@ -151,7 +151,7 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: () async => _loadData(),
+              onRefresh: _loadData,
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -165,7 +165,7 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
                     _buildBalanceCards(),
                     const SizedBox(height: 16),
                     
-                    // Charts Row
+                    // Charts Section
                     _buildChartsSection(),
                     const SizedBox(height: 16),
                     
@@ -643,8 +643,7 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
             label: 'Add Income',
             color: Colors.green,
             onTap: () {
-              Navigator.pushNamed(context, '/add_transaction',
-                  arguments: {'type': 'income'});
+              Navigator.pushNamed(context, '/add-income');
             },
           ),
         ),
@@ -655,8 +654,7 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
             label: 'Add Expense',
             color: Colors.red,
             onTap: () {
-              Navigator.pushNamed(context, '/add_transaction',
-                  arguments: {'type': 'expense'});
+              Navigator.pushNamed(context, '/add-expense');
             },
           ),
         ),
