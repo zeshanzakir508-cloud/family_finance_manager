@@ -85,7 +85,7 @@ class _OwnerDashboardState extends State<OwnerDashboard>
         title: Text(
           isOwner ? 'Owner Dashboard' : 'Moderator Dashboard',
         ),
-        backgroundColor: isOwner ? Colors.gold : Colors.blue,
+        backgroundColor: isOwner ? const Color(0xFFD4AF37) : Colors.blue,  // FIXED: Colors.gold replaced
         foregroundColor: Colors.white,
         actions: [
           Container(
@@ -148,7 +148,7 @@ class _OwnerDashboardState extends State<OwnerDashboard>
           const SizedBox(height: 12),
           Row(
             children: [
-              _buildStatCard('Premium Users', _premiumUsers, Icons.star, Colors.gold),
+              _buildStatCard('Premium Users', _premiumUsers, Icons.star, const Color(0xFFD4AF37)),  // FIXED: Colors.gold replaced
               const SizedBox(width: 12),
               _buildStatCard('Revenue', _monthlyRevenue, Icons.attach_money, Colors.green),
             ],
