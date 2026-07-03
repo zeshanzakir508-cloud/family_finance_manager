@@ -1,4 +1,5 @@
 // lib/screens/settings/currency_settings_screen.dart
+import 'dart:async';  // <-- ADD THIS IMPORT
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/exchange_rate_service.dart';
