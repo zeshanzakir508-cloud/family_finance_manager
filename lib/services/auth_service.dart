@@ -1,4 +1,6 @@
 // lib/services/auth_service.dart
+import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
@@ -52,13 +54,21 @@ class AuthService extends ChangeNotifier {
     await _auth.signOut();
   }
 
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } on FirebaseAuthException catch (e) {
+      throw _getErrorMessage(e);
+    }
+  }
+
   Future<bool> authenticateWithFingerprint() async {
     if (!_isFingerprintEnabled) return false;
-    
+
     try {
       final isAvailable = await _localAuth.canCheckBiometrics;
       if (!isAvailable) return false;
-      
+
       final authenticated = await _localAuth.authenticate(
         localizedReason: 'Authenticate to access FinFam',
         options: const AuthenticationOptions(
@@ -66,7 +76,7 @@ class AuthService extends ChangeNotifier {
           biometricOnly: true,
         ),
       );
-      
+
       return authenticated;
     } catch (e) {
       return false;
@@ -102,6 +112,12 @@ class AuthService extends ChangeNotifier {
         return 'Invalid email address.';
       case 'weak-password':
         return 'Password should be at least 6 characters.';
+      case 'user-disabled':
+        return 'This account has been disabled.';
+      case 'too-many-requests':
+        return 'Too many attempts. Please try again later.';
+      case 'network-request-failed':
+        return 'Network error. Please check your connection.';
       default:
         return 'An error occurred. Please try again.';
     }
