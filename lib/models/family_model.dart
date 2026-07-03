@@ -1,102 +1,181 @@
-import 'package:hive/hive.dart';
+// lib/models/family_model.dart
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-part 'family_model.g.dart';
+// ==================== FAMILY MEMBER MODEL ====================
 
-@HiveType(typeId: 2)
-class FamilyModel extends HiveObject {
-  @HiveField(0)
-  String? id;
+class FamilyMember {
+  final String id;
+  final String userId;
+  final String displayName;
+  final String email;
+  final String role; // admin, member
+  final DateTime joinedAt;
+  final bool isActive;
 
-  @HiveField(1)
-  String? name;
-
-  @HiveField(2)
-  String? description;
-
-  @HiveField(3)
-  String? adminId;
-
-  @HiveField(4)
-  List<String>? memberIds;
-
-  @HiveField(5)
-  String? familyCode;
-
-  @HiveField(6)
-  String? baseCurrency;  // ✅ ADDED
-
-  @HiveField(7)
-  DateTime? createdAt;
-
-  @HiveField(8)
-  DateTime? updatedAt;
-
-  FamilyModel({
-    this.id,
-    this.name,
-    this.description,
-    this.adminId,
-    this.memberIds,
-    this.familyCode,
-    this.baseCurrency = 'USD',  // ✅ ADDED
-    this.createdAt,
-    this.updatedAt,
+  FamilyMember({
+    required this.id,
+    required this.userId,
+    required this.displayName,
+    required this.email,
+    this.role = 'member',
+    required this.joinedAt,
+    this.isActive = true,
   });
 
-  int get memberCount => memberIds?.length ?? 0;
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'userId': userId,
+      'displayName': displayName,
+      'email': email,
+      'role': role,
+      'joinedAt': Timestamp.fromDate(joinedAt),
+      'isActive': isActive,
+    };
+  }
 
-  bool isAdmin(String userId) => adminId == userId;
+  factory FamilyMember.fromJson(Map<String, dynamic> json) {
+    return FamilyMember(
+      id: json['id'] ?? '',
+      userId: json['userId'] ?? '',
+      displayName: json['displayName'] ?? 'Unknown',
+      email: json['email'] ?? '',
+      role: json['role'] ?? 'member',
+      joinedAt: (json['joinedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      isActive: json['isActive'] ?? true,
+    );
+  }
 
-  bool isMember(String userId) => memberIds?.contains(userId) ?? false;
+  FamilyMember copyWith({
+    String? id,
+    String? userId,
+    String? displayName,
+    String? email,
+    String? role,
+    DateTime? joinedAt,
+    bool? isActive,
+  }) {
+    return FamilyMember(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      displayName: displayName ?? this.displayName,
+      email: email ?? this.email,
+      role: role ?? this.role,
+      joinedAt: joinedAt ?? this.joinedAt,
+      isActive: isActive ?? this.isActive,
+    );
+  }
+}
+
+// ==================== FAMILY SETTINGS MODEL ====================
+
+class FamilySettings {
+  final String currency;
+  final bool allowMembersToAdd;
+  final bool requireApproval;
+
+  const FamilySettings({
+    this.currency = 'USD',
+    this.allowMembersToAdd = true,
+    this.requireApproval = true,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'currency': currency,
+      'allowMembersToAdd': allowMembersToAdd,
+      'requireApproval': requireApproval,
+    };
+  }
+
+  factory FamilySettings.fromJson(Map<String, dynamic> json) {
+    return FamilySettings(
+      currency: json['currency'] ?? 'USD',
+      allowMembersToAdd: json['allowMembersToAdd'] ?? true,
+      requireApproval: json['requireApproval'] ?? true,
+    );
+  }
+}
+
+// ==================== FAMILY MODEL ====================
+
+class Family {
+  final String id;
+  final String name;
+  final String? description;
+  final String createdBy;
+  final String? familyCode;
+  final DateTime createdAt;
+  final List<FamilyMember>? members;
+  final FamilySettings settings;
+  final DateTime? updatedAt;
+
+  Family({
+    required this.id,
+    required this.name,
+    this.description,
+    required this.createdBy,
+    this.familyCode,
+    required this.createdAt,
+    this.members,
+    this.settings = const FamilySettings(),
+    this.updatedAt,
+  });
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'name': name,
       'description': description,
-      'adminId': adminId,
-      'memberIds': memberIds,
+      'createdBy': createdBy,
       'familyCode': familyCode,
-      'baseCurrency': baseCurrency,  // ✅ ADDED
-      'createdAt': createdAt?.toIso8601String(),
-      'updatedAt': updatedAt?.toIso8601String(),
+      'createdAt': Timestamp.fromDate(createdAt),
+      'members': members?.map((m) => m.toJson()).toList() ?? [],
+      'settings': settings.toJson(),
+      'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
     };
   }
 
-  factory FamilyModel.fromJson(Map<String, dynamic> json) {
-    return FamilyModel(
-      id: json['id'],
-      name: json['name'],
+  factory Family.fromJson(Map<String, dynamic> json) {
+    return Family(
+      id: json['id'] ?? '',
+      name: json['name'] ?? 'Family',
       description: json['description'],
-      adminId: json['adminId'],
-      memberIds: json['memberIds'] != null ? List<String>.from(json['memberIds']) : null,
+      createdBy: json['createdBy'] ?? '',
       familyCode: json['familyCode'],
-      baseCurrency: json['baseCurrency'] ?? 'USD',  // ✅ ADDED
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+      createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      members: json['members'] != null
+          ? (json['members'] as List).map((m) => FamilyMember.fromJson(m)).toList()
+          : [],
+      settings: json['settings'] != null
+          ? FamilySettings.fromJson(json['settings'])
+          : const FamilySettings(),
+      updatedAt: json['updatedAt'] != null
+          ? (json['updatedAt'] as Timestamp).toDate()
+          : null,
     );
   }
 
-  FamilyModel copyWith({
+  Family copyWith({
     String? id,
     String? name,
     String? description,
-    String? adminId,
-    List<String>? memberIds,
+    String? createdBy,
     String? familyCode,
-    String? baseCurrency,  // ✅ ADDED
     DateTime? createdAt,
+    List<FamilyMember>? members,
+    FamilySettings? settings,
     DateTime? updatedAt,
   }) {
-    return FamilyModel(
+    return Family(
       id: id ?? this.id,
       name: name ?? this.name,
       description: description ?? this.description,
-      adminId: adminId ?? this.adminId,
-      memberIds: memberIds ?? this.memberIds,
+      createdBy: createdBy ?? this.createdBy,
       familyCode: familyCode ?? this.familyCode,
-      baseCurrency: baseCurrency ?? this.baseCurrency,  // ✅ ADDED
       createdAt: createdAt ?? this.createdAt,
+      members: members ?? this.members,
+      settings: settings ?? this.settings,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
