@@ -3,9 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../utils/app_theme.dart';
 
-class PrivacyPolicyScreen extends StatelessWidget {
+class PrivacyPolicyScreen extends StatefulWidget {
   const PrivacyPolicyScreen({super.key});
 
+  @override
+  State<PrivacyPolicyScreen> createState() => _PrivacyPolicyScreenState();
+}
+
+class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -202,8 +207,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                     const SizedBox(height: 12),
                     ElevatedButton(
                       onPressed: () {
-                        // Launch email
-                        _launchEmail();
+                        _launchEmail(context);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryColor,
@@ -285,7 +289,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _launchEmail() async {
+  Future<void> _launchEmail(BuildContext context) async {
     final Uri emailUri = Uri(
       scheme: 'mailto',
       path: 'zeshanzakir508@gmail.com',
@@ -298,7 +302,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
     if (await canLaunchUrl(emailUri)) {
       await launchUrl(emailUri);
     } else {
-      // Show snackbar
+      // Show snackbar using context parameter
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please contact us at zeshanzakir508@gmail.com'),
