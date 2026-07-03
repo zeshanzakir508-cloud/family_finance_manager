@@ -1,4 +1,5 @@
 // lib/screens/settings/security_settings_screen.dart
+import 'dart:async';  // <-- ADD THIS IMPORT
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
@@ -373,8 +374,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
       }
 
       final authenticated = await BiometricService.authenticate(
-        title: 'Fingerprint Login',
-        message: 'Authenticate to test fingerprint',
+        localizedReason: 'Authenticate to test fingerprint',
       );
       
       if (authenticated) {
@@ -508,17 +508,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                                 });
                               });
                             } : null,
-                            trailing: available && _fingerprintEnabled
-                                ? IconButton(
-                                    icon: const Icon(
-                                      Icons.fingerprint,
-                                      color: Colors.green,
-                                      size: 24,
-                                    ),
-                                    onPressed: _testFingerprint,
-                                    tooltip: 'Test Fingerprint',
-                                  )
-                                : null,
                           );
                         },
                       ),
@@ -621,7 +610,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     required String subtitle,
     required bool value,
     required Function(bool)? onChanged,
-    Widget? trailing,
   }) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -666,18 +654,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
         inactiveThumbColor: Colors.grey.shade400,
         inactiveTrackColor: Colors.grey.shade200,
         contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-        secondary: trailing ?? Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: value ? AppTheme.primaryColor.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            icon,
-            color: value ? AppTheme.primaryColor : Colors.grey,
-            size: 22,
-          ),
-        ),
       ),
     );
   }
