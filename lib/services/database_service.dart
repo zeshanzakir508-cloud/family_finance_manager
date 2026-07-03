@@ -1,167 +1,229 @@
-import 'package:hive_flutter/hive_flutter.dart';
+// lib/services/database_service.dart
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 import '../models/transaction_model.dart';
 import '../models/family_model.dart';
 import '../models/transfer_model.dart';
-import '../models/notification_model.dart';
-import '../models/backup_model.dart';
-import '../utils/constants.dart';
 
 class DatabaseService {
-  // ---- User Methods ----
-  static Future<void> saveUser(UserModel user) async {
-    final box = Hive.box<UserModel>(Constants.usersBox);
-    await box.put(user.id, user);
-  }
+  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  static UserModel? getUser(String userId) {
-    final box = Hive.box<UserModel>(Constants.usersBox);
-    return box.get(userId);
-  }
+  // ==================== USER METHODS ====================
 
-  static List<UserModel> getAllUsers() {
-    final box = Hive.box<UserModel>(Constants.usersBox);
-    return box.values.toList();
-  }
-
-  static Future<void> deleteUser(String userId) async {
-    final box = Hive.box<UserModel>(Constants.usersBox);
-    await box.delete(userId);
-  }
-
-  // ---- Transaction Methods ----
-  static Future<void> saveTransaction(TransactionModel transaction) async {
-    final box = Hive.box<TransactionModel>(Constants.transactionsBox);
-    await box.add(transaction);
-  }
-
-  static List<TransactionModel> getAllTransactions() {
-    final box = Hive.box<TransactionModel>(Constants.transactionsBox);
-    return box.values.toList();
-  }
-
-  static List<TransactionModel> getUserTransactions(String userId) {
-    final box = Hive.box<TransactionModel>(Constants.transactionsBox);
-    return box.values.where((t) => t.userId == userId).toList();
-  }
-
-  static List<TransactionModel> getFamilyTransactions(String familyId) {
-    final box = Hive.box<TransactionModel>(Constants.transactionsBox);
-    return box.values.where((t) => t.familyId == familyId).toList();
-  }
-
-  static Future<void> deleteTransaction(TransactionModel transaction) async {
-    await transaction.delete();
-  }
-
-  // ---- Family Methods ----
-  static Future<void> saveFamily(FamilyModel family) async {
-    final box = Hive.box<FamilyModel>(Constants.familiesBox);
-    await box.add(family);
-  }
-
-  static List<FamilyModel> getAllFamilies() {
-    final box = Hive.box<FamilyModel>(Constants.familiesBox);
-    return box.values.toList();
-  }
-
-  static FamilyModel? getFamily(String familyId) {
-    final box = Hive.box<FamilyModel>(Constants.familiesBox);
+  static Future<UserModel?> getUser(String userId) async {
     try {
-      return box.values.firstWhere(
-        (f) => f.id == familyId,
-        orElse: () => throw Exception('Family not found'),
-      );
+      final doc = await _firestore.collection('users').doc(userId).get();
+      if (doc.exists) {
+        return UserModel.fromJson(doc.data()!);
+      }
+      return null;
     } catch (e) {
       return null;
     }
   }
 
-  static Future<void> deleteFamily(FamilyModel family) async {
-    await family.delete();
+  static Future<void> saveUser(UserModel user) async {
+    await _firestore.collection('users').doc(user.id).set(user.toJson());
   }
 
-  // ---- Transfer Methods ----
-  static Future<void> saveTransfer(TransferModel transfer) async {
-    final box = Hive.box<TransferModel>(Constants.transfersBox);
-    await box.add(transfer);
+  // ==================== TRANSACTION METHODS ====================
+
+  static Future<void> addPersonalTransaction(TransactionModel transaction) async {
+    await _firestore.collection('transactions').add(transaction.toJson());
   }
 
-  static List<TransferModel> getAllTransfers() {
-    final box = Hive.box<TransferModel>(Constants.transfersBox);
-    return box.values.toList();
+  static Future<void> addFamilyTransaction(TransactionModel transaction) async {
+    await _firestore.collection('transactions').add(transaction.toJson());
   }
 
-  static List<TransferModel> getFamilyTransfers(String familyId) {
-    final box = Hive.box<TransferModel>(Constants.transfersBox);
-    return box.values.where((t) => t.familyId == familyId).toList();
+  static Future<List<TransactionModel>> getUserTransactions(String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('transactions')
+          .where('userId', isEqualTo: userId)
+          .orderBy('date', descending: true)
+          .get();
+      
+      return snapshot.docs.map((doc) {
+        return TransactionModel.fromJson(doc.data());
+      }).toList();
+    } catch (e) {
+      return [];
+    }
   }
 
-  static List<TransferModel> getUserTransfers(String userId) {
-    final box = Hive.box<TransferModel>(Constants.transfersBox);
-    return box.values
-        .where((t) => t.fromMemberId == userId || t.toMemberId == userId)
-        .toList();
+  static Future<List<TransactionModel>> getFamilyTransactions(String familyId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('transactions')
+          .where('familyId', isEqualTo: familyId)
+          .orderBy('date', descending: true)
+          .get();
+      
+      return snapshot.docs.map((doc) {
+        return TransactionModel.fromJson(doc.data());
+      }).toList();
+    } catch (e) {
+      return [];
+    }
   }
 
-  static Future<void> deleteTransfer(TransferModel transfer) async {
-    await transfer.delete();
+  // ==================== FAMILY METHODS ====================
+
+  static Future<void> createFamily(Family family) async {
+    await _firestore.collection('families').doc(family.id).set(family.toJson());
   }
 
-  // ---- Notification Methods ----
-  static Future<void> saveNotification(NotificationModel notification) async {
-    final box = Hive.box<NotificationModel>(Constants.notificationsBox);
-    await box.add(notification);
+  static Future<void> joinFamily(String familyCode, String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('families')
+          .where('familyCode', isEqualTo: familyCode)
+          .limit(1)
+          .get();
+      
+      if (snapshot.docs.isEmpty) {
+        throw Exception('Family not found with code: $familyCode');
+      }
+
+      final familyDoc = snapshot.docs.first;
+      final family = Family.fromJson(familyDoc.data());
+      
+      // Add user as member
+      final newMember = FamilyMember(
+        id: userId,
+        userId: userId,
+        displayName: 'Member',
+        email: '',
+        role: 'member',
+        joinedAt: DateTime.now(),
+        isActive: true,
+      );
+      
+      final updatedMembers = List<FamilyMember>.from(family.members ?? []);
+      updatedMembers.add(newMember);
+      
+      await _firestore.collection('families').doc(familyDoc.id).update({
+        'members': updatedMembers.map((m) => m.toJson()).toList(),
+      });
+    } catch (e) {
+      throw Exception('Failed to join family: $e');
+    }
   }
 
-  static List<NotificationModel> getUserNotifications(String userId) {
-    final box = Hive.box<NotificationModel>(Constants.notificationsBox);
-    return box.values.where((n) => n.userId == userId).toList();
+  static Future<void> leaveFamily(String familyId, String userId) async {
+    try {
+      final doc = await _firestore.collection('families').doc(familyId).get();
+      if (!doc.exists) {
+        throw Exception('Family not found');
+      }
+      
+      final family = Family.fromJson(doc.data()!);
+      final updatedMembers = family.members?.where((m) => m.id != userId).toList() ?? [];
+      
+      await _firestore.collection('families').doc(familyId).update({
+        'members': updatedMembers.map((m) => m.toJson()).toList(),
+      });
+    } catch (e) {
+      throw Exception('Failed to leave family: $e');
+    }
   }
 
-  static Future<void> markNotificationAsRead(NotificationModel notification) async {
-    final updated = notification.copyWith(isRead: true);
-    await updated.save();
+  static Future<void> addFamilyMember(String familyId, FamilyMember member) async {
+    try {
+      final doc = await _firestore.collection('families').doc(familyId).get();
+      if (!doc.exists) {
+        throw Exception('Family not found');
+      }
+      
+      final family = Family.fromJson(doc.data()!);
+      final updatedMembers = List<FamilyMember>.from(family.members ?? []);
+      updatedMembers.add(member);
+      
+      await _firestore.collection('families').doc(familyId).update({
+        'members': updatedMembers.map((m) => m.toJson()).toList(),
+      });
+    } catch (e) {
+      throw Exception('Failed to add member: $e');
+    }
   }
 
-  static Future<void> deleteNotification(NotificationModel notification) async {
-    await notification.delete();
+  static Future<List<Family>> getUserFamilies(String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('families')
+          .where('members', arrayContains: userId)
+          .get();
+      
+      return snapshot.docs.map((doc) {
+        return Family.fromJson(doc.data());
+      }).toList();
+    } catch (e) {
+      return [];
+    }
   }
 
-  // ---- Backup Methods ----
-  static Future<void> saveBackup(BackupModel backup) async {
-    final box = Hive.box<BackupModel>(Constants.backupsBox);
-    await box.add(backup);
+  static Future<Family?> getFamily(String familyId) async {
+    try {
+      final doc = await _firestore.collection('families').doc(familyId).get();
+      if (doc.exists) {
+        return Family.fromJson(doc.data()!);
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 
-  static List<BackupModel> getUserBackups(String userId) {
-    final box = Hive.box<BackupModel>(Constants.backupsBox);
-    return box.values.where((b) => b.userId == userId).toList();
+  // ==================== TRANSFER METHODS ====================
+
+  static Future<void> createTransfer(TransferModel transfer) async {
+    await _firestore.collection('transfers').add(transfer.toJson());
   }
 
-  static Future<void> deleteBackup(BackupModel backup) async {
-    await backup.delete();
+  static Future<void> updateTransfer(TransferModel transfer) async {
+    final snapshot = await _firestore
+        .collection('transfers')
+        .where('id', isEqualTo: transfer.id)
+        .limit(1)
+        .get();
+    
+    if (snapshot.docs.isNotEmpty) {
+      await _firestore.collection('transfers').doc(snapshot.docs.first.id).update(transfer.toJson());
+    }
   }
 
-  // ---- Settings Methods ----
-  static Future<void> saveSettings(String key, dynamic value) async {
-    final box = Hive.box<dynamic>(Constants.settingsBox);
-    await box.put(key, value);
+  static Future<List<TransferModel>> getFamilyTransfers(String familyId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('transfers')
+          .where('familyId', isEqualTo: familyId)
+          .orderBy('date', descending: true)
+          .get();
+      
+      return snapshot.docs.map((doc) {
+        return TransferModel.fromJson(doc.data());
+      }).toList();
+    } catch (e) {
+      return [];
+    }
   }
 
-  static dynamic getSettings(String key, {dynamic defaultValue}) {
-    final box = Hive.box<dynamic>(Constants.settingsBox);
-    return box.get(key, defaultValue: defaultValue);
-  }
+  // ==================== TRANSACTION DELETE ====================
 
-  // ---- Clear All Data ----
-  static Future<void> clearAllData() async {
-    await Hive.box<UserModel>(Constants.usersBox).clear();
-    await Hive.box<TransactionModel>(Constants.transactionsBox).clear();
-    await Hive.box<FamilyModel>(Constants.familiesBox).clear();
-    await Hive.box<TransferModel>(Constants.transfersBox).clear();
-    await Hive.box<NotificationModel>(Constants.notificationsBox).clear();
-    await Hive.box<BackupModel>(Constants.backupsBox).clear();
-    await Hive.box<dynamic>(Constants.settingsBox).clear();
+  static Future<void> deleteTransaction(String transactionId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('transactions')
+          .where('id', isEqualTo: transactionId)
+          .limit(1)
+          .get();
+      
+      if (snapshot.docs.isNotEmpty) {
+        await _firestore.collection('transactions').doc(snapshot.docs.first.id).delete();
+      }
+    } catch (e) {
+      throw Exception('Failed to delete transaction: $e');
+    }
   }
 }
