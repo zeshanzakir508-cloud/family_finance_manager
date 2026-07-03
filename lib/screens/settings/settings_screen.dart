@@ -1,4 +1,5 @@
 // lib/screens/settings/settings_screen.dart
+import 'dart:async';  // <-- ADD THIS IMPORT
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -100,40 +101,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Expanded(
             child: ListView(
               children: [
-                // User Info Section
                 _buildUserInfoSection(context),
                 const Divider(),
-                
-                // Mode Section
                 _buildModeSection(context, modeProvider),
                 const Divider(),
-                
-                // General Settings
                 _buildGeneralSettings(context),
                 const Divider(),
-                
-                // Security
                 _buildSecuritySettings(context),
                 const Divider(),
-                
-                // App Settings
                 _buildAppSettings(context),
                 const Divider(),
-                
-                // Logout
                 _buildLogoutButton(context, authService),
                 const SizedBox(height: 24),
               ],
             ),
           ),
-          // SAVE & CANCEL BUTTONS AT BOTTOM
           _buildBottomButtons(),
         ],
       ),
     );
   }
-
-  // ==================== BOTTOM SAVE/CANCEL BUTTONS ====================
 
   Widget _buildBottomButtons() {
     return Container(
@@ -168,16 +155,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: ElevatedButton(
-              onPressed: _saveAllSettings,
+              onPressed: _hasChanges ? _saveAllSettings : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
+                backgroundColor: _hasChanges 
+                    ? AppTheme.primaryColor 
+                    : Colors.grey.shade300,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text('Save Changes'),
+              child: Text(_hasChanges ? 'Save Changes' : 'No Changes'),
             ),
           ),
         ],
@@ -193,9 +182,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       
       setState(() => _hasChanges = false);
       
-      // Apply theme
-      _applyTheme();
-
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Settings saved successfully!'),
@@ -208,51 +194,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _cancelChanges() {
     _debounceAction(() {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Discard Changes?'),
-          content: const Text('You have unsaved changes. Are you sure you want to discard them?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Keep Editing'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _loadSettings();
-                setState(() => _hasChanges = false);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Changes discarded'),
-                    backgroundColor: Colors.grey,
-                  ),
-                );
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.red,
+      if (_hasChanges) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Discard Changes?'),
+            content: const Text('You have unsaved changes. Are you sure you want to discard them?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Keep Editing'),
               ),
-              child: const Text('Discard'),
-            ),
-          ],
-        ),
-      );
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _loadSettings();
+                  setState(() => _hasChanges = false);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Changes discarded'),
+                      backgroundColor: Colors.grey,
+                    ),
+                  );
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.red,
+                ),
+                child: const Text('Discard'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        Navigator.pop(context);
+      }
     });
-  }
-
-  void _applyTheme() {
-    // Trigger theme rebuild
-    final brightness = _isDarkMode ? Brightness.dark : Brightness.light;
-    // This will be handled by main.dart
-    Navigator.pushReplacementNamed(context, '/settings');
   }
 
   void _markChanged() {
     setState(() => _hasChanges = true);
   }
-
-  // ==================== USER INFO SECTION ====================
 
   Widget _buildUserInfoSection(BuildContext context) {
     final isOwner = _user?.role == 'owner';
@@ -260,7 +241,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: isOwner ? Colors.gold : AppTheme.primaryColor,
+        backgroundColor: isOwner ? const Color(0xFFD4AF37) : AppTheme.primaryColor,  // FIXED: Colors.gold replaced
         child: Text(
           isOwner ? '👑' : (_user?.initials ?? 'U'),
           style: const TextStyle(color: Colors.white),
@@ -276,8 +257,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       },
     );
   }
-
-  // ==================== MODE SECTION ====================
 
   Widget _buildModeSection(BuildContext context, ModeProvider modeProvider) {
     final isPersonal = modeProvider.isPersonalMode;
@@ -371,8 +350,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ==================== GENERAL SETTINGS ====================
-
   Widget _buildGeneralSettings(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -427,7 +404,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _isDarkMode = result;
                     _markChanged();
                   });
-                  _applyTheme();
                 }
               });
             });
@@ -440,7 +416,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
             _debounceAction(() {
-              // TODO: Language settings
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Language settings coming soon!'),
@@ -453,8 +428,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ],
     );
   }
-
-  // ==================== SECURITY SETTINGS ====================
 
   Widget _buildSecuritySettings(BuildContext context) {
     return Column(
@@ -513,7 +486,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
             _debounceAction(() {
-              // TODO: Change password
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Change password coming soon!'),
@@ -565,8 +537,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-
-  // ==================== APP SETTINGS ====================
 
   Widget _buildAppSettings(BuildContext context) {
     return Column(
@@ -629,19 +599,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.gold.withOpacity(0.1),
+              color: const Color(0xFFD4AF37).withOpacity(0.1),  // FIXED: Colors.gold replaced
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.gold.withOpacity(0.3)),
+              border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.3)),  // FIXED: Colors.gold replaced
             ),
             child: Row(
               children: [
-                const Icon(Icons.star, color: Colors.gold),
+                const Icon(Icons.star, color: Color(0xFFD4AF37)),  // FIXED: Colors.gold replaced
                 const SizedBox(width: 12),
                 Text(
                   _user?.role == 'owner' ? 'Owner - Free Forever' : 'Moderator - Free Forever',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: Colors.gold,
+                    color: const Color(0xFFD4AF37),  // FIXED: Colors.gold replaced
                   ),
                 ),
               ],
@@ -650,8 +620,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ],
     );
   }
-
-  // ==================== LOGOUT BUTTON ====================
 
   Widget _buildLogoutButton(BuildContext context, AuthService authService) {
     return Padding(
