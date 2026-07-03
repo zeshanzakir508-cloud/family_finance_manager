@@ -1,15 +1,13 @@
+// lib/screens/transactions/add_income_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../../models/transaction_model.dart';
-import '../../models/user_model.dart';
 import '../../providers/mode_provider.dart';
 import '../../providers/family_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
-import '../../services/exchange_rate_service.dart';
+import '../../models/transaction_model.dart';
 import '../../utils/app_theme.dart';
-import '../../utils/constants.dart';
 import '../../utils/helpers.dart';
 
 class AddIncomeScreen extends StatefulWidget {
@@ -23,132 +21,103 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
   final _formKey = GlobalKey<FormState>();
   final _amountController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _notesController = TextEditingController();
 
-  String _selectedCategory = 'Salary';
+  String _selectedCategory = 'salary';
   DateTime _selectedDate = DateTime.now();
-  String _selectedCurrency = 'USD';
-  double _convertedAmount = 0;
-  double _exchangeRate = 1.0;
-  bool _showConversion = false;
-  bool _isRecurring = false;
-  String _recurringInterval = 'monthly';
+  String _selectedMember = '';
   bool _isLoading = false;
 
-  final List<String> _incomeCategories = Constants.incomeCategories;
-  final List<String> _recurringIntervals = ['daily', 'weekly', 'monthly', 'yearly'];
+  final List<String> _incomeCategories = [
+    'salary',
+    'freelance',
+    'investment',
+    'gift',
+    'rental',
+    'business',
+    'refund',
+    'other',
+  ];
+
+  final Map<String, IconData> _categoryIcons = {
+    'salary': Icons.work,
+    'freelance': Icons.computer,
+    'investment': Icons.trending_up,
+    'gift': Icons.card_giftcard,
+    'rental': Icons.home,
+    'business': Icons.storefront,
+    'refund': Icons.refresh,
+    'other': Icons.more_horiz,
+  };
+
+  final Map<String, String> _categoryDisplay = {
+    'salary': 'Salary',
+    'freelance': 'Freelance',
+    'investment': 'Investment',
+    'gift': 'Gift',
+    'rental': 'Rental Income',
+    'business': 'Business',
+    'refund': 'Refund',
+    'other': 'Other',
+  };
+
+  final Map<String, Color> _categoryColors = {
+    'salary': Colors.blue,
+    'freelance': Colors.purple,
+    'investment': Colors.green,
+    'gift': Colors.pink,
+    'rental': Colors.orange,
+    'business': Colors.teal,
+    'refund': Colors.cyan,
+    'other': Colors.grey,
+  };
 
   @override
-  void initState() {
-    super.initState();
-    _loadUserCurrency();
-  }
-
-  void _loadUserCurrency() async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final userId = authService.userId;
-    if (userId != null) {
-      final user = await DatabaseService.getUser(userId);
-      if (user != null && user.currency != null) {
-        setState(() => _selectedCurrency = user.currency!);
-      }
-    }
-  }
-
-  void _convertCurrency() async {
-    final amount = double.tryParse(_amountController.text) ?? 0;
-    if (amount <= 0) {
-      setState(() {
-        _showConversion = false;
-        _convertedAmount = 0;
-      });
-      return;
-    }
-
-    final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
-    final baseCurrency = familyProvider.currentFamily?.baseCurrency ?? 'USD';
-
-    if (_selectedCurrency == baseCurrency) {
-      setState(() {
-        _convertedAmount = amount;
-        _exchangeRate = 1.0;
-        _showConversion = true;
-      });
-      return;
-    }
-
-    try {
-      final rate = await ExchangeRateService.getRate(_selectedCurrency, baseCurrency);
-      setState(() {
-        _convertedAmount = amount * rate;
-        _exchangeRate = rate;
-        _showConversion = true;
-      });
-    } catch (e) {
-      setState(() {
-        _convertedAmount = amount;
-        _exchangeRate = 1.0;
-        _showConversion = true;
-      });
-    }
+  void dispose() {
+    _amountController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
   }
 
   Future<void> _saveIncome() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final amount = double.tryParse(_amountController.text) ?? 0;
-    if (amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid amount')),
-      );
-      return;
-    }
-
     setState(() => _isLoading = true);
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      final userId = authService.userId;
       final modeProvider = Provider.of<ModeProvider>(context, listen: false);
       final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
 
-      if (userId == null) throw Exception('User not logged in');
-
-      final baseCurrency = modeProvider.isFamilyMode
-          ? familyProvider.currentFamily?.baseCurrency ?? 'USD'
-          : 'USD';
+      final userId = authService.userId;
+      if (userId == null) return;
 
       final transaction = TransactionModel(
-        id: Helpers.generateId(),
         userId: userId,
-        amount: amount,
-        category: _selectedCategory,
-        description: _descriptionController.text.trim(),
         type: 'income',
+        category: _selectedCategory,
+        amount: double.parse(_amountController.text.trim()),
         date: _selectedDate,
-        notes: _notesController.text.trim(),
-        createdAt: DateTime.now(),
+        description: _descriptionController.text.trim().isNotEmpty
+            ? _descriptionController.text.trim()
+            : null,
+        memberName: _selectedMember.isNotEmpty ? _selectedMember : null,
         familyId: modeProvider.isFamilyMode ? familyProvider.currentFamily?.id : null,
-        isFamilyTransaction: modeProvider.isFamilyMode,
-        originalCurrency: _selectedCurrency,
-        originalAmount: amount,
-        baseCurrency: baseCurrency,
-        amountInBaseCurrency: _convertedAmount,
-        exchangeRateUsed: _exchangeRate,
-        isRecurring: _isRecurring,
-        recurringInterval: _isRecurring ? _recurringInterval : null,
       );
 
-      await DatabaseService.saveTransaction(transaction);
+      if (modeProvider.isPersonalMode) {
+        await DatabaseService.addPersonalTransaction(transaction);
+      } else {
+        await DatabaseService.addFamilyTransaction(transaction);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Income added successfully!'),
+            content: Text('Income added successfully! 💰'),
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context, true);
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
@@ -166,20 +135,29 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final modeProvider = Provider.of<ModeProvider>(context);
     final familyProvider = Provider.of<FamilyProvider>(context);
-    final baseCurrency = familyProvider.currentFamily?.baseCurrency ?? 'USD';
+    final isFamilyMode = modeProvider.isFamilyMode;
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('Add Income'),
-        backgroundColor: AppTheme.primaryColor,
+        backgroundColor: Colors.green,
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => Navigator.pop(context),
-          ),
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              ),
+            ),
         ],
       ),
       body: SingleChildScrollView(
@@ -187,231 +165,34 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
         child: Form(
           key: _formKey,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Amount
-              TextFormField(
-                controller: _amountController,
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: 'Amount',
-                  prefixIcon: const Icon(Icons.attach_money),
-                  border: const OutlineInputBorder(),
-                  filled: true,
-                  fillColor: Colors.white,
-                  suffixText: _selectedCurrency,
-                ),
-                onChanged: (_) => _convertCurrency(),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter an amount';
-                  }
-                  if (double.tryParse(value) == null) {
-                    return 'Please enter a valid number';
-                  }
-                  return null;
-                },
-              ),
+              // Income Icon
+              _buildHeader(),
               const SizedBox(height: 16),
 
-              // Currency Selector
-              DropdownButtonFormField<String>(
-                value: _selectedCurrency,
-                decoration: const InputDecoration(
-                  labelText: 'Currency',
-                  prefixIcon: Icon(Icons.currency_exchange),
-                  border: OutlineInputBorder(),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                items: ['USD', 'PKR', 'SAR', 'BHD', 'AED', 'EUR', 'GBP', 'INR'].map((currency) {
-                  return DropdownMenuItem(
-                    value: currency,
-                    child: Text('$currency (${_getCurrencySymbol(currency)})'),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() => _selectedCurrency = value!);
-                  _convertCurrency();
-                },
-              ),
-              const SizedBox(height: 8),
-
-              // Conversion Preview
-              if (_showConversion)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.swap_horiz, color: Colors.blue),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${_amountController.text} $_selectedCurrency = ${_convertedAmount.toStringAsFixed(2)} $baseCurrency',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue.shade800,
-                              ),
-                            ),
-                            Text(
-                              'Rate: 1 $_selectedCurrency = ${_exchangeRate.toStringAsFixed(2)} $baseCurrency',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.blue.shade600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              // Amount
+              _buildAmountField(),
               const SizedBox(height: 16),
 
               // Category
-              DropdownButtonFormField<String>(
-                value: _selectedCategory,
-                decoration: const InputDecoration(
-                  labelText: 'Category',
-                  prefixIcon: Icon(Icons.category),
-                  border: OutlineInputBorder(),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                items: _incomeCategories.map((category) {
-                  return DropdownMenuItem(
-                    value: category,
-                    child: Text(category),
-                  );
-                }).toList(),
-                onChanged: (value) => setState(() => _selectedCategory = value!),
-              ),
-              const SizedBox(height: 16),
-
-              // Description
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  prefixIcon: Icon(Icons.description),
-                  border: OutlineInputBorder(),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-              ),
+              _buildCategorySelector(),
               const SizedBox(height: 16),
 
               // Date
-              ListTile(
-                leading: const Icon(Icons.calendar_today),
-                title: Text(DateFormat('MMM dd, yyyy').format(_selectedDate)),
-                trailing: const Icon(Icons.arrow_drop_down),
-                onTap: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    initialDate: _selectedDate,
-                    firstDate: DateTime(2020),
-                    lastDate: DateTime.now(),
-                  );
-                  if (date != null) {
-                    setState(() => _selectedDate = date);
-                  }
-                },
-                tileColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  side: BorderSide(color: Colors.grey.shade300),
-                ),
-              ),
+              _buildDatePicker(),
               const SizedBox(height: 16),
 
-              // Notes
-              TextFormField(
-                controller: _notesController,
-                decoration: const InputDecoration(
-                  labelText: 'Notes (optional)',
-                  prefixIcon: Icon(Icons.note),
-                  border: OutlineInputBorder(),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
+              // Member (Family Mode)
+              if (isFamilyMode) _buildMemberSelector(),
+              if (isFamilyMode) const SizedBox(height: 16),
 
-              // Recurring
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Switch(
-                          value: _isRecurring,
-                          onChanged: (value) {
-                            setState(() => _isRecurring = value);
-                          },
-                          activeColor: AppTheme.primaryColor,
-                        ),
-                        const Text('Recurring Transaction'),
-                      ],
-                    ),
-                    if (_isRecurring)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: DropdownButtonFormField<String>(
-                          value: _recurringInterval,
-                          decoration: const InputDecoration(
-                            labelText: 'Repeat Every',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: _recurringIntervals.map((interval) {
-                            return DropdownMenuItem(
-                              value: interval,
-                              child: Text(interval[0].toUpperCase() + interval.substring(1)),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() => _recurringInterval = value!);
-                          },
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+              // Description
+              _buildDescriptionField(),
               const SizedBox(height: 24),
 
               // Save Button
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _saveIncome,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Add Income'),
-                ),
-              ),
+              _buildSaveButton(),
             ],
           ),
         ),
@@ -419,11 +200,280 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
     );
   }
 
-  String _getCurrencySymbol(String code) {
-    const symbols = {
-      'USD': '\$', 'PKR': 'Rs', 'SAR': '﷼', 'BHD': 'د.ب',
-      'AED': 'د.إ', 'EUR': '€', 'GBP': '£', 'INR': '₹',
-    };
-    return symbols[code] ?? code;
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.arrow_upward,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Add Income',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                'Record your earnings',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAmountField() {
+    return TextFormField(
+      controller: _amountController,
+      decoration: const InputDecoration(
+        labelText: 'Amount',
+        prefixIcon: Icon(Icons.attach_money),
+        border: OutlineInputBorder(),
+        filled: true,
+        fillColor: Colors.white,
+      ),
+      keyboardType: TextInputType.numberWithOptions(decimal: true),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter an amount';
+        }
+        if (double.tryParse(value) == null) {
+          return 'Please enter a valid number';
+        }
+        if (double.parse(value) <= 0) {
+          return 'Amount must be greater than 0';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildCategorySelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Category',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.1),
+                spreadRadius: 2,
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: _incomeCategories.map((category) {
+              final isSelected = _selectedCategory == category;
+              final color = _categoryColors[category] ?? Colors.blue;
+              return ChoiceChip(
+                label: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _categoryIcons[category] ?? Icons.category,
+                      size: 16,
+                      color: isSelected ? Colors.white : color,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _categoryDisplay[category] ?? category,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isSelected ? Colors.white : null,
+                      ),
+                    ),
+                  ],
+                ),
+                selected: isSelected,
+                onSelected: (selected) {
+                  setState(() {
+                    _selectedCategory = category;
+                  });
+                },
+                selectedColor: color,
+                backgroundColor: Colors.grey.shade100,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDatePicker() {
+    return GestureDetector(
+      onTap: () async {
+        final date = await showDatePicker(
+          context: context,
+          initialDate: _selectedDate,
+          firstDate: DateTime(2020),
+          lastDate: DateTime.now(),
+        );
+        if (date != null) {
+          setState(() {
+            _selectedDate = date;
+          });
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.calendar_today, color: Colors.green),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                DateFormat('MMMM dd, yyyy').format(_selectedDate),
+                style: const TextStyle(fontSize: 16),
+              ),
+            ),
+            const Icon(Icons.arrow_drop_down, color: Colors.grey),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMemberSelector() {
+    final familyProvider = Provider.of<FamilyProvider>(context);
+    final members = familyProvider.getFamilyMembers();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Member',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.1),
+                spreadRadius: 2,
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: DropdownButtonFormField<String>(
+            value: _selectedMember.isEmpty ? null : _selectedMember,
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(horizontal: 8),
+            ),
+            hint: const Text('Select Member'),
+            items: [
+              const DropdownMenuItem(
+                value: '',
+                child: Text('Myself'),
+              ),
+              if (members.isNotEmpty)
+                ...members.map((member) {
+                  return DropdownMenuItem(
+                    value: member.id,
+                    child: Text(member.displayName),
+                  );
+                }),
+            ],
+            onChanged: (value) {
+              setState(() {
+                _selectedMember = value ?? '';
+              });
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDescriptionField() {
+    return TextFormField(
+      controller: _descriptionController,
+      decoration: const InputDecoration(
+        labelText: 'Description (Optional)',
+        prefixIcon: Icon(Icons.note),
+        border: OutlineInputBorder(),
+        filled: true,
+        fillColor: Colors.white,
+      ),
+      maxLines: 2,
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return ElevatedButton(
+      onPressed: _isLoading ? null : _saveIncome,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      child: const Text(
+        'Save Income',
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
   }
 }
