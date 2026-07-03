@@ -89,23 +89,46 @@ class _TransferScreenState extends State<TransferScreen>
         throw Exception('No family found');
       }
 
-      // Get member names
-      final fromMember = currentFamily.members?.firstWhere(
-        (m) => m.id == _selectedFromMember,
-        orElse: () => FamilyMember(id: '', userId: '', displayName: 'Unknown', email: '', role: 'member', joinedAt: DateTime.now(), isActive: true),
-      );
-      final toMember = currentFamily.members?.firstWhere(
-        (m) => m.id == _selectedToMember,
-        orElse: () => FamilyMember(id: '', userId: '', displayName: 'Unknown', email: '', role: 'member', joinedAt: DateTime.now(), isActive: true),
-      );
+      // Get member names using the members list from Family
+      String fromUserName = 'Unknown';
+      String toUserName = 'Unknown';
+      
+      if (currentFamily.members != null) {
+        final fromMember = currentFamily.members!.firstWhere(
+          (m) => m.id == _selectedFromMember,
+          orElse: () => FamilyMember(
+            id: '', 
+            userId: '', 
+            displayName: 'Unknown', 
+            email: '', 
+            role: 'member', 
+            joinedAt: DateTime.now(), 
+            isActive: true
+          ),
+        );
+        final toMember = currentFamily.members!.firstWhere(
+          (m) => m.id == _selectedToMember,
+          orElse: () => FamilyMember(
+            id: '', 
+            userId: '', 
+            displayName: 'Unknown', 
+            email: '', 
+            role: 'member', 
+            joinedAt: DateTime.now(), 
+            isActive: true
+          ),
+        );
+        fromUserName = fromMember.displayName;
+        toUserName = toMember.displayName;
+      }
 
       final transfer = TransferModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         familyId: currentFamily.id!,
         fromUserId: _selectedFromMember!,
         toUserId: _selectedToMember!,
-        fromUserName: fromMember?.displayName ?? 'Unknown',
-        toUserName: toMember?.displayName ?? 'Unknown',
+        fromUserName: fromUserName,
+        toUserName: toUserName,
         amount: double.parse(_amountController.text.trim()),
         date: _selectedDate,
         description: _descriptionController.text.trim().isNotEmpty
@@ -158,8 +181,8 @@ class _TransferScreenState extends State<TransferScreen>
     setState(() => _isLoading = true);
     
     try {
-      transfer.status = 'approved';
-      await DatabaseService.updateTransfer(transfer);
+      final updatedTransfer = transfer.copyWith(status: 'approved');
+      await DatabaseService.updateTransfer(updatedTransfer);
       _loadTransfers();
       
       ScaffoldMessenger.of(context).showSnackBar(
@@ -184,8 +207,8 @@ class _TransferScreenState extends State<TransferScreen>
     setState(() => _isLoading = true);
     
     try {
-      transfer.status = 'rejected';
-      await DatabaseService.updateTransfer(transfer);
+      final updatedTransfer = transfer.copyWith(status: 'rejected');
+      await DatabaseService.updateTransfer(updatedTransfer);
       _loadTransfers();
       
       ScaffoldMessenger.of(context).showSnackBar(
@@ -428,9 +451,9 @@ class _TransferScreenState extends State<TransferScreen>
                     contentPadding: EdgeInsets.symmetric(vertical: 8),
                   ),
                   items: _recurringOptions.map((option) {
-                    return DropdownMenuItem(
-                      value: option['value'],
-                      child: Text(option['label']),
+                    return DropdownMenuItem<String>(
+                      value: option['value'] as String,
+                      child: Text(option['label'] as String),
                     );
                   }).toList(),
                   onChanged: (value) {
@@ -508,7 +531,7 @@ class _TransferScreenState extends State<TransferScreen>
             ),
             hint: Text(hint),
             items: members.map((member) {
-              return DropdownMenuItem(
+              return DropdownMenuItem<String>(
                 value: member.id,
                 child: Row(
                   children: [
