@@ -1,4 +1,5 @@
 // lib/screens/settings/theme_settings_screen.dart
+import 'dart:async';  // <-- ADD THIS IMPORT
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/app_theme.dart';
@@ -134,8 +135,6 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
             : Brightness.light);
     
     // Update app theme
-    // This will be handled by main.dart
-    // For now, just rebuild current screen
     setState(() {});
   }
 
@@ -213,7 +212,6 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
     required String value,
   }) {
     final isSelected = _selectedTheme == value;
-    final isInitial = _initialTheme == value;
     
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -273,16 +271,8 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
 
   Widget _buildThemePreview() {
     final isDark = _selectedTheme == 'dark';
-    final isLight = _selectedTheme == 'light';
-    final isSystem = _selectedTheme == 'system';
     
-    // For preview, use selected theme
-    final previewColor = isDark 
-        ? Colors.grey[900] 
-        : (isLight || isSystem 
-            ? Colors.white 
-            : Colors.white);
-    
+    final previewColor = isDark ? Colors.grey[900] : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black;
     final cardColor = isDark ? Colors.grey[800] : Colors.grey[100];
     
