@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/family_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
-import '../../models/family_model.dart';
+import '../../models/family_model.dart';  // <-- ADD THIS IMPORT
 import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
 
@@ -122,11 +122,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                       isActive: true,
                     ),
                   ],
-                  settings: const FamilySettings(
-                    currency: 'USD',
-                    allowMembersToAdd: true,
-                    requireApproval: true,
-                  ),
+                  settings: const FamilySettings(),  // <-- FIXED
                 );
                 
                 await DatabaseService.createFamily(newFamily);
@@ -296,7 +292,9 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                           icon: Icons.add,
                           label: 'Create',
                           color: Colors.blue,
-                          onTap: _createFamily,
+                          onTap: () {
+                            Navigator.pushNamed(context, '/family-creation');
+                          },
                         ),
                       ),
                       const SizedBox(width: 12),
