@@ -19,13 +19,16 @@ import 'screens/settings/notification_settings_screen.dart';
 import 'screens/settings/privacy_policy_screen.dart';
 import 'screens/settings/about_screen.dart';
 import 'screens/reports/reports_screen.dart';
-import 'screens/transactions/add_transaction_screen.dart';
+import 'screens/transactions/add_income_screen.dart';
+import 'screens/transactions/add_expense_screen.dart';
 import 'screens/transactions/transfer_screen.dart';
 import 'screens/family/family_management_screen.dart';
 import 'screens/family/add_member_screen.dart';
 import 'screens/owner/owner_dashboard.dart';
 import 'screens/backup/backup_screen.dart';
 import 'utils/app_theme.dart';
+import 'services/auth_service.dart';
+import 'services/database_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,9 +49,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => AuthService()),
         ChangeNotifierProvider(create: (_) => ModeProvider()),
         ChangeNotifierProvider(create: (_) => FamilyProvider()),
-        // Add AuthService and DatabaseService as providers
+        // DatabaseService as a service (not a provider)
       ],
       child: MaterialApp(
         title: 'FinFam - Family Finance Manager',
@@ -56,12 +60,19 @@ class MyApp extends StatelessWidget {
         theme: isDarkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
         initialRoute: '/login',
         routes: {
+          // Auth
           '/login': (context) => const LoginScreen(),
           '/signup': (context) => const SignupScreen(),
           '/forgot-password': (context) => const ForgotPasswordScreen(),
+          
+          // Mode Selection
           '/mode-selection': (context) => const ModeSelectionScreen(),
+          
+          // Dashboards
           '/personal-dashboard': (context) => const PersonalDashboard(),
           '/family-dashboard': (context) => const FamilyDashboard(),
+          
+          // Settings
           '/settings': (context) => const SettingsScreen(),
           '/theme-settings': (context) => const ThemeSettingsScreen(),
           '/currency-settings': (context) => const CurrencySettingsScreen(),
@@ -69,13 +80,31 @@ class MyApp extends StatelessWidget {
           '/notification-settings': (context) => const NotificationSettingsScreen(),
           '/privacy-policy': (context) => const PrivacyPolicyScreen(),
           '/about': (context) => const AboutScreen(),
-          '/reports': (context) => const ReportsScreen(),
-          '/add-transaction': (context) => const AddTransactionScreen(),
+          
+          // Transactions
+          '/add-income': (context) => const AddIncomeScreen(),
+          '/add-expense': (context) => const AddExpenseScreen(),
           '/transfer': (context) => const TransferScreen(),
+          
+          // Reports
+          '/reports': (context) => const ReportsScreen(),
+          
+          // Family
           '/family-management': (context) => const FamilyManagementScreen(),
           '/add-member': (context) => const AddMemberScreen(),
+          
+          // Owner
           '/owner-dashboard': (context) => const OwnerDashboard(),
+          
+          // Backup
           '/backup': (context) => const BackupScreen(),
+        },
+        // Handle unknown routes
+        onGenerateRoute: (settings) {
+          // If route doesn't exist, go to login
+          return MaterialPageRoute(
+            builder: (context) => const LoginScreen(),
+          );
         },
       ),
     );
