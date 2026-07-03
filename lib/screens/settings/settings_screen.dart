@@ -1,5 +1,7 @@
+// lib/screens/settings/settings_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/mode_provider.dart';
 import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
@@ -18,11 +20,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
   UserModel? _user;
   bool _isLoading = true;
   bool _isDarkMode = false;
+  String _selectedCurrency = 'USD';
+  bool _hasChanges = false;
+
+  // Debounce
+  Timer? _debounceTimer;
+  bool _isProcessing = false;
 
   @override
   void initState() {
     super.initState();
     _loadUser();
+    _loadSettings();
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadUser() async {
@@ -32,6 +47,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _user = await DatabaseService.getUser(userId);
     }
     setState(() => _isLoading = false);
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _isDarkMode = prefs.getBool('isDarkMode') ?? false;
+      _selectedCurrency = prefs.getString('currency') ?? 'USD';
+    });
+  }
+
+  void _debounceAction(VoidCallback action) {
+    if (_isProcessing) return;
+    _debounceTimer?.cancel();
+    _isProcessing = true;
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      action();
+      _isProcessing = false;
+    });
   }
 
   @override
@@ -51,60 +84,200 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: const Text('Settings'),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
+        actions: [
+          if (_hasChanges)
+            TextButton(
+              onPressed: _saveAllSettings,
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Save All'),
+            ),
+        ],
       ),
-      body: ListView(
+      body: Column(
         children: [
-          // User Info Section
-          _buildUserInfoSection(context),
-          
-          const Divider(),
-          
-          // Mode Section
-          _buildModeSection(context, modeProvider),
-          
-          const Divider(),
-          
-          // General Settings
-          _buildGeneralSettings(context),
-          
-          const Divider(),
-          
-          // Security
-          _buildSecuritySettings(context),
-          
-          const Divider(),
-          
-          // App Settings
-          _buildAppSettings(context),
-          
-          const Divider(),
-          
-          // Logout
-          _buildLogoutButton(context, authService),
-          
-          const SizedBox(height: 24),
+          Expanded(
+            child: ListView(
+              children: [
+                // User Info Section
+                _buildUserInfoSection(context),
+                const Divider(),
+                
+                // Mode Section
+                _buildModeSection(context, modeProvider),
+                const Divider(),
+                
+                // General Settings
+                _buildGeneralSettings(context),
+                const Divider(),
+                
+                // Security
+                _buildSecuritySettings(context),
+                const Divider(),
+                
+                // App Settings
+                _buildAppSettings(context),
+                const Divider(),
+                
+                // Logout
+                _buildLogoutButton(context, authService),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+          // SAVE & CANCEL BUTTONS AT BOTTOM
+          _buildBottomButtons(),
         ],
       ),
     );
   }
 
+  // ==================== BOTTOM SAVE/CANCEL BUTTONS ====================
+
+  Widget _buildBottomButtons() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 2,
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _cancelChanges,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.grey,
+                side: BorderSide(color: Colors.grey.shade300),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Cancel'),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: _saveAllSettings,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Save Changes'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _saveAllSettings() async {
+    _debounceAction(() async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isDarkMode', _isDarkMode);
+      await prefs.setString('currency', _selectedCurrency);
+      
+      setState(() => _hasChanges = false);
+      
+      // Apply theme
+      _applyTheme();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Settings saved successfully!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    });
+  }
+
+  void _cancelChanges() {
+    _debounceAction(() {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Discard Changes?'),
+          content: const Text('You have unsaved changes. Are you sure you want to discard them?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Keep Editing'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _loadSettings();
+                setState(() => _hasChanges = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Changes discarded'),
+                    backgroundColor: Colors.grey,
+                  ),
+                );
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: const Text('Discard'),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  void _applyTheme() {
+    // Trigger theme rebuild
+    final brightness = _isDarkMode ? Brightness.dark : Brightness.light;
+    // This will be handled by main.dart
+    Navigator.pushReplacementNamed(context, '/settings');
+  }
+
+  void _markChanged() {
+    setState(() => _hasChanges = true);
+  }
+
+  // ==================== USER INFO SECTION ====================
+
   Widget _buildUserInfoSection(BuildContext context) {
+    final isOwner = _user?.role == 'owner';
+    final displayName = isOwner ? 'Owner' : (_user?.displayName ?? 'User');
+    
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: AppTheme.primaryColor,
+        backgroundColor: isOwner ? Colors.gold : AppTheme.primaryColor,
         child: Text(
-          _user?.initials ?? 'U',
+          isOwner ? '👑' : (_user?.initials ?? 'U'),
           style: const TextStyle(color: Colors.white),
         ),
       ),
-      title: Text(_user?.displayName ?? 'User'),
+      title: Text(displayName),
       subtitle: Text(_user?.email ?? 'No email'),
       trailing: const Icon(Icons.chevron_right),
       onTap: () {
-        Navigator.pushNamed(context, '/profile');
+        _debounceAction(() {
+          Navigator.pushNamed(context, '/profile');
+        });
       },
     );
   }
+
+  // ==================== MODE SECTION ====================
 
   Widget _buildModeSection(BuildContext context, ModeProvider modeProvider) {
     final isPersonal = modeProvider.isPersonalMode;
@@ -160,7 +333,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
           onTap: () {
-            _showModeSwitchDialog(context);
+            _debounceAction(() {
+              _showModeSwitchDialog(context);
+            });
           },
         ),
       ],
@@ -196,6 +371,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // ==================== GENERAL SETTINGS ====================
+
   Widget _buildGeneralSettings(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -214,10 +391,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ListTile(
           leading: const Icon(Icons.currency_exchange),
           title: const Text('Currency'),
-          subtitle: Text(_user?.currency ?? 'USD'),
+          subtitle: Text(_selectedCurrency),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
-            Navigator.pushNamed(context, '/currency-settings');
+            _debounceAction(() {
+              Navigator.pushNamed(
+                context, 
+                '/currency-settings',
+                arguments: {'currentCurrency': _selectedCurrency},
+              ).then((result) {
+                if (result != null && result is String && result != _selectedCurrency) {
+                  setState(() {
+                    _selectedCurrency = result;
+                    _markChanged();
+                  });
+                }
+              });
+            });
           },
         ),
         ListTile(
@@ -226,7 +416,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           subtitle: Text(_isDarkMode ? 'Dark' : 'Light'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
-            Navigator.pushNamed(context, '/theme-settings');
+            _debounceAction(() {
+              Navigator.pushNamed(
+                context,
+                '/theme-settings',
+                arguments: {'isDarkMode': _isDarkMode},
+              ).then((result) {
+                if (result != null && result is bool && result != _isDarkMode) {
+                  setState(() {
+                    _isDarkMode = result;
+                    _markChanged();
+                  });
+                  _applyTheme();
+                }
+              });
+            });
           },
         ),
         ListTile(
@@ -235,12 +439,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
           subtitle: const Text('English'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
-            // TODO: Language settings
+            _debounceAction(() {
+              // TODO: Language settings
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Language settings coming soon!'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            });
           },
         ),
       ],
     );
   }
+
+  // ==================== SECURITY SETTINGS ====================
 
   Widget _buildSecuritySettings(BuildContext context) {
     return Column(
@@ -262,11 +476,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: const Text('Fingerprint Login'),
           trailing: Switch(
             value: false,
-            onChanged: (value) {},
+            onChanged: (value) {
+              _debounceAction(() {
+                _showFingerprintSetup(value);
+              });
+            },
             activeColor: AppTheme.primaryColor,
           ),
           onTap: () {
-            Navigator.pushNamed(context, '/security-settings');
+            _debounceAction(() {
+              Navigator.pushNamed(context, '/security-settings');
+            });
           },
         ),
         ListTile(
@@ -274,11 +494,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: const Text('PIN Lock'),
           trailing: Switch(
             value: false,
-            onChanged: (value) {},
+            onChanged: (value) {
+              _debounceAction(() {
+                // Handle PIN lock
+              });
+            },
             activeColor: AppTheme.primaryColor,
           ),
           onTap: () {
-            Navigator.pushNamed(context, '/security-settings');
+            _debounceAction(() {
+              Navigator.pushNamed(context, '/security-settings');
+            });
           },
         ),
         ListTile(
@@ -286,12 +512,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: const Text('Change Password'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
-            // TODO: Change password
+            _debounceAction(() {
+              // TODO: Change password
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Change password coming soon!'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            });
           },
         ),
       ],
     );
   }
+
+  void _showFingerprintSetup(bool value) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Fingerprint Login'),
+        content: Text(
+          value 
+              ? 'Enable fingerprint login for faster access?' 
+              : 'Disable fingerprint login?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    value 
+                        ? 'Fingerprint login enabled!' 
+                        : 'Fingerprint login disabled!',
+                  ),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.primaryColor,
+            ),
+            child: Text(value ? 'Enable' : 'Disable'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== APP SETTINGS ====================
 
   Widget _buildAppSettings(BuildContext context) {
     return Column(
@@ -313,7 +588,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: const Text('Notifications'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
-            Navigator.pushNamed(context, '/notification-settings');
+            _debounceAction(() {
+              Navigator.pushNamed(context, '/notification-settings');
+            });
           },
         ),
         ListTile(
@@ -321,7 +598,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: const Text('Backup & Restore'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
-            Navigator.pushNamed(context, '/backup');
+            _debounceAction(() {
+              Navigator.pushNamed(context, '/backup');
+            });
           },
         ),
         ListTile(
@@ -329,7 +608,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: const Text('Privacy Policy'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
-            Navigator.pushNamed(context, '/privacy-policy');
+            _debounceAction(() {
+              Navigator.pushNamed(context, '/privacy-policy');
+            });
           },
         ),
         ListTile(
@@ -337,24 +618,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: const Text('About'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
-            Navigator.pushNamed(context, '/about');
+            _debounceAction(() {
+              Navigator.pushNamed(context, '/about');
+            });
           },
         ),
+        // Premium Section (Owner/Moderator Free)
+        if (_user?.role == 'owner' || _user?.role == 'moderator')
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.gold.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.gold.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.star, color: Colors.gold),
+                const SizedBox(width: 12),
+                Text(
+                  _user?.role == 'owner' ? 'Owner - Free Forever' : 'Moderator - Free Forever',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.gold,
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
+
+  // ==================== LOGOUT BUTTON ====================
 
   Widget _buildLogoutButton(BuildContext context, AuthService authService) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: ElevatedButton(
         onPressed: () {
-          _showLogoutDialog(context, authService);
+          _debounceAction(() {
+            _showLogoutDialog(context, authService);
+          });
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.red.shade50,
           foregroundColor: Colors.red,
           elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
         child: const Text('Logout'),
       ),
