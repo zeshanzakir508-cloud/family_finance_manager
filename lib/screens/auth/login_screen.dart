@@ -192,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 12),
                     _buildFingerprintButton(),
                     const SizedBox(height: 16),
-                    _buildForgotPasswordLink(),
+                    // ✅ REMOVED: Duplicate Forgot Password Link
                     const SizedBox(height: 16),
                     _buildSignupLink(),
                   ],
@@ -340,6 +340,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
         ),
+        // ✅ Only ONE Forgot Password link
         TextButton(
           onPressed: () {
             Navigator.pushNamed(context, '/forgot-password');
@@ -405,23 +406,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildForgotPasswordLink() {
-    return Center(
-      child: TextButton(
-        onPressed: () {
-          Navigator.pushNamed(context, '/forgot-password');
-        },
-        child: Text(
-          'Forgot Password?',
-          style: TextStyle(
-            color: AppTheme.primaryColor,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
     );
   }
 
