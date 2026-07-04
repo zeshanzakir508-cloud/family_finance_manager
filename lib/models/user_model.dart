@@ -1,6 +1,6 @@
 import 'package:hive/hive.dart';
 
-part 'user_model.g.dart';
+part 'user_model.g.dart'; // ✅ Already correct
 
 @HiveType(typeId: 0)
 class UserModel extends HiveObject {
@@ -65,7 +65,9 @@ class UserModel extends HiveObject {
       if (parts.length >= 2) {
         return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
       }
-      return parts[0][0].toUpperCase();
+      if (parts.isNotEmpty && parts[0].isNotEmpty) {
+        return parts[0][0].toUpperCase(); // ✅ Fixed: added check
+      }
     }
     if (username != null && username!.isNotEmpty) {
       return username![0].toUpperCase();
