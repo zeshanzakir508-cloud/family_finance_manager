@@ -6,7 +6,7 @@ import '../../providers/family_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../models/transfer_model.dart';
-import '../../models/family_model.dart';  // <-- ADD THIS IMPORT
+import '../../models/family_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
 
@@ -23,8 +23,8 @@ class _TransferScreenState extends State<TransferScreen>
   final _amountController = TextEditingController();
   final _descriptionController = TextEditingController();
 
-  String? _selectedFromMember;
-  String? _selectedToMember;
+  String? _selectedFromMemberId;  // ✅ Store member ID
+  String? _selectedToMemberId;    // ✅ Store member ID
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
   bool _isRecurring = false;
@@ -60,14 +60,14 @@ class _TransferScreenState extends State<TransferScreen>
     final currentFamily = familyProvider.currentFamily;
     
     if (currentFamily != null) {
-      _transfers = await DatabaseService.getFamilyTransfers(currentFamily.id!);
+      _transfers = await DatabaseService.getFamilyTransfers(currentFamily.id);
       setState(() {});
     }
   }
 
   Future<void> _createTransfer() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedFromMember == _selectedToMember) {
+    if (_selectedFromMemberId == _selectedToMemberId) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Sender and receiver cannot be the same'),
@@ -89,13 +89,13 @@ class _TransferScreenState extends State<TransferScreen>
         throw Exception('No family found');
       }
 
-      // Get member names using the members list from Family
-      String fromUserName = 'Unknown';
-      String toUserName = 'Unknown';
+      // Get member details using member IDs
+      FamilyMember? fromMember;
+      FamilyMember? toMember;
       
       if (currentFamily.members != null) {
-        final fromMember = currentFamily.members!.firstWhere(
-          (m) => m.id == _selectedFromMember,
+        fromMember = currentFamily.members!.firstWhere(
+          (m) => m.id == _selectedFromMemberId,
           orElse: () => FamilyMember(
             id: '', 
             userId: '', 
@@ -106,8 +106,8 @@ class _TransferScreenState extends State<TransferScreen>
             isActive: true
           ),
         );
-        final toMember = currentFamily.members!.firstWhere(
-          (m) => m.id == _selectedToMember,
+        toMember = currentFamily.members!.firstWhere(
+          (m) => m.id == _selectedToMemberId,
           orElse: () => FamilyMember(
             id: '', 
             userId: '', 
@@ -118,17 +118,16 @@ class _TransferScreenState extends State<TransferScreen>
             isActive: true
           ),
         );
-        fromUserName = fromMember.displayName;
-        toUserName = toMember.displayName;
       }
 
+      // ✅ FIXED: Use userId from member, not member.id
       final transfer = TransferModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        familyId: currentFamily.id!,
-        fromUserId: _selectedFromMember!,
-        toUserId: _selectedToMember!,
-        fromUserName: fromUserName,
-        toUserName: toUserName,
+        familyId: currentFamily.id,
+        fromUserId: fromMember?.userId ?? '',  // ✅ Use userId
+        toUserId: toMember?.userId ?? '',      // ✅ Use userId
+        fromUserName: fromMember?.displayName ?? 'Unknown',
+        toUserName: toMember?.displayName ?? 'Unknown',
         amount: double.parse(_amountController.text.trim()),
         date: _selectedDate,
         description: _descriptionController.text.trim().isNotEmpty
@@ -171,8 +170,8 @@ class _TransferScreenState extends State<TransferScreen>
   void _resetForm() {
     _amountController.clear();
     _descriptionController.clear();
-    _selectedFromMember = null;
-    _selectedToMember = null;
+    _selectedFromMemberId = null;
+    _selectedToMemberId = null;
     _isRecurring = false;
     setState(() {});
   }
@@ -183,21 +182,25 @@ class _TransferScreenState extends State<TransferScreen>
     try {
       final updatedTransfer = transfer.copyWith(status: 'approved');
       await DatabaseService.updateTransfer(updatedTransfer);
-      _loadTransfers();
+      await _loadTransfers();
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Transfer approved ✅'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Transfer approved ✅'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
     
     setState(() => _isLoading = false);
@@ -209,21 +212,25 @@ class _TransferScreenState extends State<TransferScreen>
     try {
       final updatedTransfer = transfer.copyWith(status: 'rejected');
       await DatabaseService.updateTransfer(updatedTransfer);
-      _loadTransfers();
+      await _loadTransfers();
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Transfer rejected ❌'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Transfer rejected ❌'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
     
     setState(() => _isLoading = false);
@@ -322,9 +329,9 @@ class _TransferScreenState extends State<TransferScreen>
               label: 'From',
               hint: 'Select sender',
               members: members,
-              selectedId: _selectedFromMember,
+              selectedId: _selectedFromMemberId,
               onChanged: (value) {
-                setState(() => _selectedFromMember = value);
+                setState(() => _selectedFromMemberId = value);
               },
             ),
             const SizedBox(height: 16),
@@ -334,9 +341,9 @@ class _TransferScreenState extends State<TransferScreen>
               label: 'To',
               hint: 'Select receiver',
               members: members,
-              selectedId: _selectedToMember,
+              selectedId: _selectedToMemberId,
               onChanged: (value) {
-                setState(() => _selectedToMember = value);
+                setState(() => _selectedToMemberId = value);
               },
             ),
             const SizedBox(height: 16),
@@ -345,7 +352,7 @@ class _TransferScreenState extends State<TransferScreen>
             TextFormField(
               controller: _amountController,
               decoration: const InputDecoration(
-                labelText: 'Amount',
+                labelText: 'Amount *',
                 prefixIcon: Icon(Icons.attach_money),
                 border: OutlineInputBorder(),
                 filled: true,
@@ -380,6 +387,7 @@ class _TransferScreenState extends State<TransferScreen>
                 border: OutlineInputBorder(),
                 filled: true,
                 fillColor: Colors.white,
+                hintText: 'Add a note about this transfer',
               ),
               maxLines: 2,
             ),
@@ -532,7 +540,7 @@ class _TransferScreenState extends State<TransferScreen>
             hint: Text(hint),
             items: members.map((member) {
               return DropdownMenuItem<String>(
-                value: member.id,
+                value: member.id,  // ✅ Store member ID
                 child: Row(
                   children: [
                     CircleAvatar(
@@ -754,6 +762,8 @@ class _TransferScreenState extends State<TransferScreen>
                         if (transfer.description != null)
                           _buildDetailRow('Description', transfer.description!),
                         _buildDetailRow('Status', statusText),
+                        if (transfer.isRecurring)
+                          _buildDetailRow('Recurring', transfer.recurringType ?? ''),
                         const SizedBox(height: 16),
                         Row(
                           children: [
