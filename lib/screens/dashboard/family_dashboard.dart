@@ -71,16 +71,13 @@ class _FamilyDashboardState extends State<FamilyDashboard>
         return;
       }
 
-      // Get current family from provider
       _currentFamily = familyProvider.currentFamily;
       
-      // If no current family, try to get the first family from the list
       if (_currentFamily == null && familyProvider.families.isNotEmpty) {
         _currentFamily = familyProvider.families.first;
         familyProvider.setCurrentFamily(_currentFamily!);
       }
 
-      // If still no family, show error with navigation
       if (_currentFamily == null) {
         setState(() {
           _hasError = true;
@@ -90,7 +87,6 @@ class _FamilyDashboardState extends State<FamilyDashboard>
         return;
       }
 
-      // Load transactions
       try {
         _transactions = await DatabaseService.getFamilyTransactions(_currentFamily!.id);
         _transactions.sort((a, b) => b.date?.compareTo(a.date ?? DateTime.now()) ?? 0);
@@ -116,7 +112,6 @@ class _FamilyDashboardState extends State<FamilyDashboard>
   }
 
   void _applyFilters() {
-    // No date range filter - show all transactions
     _filteredTransactions = _transactions;
 
     double income = 0;
@@ -136,6 +131,13 @@ class _FamilyDashboardState extends State<FamilyDashboard>
     });
   }
 
+  void _navigateAndRefresh(String route) async {
+    final result = await Navigator.pushNamed(context, route);
+    if (result == true) {
+      _loadData();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -147,9 +149,8 @@ class _FamilyDashboardState extends State<FamilyDashboard>
         ),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
-        automaticallyImplyLeading: false, // ✅ Remove back button
+        automaticallyImplyLeading: false,
         actions: [
-          // Mode Badge
           Container(
             margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -184,7 +185,7 @@ class _FamilyDashboardState extends State<FamilyDashboard>
           IconButton(
             icon: const Icon(Icons.people),
             onPressed: () {
-              Navigator.pushNamed(context, '/family-management');
+              Navigator.pushNamed(context, '/family-management').then((_) => _loadData());
             },
             tooltip: 'Manage Family',
           ),
@@ -324,25 +325,14 @@ class _FamilyDashboardState extends State<FamilyDashboard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ✅ REMOVED Period Selector
-          
-          // Balance Cards
           _buildBalanceCards(),
           const SizedBox(height: 16),
-          
-          // Charts Section
           _buildChartsSection(),
           const SizedBox(height: 16),
-          
-          // Category Breakdown
           _buildCategoryBreakdown(),
           const SizedBox(height: 16),
-          
-          // Recent Transactions
           _buildRecentTransactions(),
           const SizedBox(height: 16),
-          
-          // Quick Actions
           _buildQuickActions(),
         ],
       ),
@@ -735,9 +725,7 @@ class _FamilyDashboardState extends State<FamilyDashboard>
             icon: Icons.add_circle_outline,
             label: 'Add Income',
             color: Colors.green,
-            onTap: () {
-              Navigator.pushNamed(context, '/add-income');
-            },
+            onTap: () => _navigateAndRefresh('/add-income'),
           ),
         ),
         const SizedBox(width: 12),
@@ -746,9 +734,7 @@ class _FamilyDashboardState extends State<FamilyDashboard>
             icon: Icons.remove_circle_outline,
             label: 'Add Expense',
             color: Colors.red,
-            onTap: () {
-              Navigator.pushNamed(context, '/add-expense');
-            },
+            onTap: () => _navigateAndRefresh('/add-expense'),
           ),
         ),
         const SizedBox(width: 12),
@@ -757,9 +743,7 @@ class _FamilyDashboardState extends State<FamilyDashboard>
             icon: Icons.swap_horiz,
             label: 'Transfer',
             color: Colors.orange,
-            onTap: () {
-              Navigator.pushNamed(context, '/transfer');
-            },
+            onTap: () => _navigateAndRefresh('/transfer'),
           ),
         ),
         const SizedBox(width: 12),
@@ -820,12 +804,11 @@ class _FamilyDashboardState extends State<FamilyDashboard>
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Add Member Button
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: () {
-                Navigator.pushNamed(context, '/add-member');
+                Navigator.pushNamed(context, '/add-member').then((_) => _loadData());
               },
               icon: const Icon(Icons.person_add),
               label: const Text('Add Family Member'),
@@ -841,7 +824,6 @@ class _FamilyDashboardState extends State<FamilyDashboard>
           ),
           const SizedBox(height: 16),
           
-          // Member List
           if (members.isEmpty)
             const Center(
               child: Padding(
@@ -851,7 +833,6 @@ class _FamilyDashboardState extends State<FamilyDashboard>
             )
           else
             ...members.map((member) {
-              // Calculate member balance (mock for now)
               final balance = 0.0;
               final isPositive = balance >= 0;
               
@@ -908,7 +889,6 @@ class _FamilyDashboardState extends State<FamilyDashboard>
               );
             }),
           
-          // Family Code
           if (_currentFamily != null)
             Container(
               margin: const EdgeInsets.only(top: 16),
@@ -952,7 +932,6 @@ class _FamilyDashboardState extends State<FamilyDashboard>
   // ==================== TRANSFERS TAB ====================
 
   Widget _buildTransfersTab() {
-    // Mock transfers - will be replaced with real data
     final transfers = [
       {'from': 'John', 'to': 'Jane', 'amount': 100, 'status': 'Pending', 'date': DateTime.now()},
       {'from': 'Jane', 'to': 'John', 'amount': 50, 'status': 'Approved', 'date': DateTime.now().subtract(const Duration(days: 2))},
@@ -963,7 +942,6 @@ class _FamilyDashboardState extends State<FamilyDashboard>
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Transfer Stats
           Row(
             children: [
               _buildTransferStat('Pending', 1, Colors.orange),
@@ -975,7 +953,6 @@ class _FamilyDashboardState extends State<FamilyDashboard>
           ),
           const SizedBox(height: 16),
           
-          // Transfer List
           if (transfers.isEmpty)
             const Center(
               child: Padding(
@@ -1061,9 +1038,7 @@ class _FamilyDashboardState extends State<FamilyDashboard>
                       ),
                     ],
                   ),
-                  onTap: () {
-                    // Navigate to transfer detail
-                  },
+                  onTap: () {},
                 ),
               );
             }),
