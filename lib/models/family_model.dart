@@ -2,6 +2,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hive/hive.dart';
 
+part 'family_model.g.dart'; // ✅ ADDED - Must be after imports
+
 // ==================== FAMILY MEMBER MODEL ====================
 
 @HiveType(typeId: 0)
