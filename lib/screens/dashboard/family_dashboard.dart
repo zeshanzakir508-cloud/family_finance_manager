@@ -21,7 +21,6 @@ class FamilyDashboard extends StatefulWidget {
 
 class _FamilyDashboardState extends State<FamilyDashboard>
     with SingleTickerProviderStateMixin {
-  String _selectedPeriod = 'month';
   List<TransactionModel> _transactions = [];
   List<TransactionModel> _filteredTransactions = [];
   double _totalIncome = 0;
@@ -66,7 +65,7 @@ class _FamilyDashboardState extends State<FamilyDashboard>
       if (userId == null) {
         setState(() {
           _hasError = true;
-          _errorMessage = 'User not logged in';
+          _errorMessage = 'Please login again';
           _isLoading = false;
         });
         return;
@@ -81,7 +80,7 @@ class _FamilyDashboardState extends State<FamilyDashboard>
         familyProvider.setCurrentFamily(_currentFamily!);
       }
 
-      // If still no family, show error
+      // If still no family, show error with navigation
       if (_currentFamily == null) {
         setState(() {
           _hasError = true;
@@ -117,18 +116,8 @@ class _FamilyDashboardState extends State<FamilyDashboard>
   }
 
   void _applyFilters() {
-    final dateRange = _getDateRange();
-    
-    _filteredTransactions = _transactions.where((t) {
-      if (t.date == null) return false;
-      if (dateRange != null) {
-        if (t.date!.isBefore(dateRange['start']!) ||
-            t.date!.isAfter(dateRange['end']!)) {
-          return false;
-        }
-      }
-      return true;
-    }).toList();
+    // No date range filter - show all transactions
+    _filteredTransactions = _transactions;
 
     double income = 0;
     double expense = 0;
@@ -147,29 +136,8 @@ class _FamilyDashboardState extends State<FamilyDashboard>
     });
   }
 
-  Map<String, DateTime>? _getDateRange() {
-    final now = DateTime.now();
-    switch (_selectedPeriod) {
-      case 'week':
-        final start = now.subtract(const Duration(days: 7));
-        return {'start': start, 'end': now};
-      case 'month':
-        final start = DateTime(now.year, now.month, 1);
-        final end = DateTime(now.year, now.month + 1, 0);
-        return {'start': start, 'end': end};
-      case 'year':
-        final start = DateTime(now.year, 1, 1);
-        final end = DateTime(now.year, 12, 31);
-        return {'start': start, 'end': end};
-      default:
-        return null;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final modeProvider = Provider.of<ModeProvider>(context);
-
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
@@ -179,6 +147,7 @@ class _FamilyDashboardState extends State<FamilyDashboard>
         ),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
+        automaticallyImplyLeading: false, // ✅ Remove back button
         actions: [
           // Mode Badge
           Container(
@@ -355,9 +324,7 @@ class _FamilyDashboardState extends State<FamilyDashboard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Period Selector
-          _buildPeriodSelector(),
-          const SizedBox(height: 16),
+          // ✅ REMOVED Period Selector
           
           // Balance Cards
           _buildBalanceCards(),
@@ -378,61 +345,6 @@ class _FamilyDashboardState extends State<FamilyDashboard>
           // Quick Actions
           _buildQuickActions(),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPeriodSelector() {
-    final periods = [
-      {'label': 'Week', 'value': 'week'},
-      {'label': 'Month', 'value': 'month'},
-      {'label': 'Year', 'value': 'year'},
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 2,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: periods.map((period) {
-          final isSelected = _selectedPeriod == period['value'];
-          return Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedPeriod = period['value']!;
-                  _applyFilters();
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppTheme.primaryColor : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(
-                    period['label']!,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.grey.shade600,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }).toList(),
       ),
     );
   }
