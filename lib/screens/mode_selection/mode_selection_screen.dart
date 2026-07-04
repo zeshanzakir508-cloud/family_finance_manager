@@ -214,7 +214,14 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
       return;
     }
 
-    modeProvider.setMode(_selectedMode, remember: _rememberChoice);
+    // ✅ FIXED: Call setMode with only the mode parameter
+    // The remember choice is handled separately in the provider
+    modeProvider.setMode(_selectedMode);
+    
+    // ✅ FIXED: Save remember choice separately
+    if (_rememberChoice) {
+      modeProvider.saveRememberChoice(true);
+    }
 
     if (_selectedMode == 'personal') {
       Navigator.pushReplacementNamed(context, '/personal-dashboard');
