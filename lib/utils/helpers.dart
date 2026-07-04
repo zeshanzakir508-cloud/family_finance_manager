@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Helpers {
-  // ✅ ADDED: Get current currency from SharedPreferences
+  // Get current currency from SharedPreferences
   static Future<String> getCurrentCurrency() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -13,9 +13,9 @@ class Helpers {
     }
   }
 
-  // ✅ FIXED: Format currency with dynamic symbol
+  // Format currency with dynamic symbol
   static String formatCurrency(double amount, {String? currencyCode}) {
-    final String symbol;
+    String symbol;
     if (currencyCode != null) {
       symbol = getCurrencySymbol(currencyCode);
     } else {
@@ -31,7 +31,7 @@ class Helpers {
     return '$symbol${amount.toStringAsFixed(2)}';
   }
 
-  // ✅ ADDED: Format with currency code
+  // Format with currency code
   static String formatCurrencyWithCode(double amount, String currencyCode) {
     final symbol = getCurrencySymbol(currencyCode);
     return '$symbol${amount.toStringAsFixed(2)} $currencyCode';
@@ -121,7 +121,7 @@ class Helpers {
     return NumberFormat('#,##0.00').format(number);
   }
 
-  // ✅ FIXED: Get currency symbol with more currencies
+  // Get currency symbol with more currencies
   static String getCurrencySymbol(String currencyCode) {
     switch (currencyCode.toUpperCase()) {
       case 'USD': return '\$';
@@ -155,7 +155,7 @@ class Helpers {
     }
   }
 
-  // ✅ ADDED: Get currency name
+  // Get currency name
   static String getCurrencyName(String currencyCode) {
     switch (currencyCode.toUpperCase()) {
       case 'USD': return 'US Dollar';
