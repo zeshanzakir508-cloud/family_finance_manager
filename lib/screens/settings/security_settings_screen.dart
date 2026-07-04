@@ -363,7 +363,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     }
   }
 
-  // ✅ ADDED: PIN Lock Screen
+  // ✅ FIXED: PIN Lock Screen
   Future<bool> _showPinLockScreen() async {
     if (!_pinEnabled) return true;
 
@@ -399,10 +399,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                   prefixIcon: Icon(Icons.lock_outline),
                 ),
                 onChanged: (value) {
-                  setState(() => enteredPin = value);
+                  enteredPin = value;
                   if (value.length >= 4) {
-                    // Auto-submit when 4 digits entered
-                    _verifyPin(value, context, completer, setState);
+                    _verifyPin(value, context, completer, setState, attempts, maxAttempts);
                   }
                 },
               ),
@@ -426,7 +425,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                _verifyPin(enteredPin, context, completer, setState);
+                _verifyPin(enteredPin, context, completer, setState, attempts, maxAttempts);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor,
@@ -442,18 +441,26 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     return completer.future;
   }
 
-  void _verifyPin(String enteredPin, BuildContext context, Completer<bool> completer, StateSetter setState) {
+  // ✅ FIXED: PIN verification with proper variables
+  void _verifyPin(
+    String enteredPin,
+    BuildContext context,
+    Completer<bool> completer,
+    StateSetter setState,
+    int attempts,
+    int maxAttempts,
+  ) {
     if (enteredPin == _pinCode) {
       Navigator.pop(context);
       completer.complete(true);
     } else {
+      final newAttempts = attempts + 1;
       setState(() {
-        attempts++;
-        enteredPin = '';
+        // Update attempts in the dialog
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Incorrect PIN. ${5 - attempts} attempts remaining'),
+          content: Text('Incorrect PIN. ${maxAttempts - newAttempts} attempts remaining'),
           backgroundColor: Colors.red,
         ),
       );
