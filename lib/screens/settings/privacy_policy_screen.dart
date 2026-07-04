@@ -166,15 +166,16 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
             // Contact Us
             _buildSection(
               title: '8. Contact Us',
-              content: 'If you have questions about this Privacy Policy, please contact us:',
+              content: 'If you have questions about this Privacy Policy, please contact us at:',
               bulletPoints: [
-                'Email: zeshanzakir508@gmail.com',
-                'App: FinFam - Family Finance Manager',
+                '📧 Email: zeshanzakir508@gmail.com',
+                '📱 App: FinFam - Family Finance Manager',
               ],
             ),
             const SizedBox(height: 24),
 
-            // Consent Button
+            // ✅ REMOVED: Contact Us button - email already listed above
+            // ✅ KEPT: Consent/Agreement text only
             Center(
               child: Container(
                 padding: const EdgeInsets.all(16),
@@ -203,17 +204,6 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
                         fontSize: 12,
                         color: Colors.grey.shade600,
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    ElevatedButton(
-                      onPressed: () {
-                        _launchEmail(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('Contact Us'),
                     ),
                   ],
                 ),
@@ -287,28 +277,5 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
         ),
       ],
     );
-  }
-
-  Future<void> _launchEmail(BuildContext context) async {
-    final Uri emailUri = Uri(
-      scheme: 'mailto',
-      path: 'zeshanzakir508@gmail.com',
-      queryParameters: {
-        'subject': 'Privacy Policy Question - FinFam',
-        'body': 'Dear FinFam Team,%0A%0A',
-      },
-    );
-
-    if (await canLaunchUrl(emailUri)) {
-      await launchUrl(emailUri);
-    } else {
-      // Show snackbar using context parameter
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please contact us at zeshanzakir508@gmail.com'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-    }
   }
 }
