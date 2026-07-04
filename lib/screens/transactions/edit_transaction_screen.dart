@@ -26,7 +26,41 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
 
-  final List<String> _categories = [...Constants.incomeCategories, ...Constants.expenseCategories];
+  // ✅ FIXED: Use consistent category lists
+  final List<String> _incomeCategories = [
+    'Salary',
+    'Freelance',
+    'Investment',
+    'Rental Income',
+    'Business',
+    'Gift',
+    'Refund',
+    'Other Income',
+  ];
+
+  final List<String> _expenseCategories = [
+    'Food & Dining',
+    'Transportation',
+    'Shopping',
+    'Entertainment',
+    'Bills & Utilities',
+    'Rent',
+    'Healthcare',
+    'Education',
+    'Insurance',
+    'Groceries',
+    'Personal Care',
+    'Travel',
+    'Other Expense',
+  ];
+
+  // ✅ FIXED: Get categories based on transaction type
+  List<String> get _categories {
+    if (widget.transaction == null) return _expenseCategories;
+    return widget.transaction!.type == 'income' 
+        ? _incomeCategories 
+        : _expenseCategories;
+  }
 
   @override
   void initState() {
@@ -69,20 +103,76 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
 
       await DatabaseService.saveTransaction(updated);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Transaction updated successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      Navigator.pop(context, true);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Transaction updated successfully! ✅'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true);
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
 
     setState(() => _isLoading = false);
+  }
+
+  Future<void> _deleteTransaction() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Transaction?'),
+        content: const Text('Are you sure you want to delete this transaction? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && widget.transaction != null) {
+      setState(() => _isLoading = true);
+      try {
+        await DatabaseService.deleteTransaction(widget.transaction!.id!);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Transaction deleted successfully'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          Navigator.pop(context, true);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error deleting: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -109,6 +199,13 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
         title: Text('Edit ${isIncome ? 'Income' : 'Expense'}'),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            onPressed: _deleteTransaction,
+            tooltip: 'Delete',
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -131,12 +228,48 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
                 ),
                 child: Column(
                   children: [
+                    // Transaction Type Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isIncome 
+                            ? Colors.green.withOpacity(0.1) 
+                            : Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isIncome ? Icons.arrow_upward : Icons.arrow_downward,
+                            color: isIncome ? Colors.green : Colors.red,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isIncome ? 'Income' : 'Expense',
+                            style: TextStyle(
+                              color: isIncome ? Colors.green : Colors.red,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
                     // Amount
                     TextFormField(
                       controller: _amountController,
-                      keyboardType: TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: const InputDecoration(
-                        labelText: 'Amount',
+                        labelText: 'Amount *',
                         prefixIcon: Icon(Icons.attach_money),
                         border: OutlineInputBorder(),
                       ),
@@ -147,6 +280,9 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
                         if (double.tryParse(value) == null) {
                           return 'Please enter a valid number';
                         }
+                        if (double.parse(value) <= 0) {
+                          return 'Amount must be greater than 0';
+                        }
                         return null;
                       },
                     ),
@@ -156,7 +292,7 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
                     DropdownButtonFormField<String>(
                       value: _selectedCategory,
                       decoration: const InputDecoration(
-                        labelText: 'Category',
+                        labelText: 'Category *',
                         prefixIcon: Icon(Icons.category),
                         border: OutlineInputBorder(),
                       ),
@@ -167,6 +303,12 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
                         );
                       }).toList(),
                       onChanged: (value) => setState(() => _selectedCategory = value!),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please select a category';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
 
@@ -177,6 +319,7 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
                         labelText: 'Description',
                         prefixIcon: Icon(Icons.description),
                         border: OutlineInputBorder(),
+                        hintText: 'Optional description',
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -184,7 +327,10 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
                     // Date
                     ListTile(
                       leading: const Icon(Icons.calendar_today),
-                      title: Text(DateFormat('MMM dd, yyyy').format(_selectedDate)),
+                      title: Text(
+                        DateFormat('MMM dd, yyyy').format(_selectedDate),
+                        style: const TextStyle(fontSize: 16),
+                      ),
                       trailing: const Icon(Icons.arrow_drop_down),
                       onTap: () async {
                         final date = await showDatePicker(
@@ -212,6 +358,7 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
                         labelText: 'Notes (optional)',
                         prefixIcon: Icon(Icons.note),
                         border: OutlineInputBorder(),
+                        hintText: 'Add any additional notes',
                       ),
                       maxLines: 3,
                     ),
@@ -225,7 +372,7 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: _isLoading ? null : () => Navigator.pop(context),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
@@ -242,8 +389,15 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       child: _isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text('Save'),
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Save Changes'),
                     ),
                   ),
                 ],
