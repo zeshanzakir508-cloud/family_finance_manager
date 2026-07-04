@@ -84,6 +84,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             onPressed: _markAllAsRead,
             tooltip: 'Mark all as read',
           ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => setState(() {}),
+            tooltip: 'Refresh',
+          ),
         ],
       ),
       body: Column(
@@ -103,9 +108,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     .toList()
                   ..sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
                 
+                // ✅ FIXED: Properly filter notifications
                 final filteredNotifications = _filterType == 'all'
                     ? notifications
-                    : notifications.where((n) => n.type?.name == _filterType).toList();
+                    : notifications.where((n) => _getNotificationTypeString(n.type) == _filterType).toList();
 
                 if (filteredNotifications.isEmpty) {
                   return _buildEmptyState();
@@ -116,7 +122,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   itemCount: filteredNotifications.length,
                   itemBuilder: (context, index) {
                     final notification = filteredNotifications[index];
-                    return _buildNotificationTile(notification);
+                    return _buildNotificationTile(notification, box);
                   },
                 );
               },
@@ -125,6 +131,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ],
       ),
     );
+  }
+
+  // ✅ ADDED: Helper method to convert enum to string
+  String _getNotificationTypeString(NotificationType? type) {
+    switch (type) {
+      case NotificationType.transfer:
+        return 'transfer';
+      case NotificationType.family:
+        return 'family';
+      case NotificationType.transaction:
+        return 'transaction';
+      case NotificationType.system:
+        return 'system';
+      default:
+        return '';
+    }
   }
 
   Widget _buildFilterTabs() {
@@ -165,9 +187,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildNotificationTile(NotificationModel notification) {
+  Widget _buildNotificationTile(NotificationModel notification, Box<NotificationModel> box) {
     final isTransfer = notification.type == NotificationType.transfer;
-    final isPending = notification.actionData != null && notification.actionData!.contains('pending');
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -219,12 +240,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   color: AppTheme.primaryColor,
                   size: 20,
                 ),
-                onPressed: () => _markAsRead(notification),
+                onPressed: () => _markAsRead(notification, box),
                 tooltip: 'Mark as read',
               )
-            : null,
+            : IconButton(
+                icon: Icon(
+                  Icons.check_circle,
+                  color: Colors.green,
+                  size: 20,
+                ),
+                onPressed: null,
+                tooltip: 'Read',
+              ),
         onTap: () {
-          _markAsRead(notification);
+          _markAsRead(notification, box);
           _handleNotificationTap(notification);
         },
       ),
@@ -251,7 +280,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'We\'ll notify you when something important happens',
+            _filterType == 'all'
+                ? 'We\'ll notify you when something important happens'
+                : 'No ${_filterType} notifications',
             style: AppTheme.bodyStyle.copyWith(
               color: AppTheme.textSecondaryColor,
             ),
@@ -261,10 +292,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Future<void> _markAsRead(NotificationModel notification) async {
+  Future<void> _markAsRead(NotificationModel notification, Box<NotificationModel> box) async {
     if (notification.isUnread == true) {
-      await DatabaseService.markNotificationAsRead(notification);
-      setState(() {});
+      try {
+        // Update in Hive
+        final updated = notification.copyWith(isRead: true);
+        await box.put(notification.key, updated);
+        
+        // Update in Firestore
+        await DatabaseService.markNotificationAsRead(notification.id ?? '');
+        
+        setState(() {});
+      } catch (e) {
+        print('Error marking notification as read: $e');
+      }
     }
   }
 
@@ -277,19 +318,32 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         .where((n) => n.isUnread && n.userId == userId)
         .toList();
     
-    for (var notification in unreadNotifications) {
-      await DatabaseService.markNotificationAsRead(notification);
-    }
+    try {
+      for (var notification in unreadNotifications) {
+        final updated = notification.copyWith(isRead: true);
+        await box.put(notification.key, updated);
+        await DatabaseService.markNotificationAsRead(notification.id ?? '');
+      }
 
-    setState(() {});
+      setState(() {});
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${unreadNotifications.length} notifications marked as read'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${unreadNotifications.length} notifications marked as read'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error marking all as read: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -298,6 +352,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       _showTransferActionsDialog(notification);
     } else if (notification.type == NotificationType.family && notification.relatedId != null) {
       Navigator.pushNamed(context, '/family-management');
+    } else if (notification.type == NotificationType.transaction) {
+      // Navigate to transaction detail
+      if (notification.relatedId != null) {
+        Navigator.pushNamed(
+          context,
+          '/transaction-detail',
+          arguments: {'transactionId': notification.relatedId},
+        );
+      }
     }
   }
 
@@ -386,7 +449,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       // Update both transactions to 'approved'
       for (var t in transactions) {
         final updated = t.copyWith(transferStatus: 'approved');
-        await updated.save();
+        await box.put(t.key, updated);
       }
 
       // Update notification
@@ -398,7 +461,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             message: 'You have approved the transfer.',
             isRead: true,
           );
-          await updated.save();
+          await notificationBox.put(n.key, updated);
           break;
         }
       }
@@ -439,7 +502,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       // Update both transactions to 'rejected'
       for (var t in transactions) {
         final updated = t.copyWith(transferStatus: 'rejected');
-        await updated.save();
+        await box.put(t.key, updated);
       }
 
       // Update notification
@@ -451,7 +514,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             message: 'You have rejected the transfer.',
             isRead: true,
           );
-          await updated.save();
+          await notificationBox.put(n.key, updated);
           break;
         }
       }
