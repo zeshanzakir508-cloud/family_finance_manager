@@ -1,18 +1,18 @@
 // lib/providers/family_provider.dart
 import 'package:flutter/material.dart';
-import '../models/family_model.dart';  // <-- ADD THIS IMPORT
+import '../models/family_model.dart';
 import '../models/transaction_model.dart';
 
 class FamilyProvider extends ChangeNotifier {
-  List<Family> _families = [];
+  List<FamilyModel> _families = []; // ✅ Changed: Family → FamilyModel
   List<TransactionModel> _personalTransactions = [];
   List<TransactionModel> _familyTransactions = [];
-  Family? _currentFamily;
+  FamilyModel? _currentFamily; // ✅ Changed: Family → FamilyModel
 
-  List<Family> get families => _families;
+  List<FamilyModel> get families => _families; // ✅ Changed: Family → FamilyModel
   List<TransactionModel> get personalTransactions => _personalTransactions;
   List<TransactionModel> get familyTransactions => _familyTransactions;
-  Family? get currentFamily => _currentFamily;
+  FamilyModel? get currentFamily => _currentFamily; // ✅ Changed: Family → FamilyModel
 
   // Method to refresh data
   Future<void> refreshData() async {
@@ -38,13 +38,13 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   // Family management methods
-  void createFamily(Family family) {
+  void createFamily(FamilyModel family) { // ✅ Changed: Family → FamilyModel
     _families.add(family);
     _currentFamily = family;
     notifyListeners();
   }
 
-  void setCurrentFamily(Family family) {
+  void setCurrentFamily(FamilyModel family) { // ✅ Changed: Family → FamilyModel
     _currentFamily = family;
     notifyListeners();
   }
@@ -59,7 +59,7 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   // Update family
-  void updateFamily(Family family) {
+  void updateFamily(FamilyModel family) { // ✅ Changed: Family → FamilyModel
     final index = _families.indexWhere((f) => f.id == family.id);
     if (index != -1) {
       _families[index] = family;
