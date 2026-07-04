@@ -2,7 +2,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hive/hive.dart';
 
-part 'family_model.g.dart'; // ✅ ADDED - Must be after imports
+part 'family_model.g.dart';
 
 // ==================== FAMILY MEMBER MODEL ====================
 
@@ -97,7 +97,8 @@ class FamilySettings extends HiveObject {
   @HiveField(2)
   final bool requireApproval;
 
-  const FamilySettings({
+  // ✅ FIXED: Removed 'const' keyword
+  FamilySettings({
     this.currency = 'USD',
     this.allowMembersToAdd = true,
     this.requireApproval = true,
@@ -159,7 +160,7 @@ class FamilyModel extends HiveObject {
     this.familyCode,
     required this.createdAt,
     this.members,
-    this.settings = const FamilySettings(),
+    this.settings = const FamilySettings(), // ✅ This is still fine
     this.updatedAt,
   });
 
@@ -190,7 +191,7 @@ class FamilyModel extends HiveObject {
           : [],
       settings: json['settings'] != null
           ? FamilySettings.fromJson(json['settings'])
-          : const FamilySettings(),
+          : FamilySettings(), // ✅ Changed: const FamilySettings() → FamilySettings()
       updatedAt: json['updatedAt'] != null
           ? (json['updatedAt'] as Timestamp).toDate()
           : null,
