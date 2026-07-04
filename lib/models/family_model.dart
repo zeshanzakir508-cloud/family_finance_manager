@@ -1,15 +1,30 @@
 // lib/models/family_model.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hive/hive.dart';
 
 // ==================== FAMILY MEMBER MODEL ====================
 
-class FamilyMember {
+@HiveType(typeId: 0)
+class FamilyMember extends HiveObject {
+  @HiveField(0)
   final String id;
+  
+  @HiveField(1)
   final String userId;
+  
+  @HiveField(2)
   final String displayName;
+  
+  @HiveField(3)
   final String email;
+  
+  @HiveField(4)
   final String role; // admin, member
+  
+  @HiveField(5)
   final DateTime joinedAt;
+  
+  @HiveField(6)
   final bool isActive;
 
   FamilyMember({
@@ -69,9 +84,15 @@ class FamilyMember {
 
 // ==================== FAMILY SETTINGS MODEL ====================
 
-class FamilySettings {
+@HiveType(typeId: 1)
+class FamilySettings extends HiveObject {
+  @HiveField(0)
   final String currency;
+  
+  @HiveField(1)
   final bool allowMembersToAdd;
+  
+  @HiveField(2)
   final bool requireApproval;
 
   const FamilySettings({
@@ -99,18 +120,36 @@ class FamilySettings {
 
 // ==================== FAMILY MODEL ====================
 
-class Family {
+@HiveType(typeId: 2)
+class FamilyModel extends HiveObject {
+  @HiveField(0)
   final String id;
+  
+  @HiveField(1)
   final String name;
+  
+  @HiveField(2)
   final String? description;
+  
+  @HiveField(3)
   final String createdBy;
+  
+  @HiveField(4)
   final String? familyCode;
+  
+  @HiveField(5)
   final DateTime createdAt;
+  
+  @HiveField(6)
   final List<FamilyMember>? members;
+  
+  @HiveField(7)
   final FamilySettings settings;
+  
+  @HiveField(8)
   final DateTime? updatedAt;
 
-  Family({
+  FamilyModel({
     required this.id,
     required this.name,
     this.description,
@@ -136,8 +175,8 @@ class Family {
     };
   }
 
-  factory Family.fromJson(Map<String, dynamic> json) {
-    return Family(
+  factory FamilyModel.fromJson(Map<String, dynamic> json) {
+    return FamilyModel(
       id: json['id'] ?? '',
       name: json['name'] ?? 'Family',
       description: json['description'],
@@ -156,7 +195,7 @@ class Family {
     );
   }
 
-  Family copyWith({
+  FamilyModel copyWith({
     String? id,
     String? name,
     String? description,
@@ -167,7 +206,7 @@ class Family {
     FamilySettings? settings,
     DateTime? updatedAt,
   }) {
-    return Family(
+    return FamilyModel(
       id: id ?? this.id,
       name: name ?? this.name,
       description: description ?? this.description,
