@@ -9,14 +9,18 @@ class BiometricService {
     try {
       final isAvailable = await _localAuth.canCheckBiometrics;
       final isDeviceSupported = await _localAuth.isDeviceSupported();
+      
+      print('🔐 Biometric - Available: $isAvailable, Device Supported: $isDeviceSupported');
+      
       return isAvailable && isDeviceSupported;
     } catch (e) {
+      print('❌ Biometric - Error checking availability: $e');
       return false;
     }
   }
 
   static Future<bool> authenticate({
-    required String reason,  // <-- ADDED THIS REQUIRED PARAMETER
+    required String reason,
     String? title,
     String? message,
     bool stickyAuth = true,
@@ -24,8 +28,13 @@ class BiometricService {
   }) async {
     try {
       final available = await isAvailable();
-      if (!available) return false;
+      if (!available) {
+        print('❌ Biometric - Not available on this device');
+        return false;
+      }
 
+      print('🔐 Biometric - Authenticating with reason: $reason');
+      
       final authenticated = await _localAuth.authenticate(
         localizedReason: reason,
         options: AuthenticationOptions(
@@ -33,8 +42,14 @@ class BiometricService {
           biometricOnly: biometricOnly,
         ),
       );
+      
+      print('🔐 Biometric - Authentication result: $authenticated');
       return authenticated;
+    } on Exception catch (e) {
+      print('❌ Biometric - Authentication error: $e');
+      return false;
     } catch (e) {
+      print('❌ Biometric - Unexpected error: $e');
       return false;
     }
   }
@@ -53,8 +68,11 @@ class BiometricService {
 
   static Future<List<BiometricType>> getAvailableBiometrics() async {
     try {
-      return await _localAuth.getAvailableBiometrics();
+      final biometrics = await _localAuth.getAvailableBiometrics();
+      print('🔐 Biometric - Available types: $biometrics');
+      return biometrics;
     } catch (e) {
+      print('❌ Biometric - Error getting types: $e');
       return [];
     }
   }
@@ -64,6 +82,7 @@ class BiometricService {
       await _localAuth.stopAuthentication();
       return true;
     } catch (e) {
+      print('❌ Biometric - Error stopping: $e');
       return false;
     }
   }
