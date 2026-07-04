@@ -19,13 +19,14 @@ class PersonalDashboard extends StatefulWidget {
 }
 
 class _PersonalDashboardState extends State<PersonalDashboard> {
-  String _selectedPeriod = 'month';
   List<TransactionModel> _transactions = [];
   List<TransactionModel> _filteredTransactions = [];
   double _totalIncome = 0;
   double _totalExpense = 0;
   double _balance = 0;
   bool _isLoading = true;
+  bool _hasError = false;
+  String _errorMessage = '';
 
   final List<Color> _categoryColors = [
     Colors.blue, Colors.green, Colors.red, Colors.orange, Colors.purple,
@@ -39,33 +40,49 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = '';
+    });
     
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final userId = authService.userId;
-    
-    if (userId != null) {
-      _transactions = await DatabaseService.getUserTransactions(userId);  // <-- ADDED await
-      _transactions.sort((a, b) => b.date!.compareTo(a.date!));
-      _applyFilters();
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final userId = authService.userId;
+      
+      print('👤 Loading transactions for user: $userId');
+      
+      if (userId != null) {
+        _transactions = await DatabaseService.getUserTransactions(userId);
+        print('📊 Found ${_transactions.length} transactions');
+        
+        _transactions.sort((a, b) => b.date?.compareTo(a.date ?? DateTime.now()) ?? 0);
+        _applyFilters();
+        
+        setState(() {
+          _hasError = false;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _hasError = true;
+          _errorMessage = 'User not logged in. Please login again.';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Error loading transactions: $e');
+      setState(() {
+        _hasError = true;
+        _errorMessage = 'Failed to load transactions: $e';
+        _isLoading = false;
+      });
     }
-    
-    setState(() => _isLoading = false);
   }
 
   void _applyFilters() {
-    final dateRange = _getDateRange();
-    
-    _filteredTransactions = _transactions.where((t) {
-      if (t.date == null) return false;
-      if (dateRange != null) {
-        if (t.date!.isBefore(dateRange['start']!) ||
-            t.date!.isAfter(dateRange['end']!)) {
-          return false;
-        }
-      }
-      return true;
-    }).toList();
+    // Show all transactions - no date filter
+    _filteredTransactions = _transactions;
 
     double income = 0;
     double expense = 0;
@@ -84,35 +101,15 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
     });
   }
 
-  Map<String, DateTime>? _getDateRange() {
-    final now = DateTime.now();
-    switch (_selectedPeriod) {
-      case 'week':
-        final start = now.subtract(const Duration(days: 7));
-        return {'start': start, 'end': now};
-      case 'month':
-        final start = DateTime(now.year, now.month, 1);
-        final end = DateTime(now.year, now.month + 1, 0);
-        return {'start': start, 'end': end};
-      case 'year':
-        final start = DateTime(now.year, 1, 1);
-        final end = DateTime(now.year, 12, 31);
-        return {'start': start, 'end': end};
-      default:
-        return null;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final modeProvider = Provider.of<ModeProvider>(context);
-
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('Personal Dashboard'),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
+        automaticallyImplyLeading: false, // ✅ Remove back button
         actions: [
           // Mode Badge
           Container(
@@ -148,98 +145,82 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Period Selector
-                    _buildPeriodSelector(),
-                    const SizedBox(height: 16),
-                    
-                    // Balance Cards
-                    _buildBalanceCards(),
-                    const SizedBox(height: 16),
-                    
-                    // Charts Section
-                    _buildChartsSection(),
-                    const SizedBox(height: 16),
-                    
-                    // Category Breakdown
-                    _buildCategoryBreakdown(),
-                    const SizedBox(height: 16),
-                    
-                    // Recent Transactions
-                    _buildRecentTransactions(),
-                    const SizedBox(height: 16),
-                    
-                    // Quick Action Buttons
-                    _buildQuickActions(),
-                    const SizedBox(height: 16),
-                  ],
-                ),
-              ),
-            ),
+      body: _buildBody(),
     );
   }
 
-  // ==================== PERIOD SELECTOR ====================
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-  Widget _buildPeriodSelector() {
-    final periods = [
-      {'label': 'Week', 'value': 'week'},
-      {'label': 'Month', 'value': 'month'},
-      {'label': 'Year', 'value': 'year'},
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 2,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: periods.map((period) {
-          final isSelected = _selectedPeriod == period['value'];
-          return Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedPeriod = period['value']!;
-                  _applyFilters();
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppTheme.primaryColor : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
+    if (_hasError) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Colors.red.shade300,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _errorMessage,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey.shade700,
                 ),
-                child: Center(
-                  child: Text(
-                    period['label']!,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.grey.shade600,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                  ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _loadData,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
                 ),
               ),
-            ),
-          );
-        }).toList(),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ✅ REMOVED Period Selector
+            
+            // Balance Cards
+            _buildBalanceCards(),
+            const SizedBox(height: 16),
+            
+            // Charts Section
+            _buildChartsSection(),
+            const SizedBox(height: 16),
+            
+            // Category Breakdown
+            _buildCategoryBreakdown(),
+            const SizedBox(height: 16),
+            
+            // Recent Transactions
+            _buildRecentTransactions(),
+            const SizedBox(height: 16),
+            
+            // Quick Action Buttons
+            _buildQuickActions(),
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }
@@ -364,7 +345,6 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
           else
             Row(
               children: [
-                // Pie Chart
                 Expanded(
                   flex: 1,
                   child: SizedBox(
@@ -397,7 +377,6 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                // Legend
                 Expanded(
                   flex: 1,
                   child: Column(
@@ -606,7 +585,7 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
                             ),
                           ),
                           Text(
-                            '${_getCategoryDisplayName(transaction.category ?? 'other')} • ${DateFormat('MMM dd').format(transaction.date!)}',
+                            '${_getCategoryDisplayName(transaction.category ?? 'other')} • ${transaction.date != null ? DateFormat('MMM dd').format(transaction.date!) : 'No date'}',
                             style: TextStyle(
                               fontSize: 11,
                               color: Colors.grey.shade600,
