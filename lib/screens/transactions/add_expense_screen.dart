@@ -7,7 +7,7 @@ import '../../providers/family_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../models/transaction_model.dart';
-import '../../models/family_model.dart';  // <-- ADD THIS IMPORT
+import '../../models/family_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
 
@@ -25,7 +25,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   String _selectedCategory = 'food';
   DateTime _selectedDate = DateTime.now();
-  String _selectedMember = '';
+  String _selectedMemberId = '';  // ✅ Changed to store ID
   bool _isLoading = false;
 
   final List<String> _expenseCategories = [
@@ -98,7 +98,31 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
 
       final userId = authService.userId;
-      if (userId == null) return;
+      if (userId == null) {
+        throw Exception('User not logged in');
+      }
+
+      // ✅ FIXED: Store member name instead of ID
+      String? memberName;
+      String? memberId;
+      
+      if (_selectedMemberId.isNotEmpty) {
+        final members = familyProvider.getFamilyMembers();
+        final selectedMember = members.firstWhere(
+          (m) => m.id == _selectedMemberId,
+          orElse: () => FamilyMember(
+            id: '',
+            userId: '',
+            displayName: '',
+            email: '',
+            role: 'member',
+            joinedAt: DateTime.now(),
+            isActive: true,
+          ),
+        );
+        memberName = selectedMember.displayName;
+        memberId = selectedMember.id;
+      }
 
       final transaction = TransactionModel(
         userId: userId,
@@ -109,8 +133,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         description: _descriptionController.text.trim().isNotEmpty
             ? _descriptionController.text.trim()
             : null,
-        memberName: _selectedMember.isNotEmpty ? _selectedMember : null,
+        memberName: memberName,  // ✅ Store name, not ID
+        memberId: memberId,      // ✅ Store ID separately if needed
         familyId: modeProvider.isFamilyMode ? familyProvider.currentFamily?.id : null,
+        isFamilyTransaction: modeProvider.isFamilyMode,
       );
 
       if (modeProvider.isPersonalMode) {
@@ -126,7 +152,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context);
+        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
@@ -147,6 +173,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     final modeProvider = Provider.of<ModeProvider>(context);
     final familyProvider = Provider.of<FamilyProvider>(context);
     final isFamilyMode = modeProvider.isFamilyMode;
+    final members = familyProvider.getFamilyMembers();
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -193,7 +220,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               const SizedBox(height: 16),
 
               // Member (Family Mode)
-              if (isFamilyMode) _buildMemberSelector(),
+              if (isFamilyMode) _buildMemberSelector(members),
               if (isFamilyMode) const SizedBox(height: 16),
 
               // Description
@@ -259,7 +286,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     return TextFormField(
       controller: _amountController,
       decoration: const InputDecoration(
-        labelText: 'Amount',
+        labelText: 'Amount *',
         prefixIcon: Icon(Icons.attach_money),
         border: OutlineInputBorder(),
         filled: true,
@@ -391,10 +418,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     );
   }
 
-  Widget _buildMemberSelector() {
-    final familyProvider = Provider.of<FamilyProvider>(context);
-    final members = familyProvider.getFamilyMembers();
-
+  Widget _buildMemberSelector(List<FamilyMember> members) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -421,28 +445,43 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             ],
           ),
           child: DropdownButtonFormField<String>(
-            value: _selectedMember.isEmpty ? null : _selectedMember,
+            value: _selectedMemberId.isEmpty ? null : _selectedMemberId,
             decoration: const InputDecoration(
               border: InputBorder.none,
               contentPadding: EdgeInsets.symmetric(horizontal: 8),
             ),
             hint: const Text('Select Member'),
             items: [
-              const DropdownMenuItem(
+              const DropdownMenuItem<String>(
                 value: '',
                 child: Text('Myself'),
               ),
               if (members.isNotEmpty)
                 ...members.map((member) {
                   return DropdownMenuItem<String>(
-                    value: member.id,
-                    child: Text(member.displayName),
+                    value: member.id,  // ✅ Store ID
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 12,
+                          backgroundColor: Colors.red.withOpacity(0.2),
+                          child: Text(
+                            member.displayName.isNotEmpty 
+                                ? member.displayName[0].toUpperCase() 
+                                : '?',
+                            style: const TextStyle(fontSize: 10),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(member.displayName),
+                      ],
+                    ),
                   );
                 }),
             ],
             onChanged: (value) {
               setState(() {
-                _selectedMember = value ?? '';
+                _selectedMemberId = value ?? '';
               });
             },
           ),
@@ -460,6 +499,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         border: OutlineInputBorder(),
         filled: true,
         fillColor: Colors.white,
+        hintText: 'Add a note about this expense',
       ),
       maxLines: 2,
     );
@@ -476,13 +516,22 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           borderRadius: BorderRadius.circular(12),
         ),
       ),
-      child: const Text(
-        'Save Expense',
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+      child: _isLoading
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+          : const Text(
+              'Save Expense',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
     );
   }
 }
