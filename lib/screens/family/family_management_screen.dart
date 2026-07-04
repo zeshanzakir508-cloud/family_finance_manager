@@ -7,6 +7,7 @@ import '../../services/database_service.dart';
 import '../../models/family_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
+import '../dashboard/family_dashboard.dart';  // ✅ ADDED
 
 class FamilyManagementScreen extends StatefulWidget {
   const FamilyManagementScreen({super.key});
@@ -49,95 +50,11 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
   }
 
   Future<void> _createFamily() async {
-    final nameController = TextEditingController();
-    final descriptionController = TextEditingController();
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create Family'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Family Name',
-                border: OutlineInputBorder(),
-              ),
-              autofocus: true,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description (Optional)',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 2,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (nameController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please enter a family name'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                return;
-              }
-              
-              Navigator.pop(context);
-              
-              final authService = Provider.of<AuthService>(context, listen: false);
-              final userId = authService.userId;
-              
-              if (userId != null) {
-                final newFamily = FamilyModel(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  name: nameController.text.trim(),
-                  description: descriptionController.text.trim().isNotEmpty
-                      ? descriptionController.text.trim()
-                      : null,
-                  createdBy: userId,
-                  familyCode: _generateFamilyCode(),
-                  createdAt: DateTime.now(),
-                  members: [
-                    FamilyMember(
-                      id: userId,
-                      userId: userId,
-                      displayName: 'You',
-                      email: '',
-                      role: 'admin',
-                      joinedAt: DateTime.now(),
-                      isActive: true,
-                    ),
-                  ],
-                  settings: FamilySettings(),
-                );
-                
-                await DatabaseService.saveFamily(newFamily);
-                _refreshData();
-                _navigateToDashboard();
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Create'),
-          ),
-        ],
-      ),
-    );
+    final result = await Navigator.pushNamed(context, '/family-creation');
+    if (result == true) {
+      _refreshData();
+      _navigateToDashboard();
+    }
   }
 
   Future<void> _joinFamily() async {
