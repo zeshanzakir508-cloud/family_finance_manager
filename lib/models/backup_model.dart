@@ -1,6 +1,6 @@
 import 'package:hive/hive.dart';
 
-part 'backup_model.g.dart';
+part 'backup_model.g.dart'; // ✅ Already correct
 
 @HiveType(typeId: 7)
 class BackupModel extends HiveObject {
@@ -75,7 +75,7 @@ class BackupModel extends HiveObject {
           ? DateTime.parse(json['backupDate'])
           : null,
       fileName: json['fileName'],
-      fileSize: json['fileSize'],
+      fileSize: json['fileSize']?.toDouble(), // ✅ Fixed: ensure double
       transactionCount: json['transactionCount'],
       familyCount: json['familyCount'],
       memberCount: json['memberCount'],
