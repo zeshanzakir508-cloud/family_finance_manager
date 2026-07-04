@@ -97,7 +97,8 @@ class FamilySettings extends HiveObject {
   @HiveField(2)
   final bool requireApproval;
 
-  FamilySettings({
+  // ✅ ADDED: const constructor
+  const FamilySettings({
     this.currency = 'USD',
     this.allowMembersToAdd = true,
     this.requireApproval = true,
@@ -159,7 +160,7 @@ class FamilyModel extends HiveObject {
     this.familyCode,
     required this.createdAt,
     this.members,
-    this.settings = FamilySettings(),  // ✅ FIXED: removed const
+    this.settings = const FamilySettings(),  // ✅ FIXED: const with const constructor
     this.updatedAt,
   });
 
@@ -190,7 +191,7 @@ class FamilyModel extends HiveObject {
           : [],
       settings: json['settings'] != null
           ? FamilySettings.fromJson(json['settings'])
-          : FamilySettings(),  // ✅ FIXED: removed const
+          : const FamilySettings(),  // ✅ FIXED: const with const constructor
       updatedAt: json['updatedAt'] != null
           ? (json['updatedAt'] as Timestamp).toDate()
           : null,
