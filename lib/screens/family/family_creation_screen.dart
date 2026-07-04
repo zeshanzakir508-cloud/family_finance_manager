@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/family_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
-import '../../models/family_model.dart';  // <-- ADD THIS IMPORT
+import '../../models/family_model.dart';
 import '../../utils/app_theme.dart';
 
 class FamilyCreationScreen extends StatefulWidget {
@@ -46,7 +46,8 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
         throw Exception('User not logged in');
       }
 
-      final newFamily = Family(
+      // ✅ Changed: Family → FamilyModel
+      final newFamily = FamilyModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim().isNotEmpty
@@ -73,7 +74,7 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
         ),
       );
 
-      await DatabaseService.createFamily(newFamily);
+      await DatabaseService.saveFamily(newFamily); // ✅ Changed: createFamily → saveFamily
       
       // Update provider
       final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
