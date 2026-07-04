@@ -46,7 +46,6 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
         throw Exception('User not logged in');
       }
 
-      // ✅ Changed: Family → FamilyModel
       final newFamily = FamilyModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         name: _nameController.text.trim(),
@@ -67,16 +66,15 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
             isActive: true,
           ),
         ],
-        settings: FamilySettings(
+        settings: FamilySettings(  // ✅ FIXED: Removed 'const'
           currency: _selectedCurrency,
           allowMembersToAdd: _allowMembersToAdd,
           requireApproval: _requireApproval,
         ),
       );
 
-      await DatabaseService.saveFamily(newFamily); // ✅ Changed: createFamily → saveFamily
+      await DatabaseService.createFamily(newFamily);
       
-      // Update provider
       final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
       familyProvider.createFamily(newFamily);
 
@@ -143,31 +141,18 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header
               _buildHeader(),
               const SizedBox(height: 24),
-
-              // Family Name
               _buildNameField(),
               const SizedBox(height: 16),
-
-              // Description
               _buildDescriptionField(),
               const SizedBox(height: 16),
-
-              // Currency
               _buildCurrencySelector(),
               const SizedBox(height: 16),
-
-              // Settings
               _buildSettingsSection(),
               const SizedBox(height: 24),
-
-              // Create Button
               _buildCreateButton(),
               const SizedBox(height: 16),
-
-              // Info
               _buildInfoCard(),
               const SizedBox(height: 24),
             ],
@@ -326,7 +311,6 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
           ),
           const SizedBox(height: 12),
           
-          // Allow Members to Add
           SwitchListTile(
             secondary: Icon(
               Icons.person_add,
@@ -344,7 +328,6 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
             contentPadding: EdgeInsets.zero,
           ),
           
-          // Require Approval
           SwitchListTile(
             secondary: Icon(
               Icons.approval,
