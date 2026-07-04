@@ -376,7 +376,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
             _debounceAction(() {
-              // ✅ FIXED: Added .then() to handle return value
               Navigator.pushNamed(
                 context, 
                 '/currency-settings',
@@ -399,7 +398,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
             _debounceAction(() {
-              // ✅ FIXED: Added .then() to handle return value
               Navigator.pushNamed(
                 context,
                 '/theme-settings',
@@ -464,7 +462,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           onTap: () {
             _debounceAction(() {
-              // ✅ FIXED: Added .then() to handle return value
               Navigator.pushNamed(context, '/security-settings').then((result) {
                 if (result == true) {
                   _loadSettings();
@@ -487,7 +484,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           onTap: () {
             _debounceAction(() {
-              // ✅ FIXED: Added .then() to handle return value
               Navigator.pushNamed(context, '/security-settings').then((result) {
                 if (result == true) {
                   _loadSettings();
@@ -496,22 +492,164 @@ class _SettingsScreenState extends State<SettingsScreen> {
             });
           },
         ),
+        // ✅ FIXED: Implement Change Password
         ListTile(
           leading: const Icon(Icons.lock_reset),
           title: const Text('Change Password'),
+          subtitle: const Text('Update your account password'),
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
             _debounceAction(() {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Change password coming soon!'),
-                  backgroundColor: Colors.orange,
-                ),
-              );
+              _showChangePasswordDialog();
             });
           },
         ),
       ],
+    );
+  }
+
+  // ✅ ADDED: Change Password Dialog
+  void _showChangePasswordDialog() {
+    final currentPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Change Password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: currentPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Current Password *',
+                  prefixIcon: Icon(Icons.lock),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: newPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'New Password *',
+                  prefixIcon: Icon(Icons.lock_outline),
+                  border: OutlineInputBorder(),
+                  hintText: 'Minimum 6 characters',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: confirmPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Confirm New Password *',
+                  prefixIcon: Icon(Icons.lock_outline),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      // Validate
+                      if (currentPasswordController.text.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please enter current password'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+                      if (newPasswordController.text.length < 6) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('New password must be at least 6 characters'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+                      if (newPasswordController.text != confirmPasswordController.text) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Passwords do not match'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
+
+                      setState(() => isLoading = true);
+
+                      try {
+                        final authService = Provider.of<AuthService>(context, listen: false);
+                        final success = await authService.changePassword(
+                          currentPasswordController.text,
+                          newPasswordController.text,
+                        );
+
+                        if (success) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Password changed successfully! 🔐'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                            Navigator.pop(context);
+                          }
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Failed to change password. Please check your current password.'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      } finally {
+                        setState(() => isLoading = false);
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Change Password'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
