@@ -23,6 +23,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
   String _selectedPeriod = 'monthly';
   DateTime _selectedMonth = DateTime.now();
   DateTime _selectedYear = DateTime.now();
+  
+  // ✅ ADDED: Custom date range
+  DateTime? _customStartDate;
+  DateTime? _customEndDate;
+  
   int _selectedTab = 0;
 
   String? _selectedType;
@@ -132,6 +137,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
         final start = DateTime(_selectedYear.year, 1, 1);
         final end = DateTime(_selectedYear.year, 12, 31);
         return {'start': start, 'end': end};
+      case 'custom':
+        if (_customStartDate != null && _customEndDate != null) {
+          return {'start': _customStartDate!, 'end': _customEndDate!};
+        }
+        return null;
       default:
         return null;
     }
@@ -171,8 +181,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ✅ REMOVED Mode Switch - Only current mode data shown
-
                     // Period Selector
                     _buildPeriodSelector(),
                     const SizedBox(height: 16),
@@ -180,6 +188,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     // Date Picker
                     _buildDatePicker(),
                     const SizedBox(height: 16),
+
+                    // Custom Date Range Picker (shown when Custom is selected)
+                    if (_selectedPeriod == 'custom') _buildCustomDatePicker(),
+                    if (_selectedPeriod == 'custom') const SizedBox(height: 16),
 
                     // Filters
                     _buildFilters(),
@@ -227,7 +239,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
         onTap: () {
           setState(() {
             _selectedPeriod = value;
-            _applyFilters();
+            if (value != 'custom') {
+              _applyFilters();
+            }
           });
         },
         child: Container(
@@ -250,7 +264,179 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
+  // ✅ ADDED: Custom Date Range Picker
+  Widget _buildCustomDatePicker() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.withOpacity(0.1),
+            blurRadius: 4,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Select Date Range',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.blue,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildDateButton(
+                  label: 'Start Date',
+                  date: _customStartDate,
+                  onTap: () => _selectDate(isStart: true),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildDateButton(
+                  label: 'End Date',
+                  date: _customEndDate,
+                  onTap: () => _selectDate(isStart: false),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _customStartDate = null;
+                    _customEndDate = null;
+                    _applyFilters();
+                  });
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.red,
+                ),
+                child: const Text('Clear Dates'),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: () {
+                  if (_customStartDate != null && _customEndDate != null) {
+                    _applyFilters();
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please select both start and end dates'),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Apply Range'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDateButton({
+    required String label,
+    required DateTime? date,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.calendar_today,
+              size: 16,
+              color: Colors.blue,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                date != null
+                    ? DateFormat('MMM dd, yyyy').format(date)
+                    : label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: date != null ? Colors.black : Colors.grey.shade500,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.arrow_drop_down,
+              size: 16,
+              color: Colors.grey,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _selectDate({required bool isStart}) async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: isStart
+          ? (_customStartDate ?? DateTime.now())
+          : (_customEndDate ?? DateTime.now()),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+
+    if (date != null) {
+      setState(() {
+        if (isStart) {
+          _customStartDate = date;
+          // If end date is before start date, update end date
+          if (_customEndDate != null && _customEndDate!.isBefore(date)) {
+            _customEndDate = date;
+          }
+        } else {
+          _customEndDate = date;
+          // If start date is after end date, update start date
+          if (_customStartDate != null && _customStartDate!.isAfter(date)) {
+            _customStartDate = date;
+          }
+        }
+        _applyFilters();
+      });
+    }
+  }
+
   Widget _buildDatePicker() {
+    String label;
+    if (_selectedPeriod == 'custom') {
+      label = 'Custom Range';
+    } else {
+      label = _getDateRangeLabel();
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -268,50 +454,52 @@ class _ReportsScreenState extends State<ReportsScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              _getDateRangeLabel(),
+              label,
               style: const TextStyle(fontSize: 14),
             ),
           ),
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.chevron_left),
-                onPressed: () {
-                  setState(() {
-                    if (_selectedPeriod == 'monthly') {
-                      _selectedMonth = DateTime(
-                        _selectedMonth.year,
-                        _selectedMonth.month - 1,
-                      );
-                    } else {
-                      _selectedYear = DateTime(
-                        _selectedYear.year - 1,
-                      );
-                    }
-                    _applyFilters();
-                  });
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.chevron_right),
-                onPressed: () {
-                  setState(() {
-                    if (_selectedPeriod == 'monthly') {
-                      _selectedMonth = DateTime(
-                        _selectedMonth.year,
-                        _selectedMonth.month + 1,
-                      );
-                    } else {
-                      _selectedYear = DateTime(
-                        _selectedYear.year + 1,
-                      );
-                    }
-                    _applyFilters();
-                  });
-                },
-              ),
-            ],
-          ),
+          if (_selectedPeriod != 'custom') ...[
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chevron_left),
+                  onPressed: () {
+                    setState(() {
+                      if (_selectedPeriod == 'monthly') {
+                        _selectedMonth = DateTime(
+                          _selectedMonth.year,
+                          _selectedMonth.month - 1,
+                        );
+                      } else {
+                        _selectedYear = DateTime(
+                          _selectedYear.year - 1,
+                        );
+                      }
+                      _applyFilters();
+                    });
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: () {
+                    setState(() {
+                      if (_selectedPeriod == 'monthly') {
+                        _selectedMonth = DateTime(
+                          _selectedMonth.year,
+                          _selectedMonth.month + 1,
+                        );
+                      } else {
+                        _selectedYear = DateTime(
+                          _selectedYear.year + 1,
+                        );
+                      }
+                      _applyFilters();
+                    });
+                  },
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -891,7 +1079,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  // ✅ ADDED: Export with confirmation dialog
+  // Export with confirmation dialog
   void _showExportDialog() {
     showDialog(
       context: context,
@@ -940,7 +1128,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  // ✅ ADDED: CSV Export
+  // CSV Export
   void _exportCSV() {
     if (_filteredTransactions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -974,7 +1162,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  // ✅ ADDED: PDF Export
+  // PDF Export
   void _exportPDF() {
     if (_filteredTransactions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
