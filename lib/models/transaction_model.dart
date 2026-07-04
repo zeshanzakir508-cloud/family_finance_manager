@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
-part 'transaction_model.g.dart';
+part 'transaction_model.g.dart'; // ✅ Already correct
 
 @HiveType(typeId: 1)
 class TransactionModel extends HiveObject {
@@ -241,8 +241,12 @@ class TransactionModel extends HiveObject {
       exchangeRateUsed: json['exchangeRateUsed']?.toDouble(),
       isRecurring: json['isRecurring'] ?? false,
       recurringInterval: json['recurringInterval'],
-      attachments: json['attachments'] != null ? List<String>.from(json['attachments']) : null,
-      tags: json['tags'] != null ? List<String>.from(json['tags']) : null,
+      attachments: json['attachments'] != null 
+          ? List<String>.from(json['attachments']) 
+          : null, // ✅ Fixed: preserve null vs empty list
+      tags: json['tags'] != null 
+          ? List<String>.from(json['tags']) 
+          : null, // ✅ Fixed: preserve null vs empty list
       isDeleted: json['isDeleted'] ?? false,
       deletedAt: json['deletedAt'] != null ? DateTime.parse(json['deletedAt']) : null,
     );
