@@ -1,12 +1,11 @@
 // lib/screens/settings/security_settings_screen.dart
 import 'dart:async';
-import 'dart:convert'; // ✅ ADDED for base64 encoding
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
 import '../../services/biometric_service.dart';
 import '../../utils/app_theme.dart';
-import '../../utils/crypto_utils.dart'; // ✅ ADDED - Create this for encryption
+// ❌ REMOVED: import '../../utils/crypto_utils.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
   const SecuritySettingsScreen({super.key});
@@ -306,9 +305,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              // ✅ FIXED: Compare encrypted PINs
-              final storedPin = _getDecryptedPin();
-              if (currentPin != storedPin) {
+              // ✅ FIXED: Compare PINs directly (no encryption)
+              if (currentPin != _pinCode) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Current PIN is incorrect'),
@@ -349,23 +347,14 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     );
   }
 
-  // ✅ ADDED: Helper to decrypt PIN
-  String _getDecryptedPin() {
-    if (_pinCode.isEmpty) return '';
-    try {
-      return CryptoUtils.decrypt(_pinCode);
-    } catch (e) {
-      return '';
-    }
-  }
+  // ❌ REMOVED: _getDecryptedPin() - no longer needed
 
   Future<void> _savePin(String pin) async {
     final prefs = await SharedPreferences.getInstance();
-    // ✅ FIXED: Encrypt PIN before saving
-    final encryptedPin = CryptoUtils.encrypt(pin);
-    await prefs.setString('pin_code', encryptedPin);
+    // ✅ FIXED: Store PIN directly (no encryption)
+    await prefs.setString('pin_code', pin);
     setState(() {
-      _pinCode = encryptedPin;
+      _pinCode = pin;
       _pinEnabled = true;
       _markChanged();
     });
@@ -394,7 +383,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
         return;
       }
 
-      // ✅ FIXED: Added reason parameter
       final authenticated = await BiometricService.authenticate(
         reason: 'Authenticate to test fingerprint',
       );
@@ -604,8 +592,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                             Expanded(
                               child: Text(
                                 'Security settings help protect your financial data. '
-                                'Enable PIN or fingerprint for extra security. '
-                                'PIN is encrypted for your safety.',
+                                'Enable PIN or fingerprint for extra security.',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey.shade600,
