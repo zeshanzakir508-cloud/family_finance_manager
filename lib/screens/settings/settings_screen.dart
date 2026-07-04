@@ -1,5 +1,5 @@
 // lib/screens/settings/settings_screen.dart
-import 'dart:async';  // <-- ADD THIS IMPORT
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -55,6 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _isDarkMode = prefs.getBool('isDarkMode') ?? false;
       _selectedCurrency = prefs.getString('currency') ?? 'USD';
+      _hasChanges = false;
     });
   }
 
@@ -182,13 +183,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       
       setState(() => _hasChanges = false);
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Settings saved successfully!'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Settings saved successfully!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.pop(context, true);
+      }
     });
   }
 
@@ -241,7 +245,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: isOwner ? const Color(0xFFD4AF37) : AppTheme.primaryColor,  // FIXED: Colors.gold replaced
+        backgroundColor: isOwner ? Colors.amber : AppTheme.primaryColor,
         child: Text(
           isOwner ? '👑' : (_user?.initials ?? 'U'),
           style: const TextStyle(color: Colors.white),
@@ -299,7 +303,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  isPersonal ? 'Active' : 'Active',
+                  'Active',
                   style: TextStyle(
                     fontSize: 11,
                     color: AppTheme.primaryColor,
@@ -372,6 +376,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
             _debounceAction(() {
+              // ✅ FIXED: Added .then() to handle return value
               Navigator.pushNamed(
                 context, 
                 '/currency-settings',
@@ -394,6 +399,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           trailing: const Icon(Icons.chevron_right),
           onTap: () {
             _debounceAction(() {
+              // ✅ FIXED: Added .then() to handle return value
               Navigator.pushNamed(
                 context,
                 '/theme-settings',
@@ -458,7 +464,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           onTap: () {
             _debounceAction(() {
-              Navigator.pushNamed(context, '/security-settings');
+              // ✅ FIXED: Added .then() to handle return value
+              Navigator.pushNamed(context, '/security-settings').then((result) {
+                if (result == true) {
+                  _loadSettings();
+                }
+              });
             });
           },
         ),
@@ -476,7 +487,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           onTap: () {
             _debounceAction(() {
-              Navigator.pushNamed(context, '/security-settings');
+              // ✅ FIXED: Added .then() to handle return value
+              Navigator.pushNamed(context, '/security-settings').then((result) {
+                if (result == true) {
+                  _loadSettings();
+                }
+              });
             });
           },
         ),
@@ -517,16 +533,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    value 
-                        ? 'Fingerprint login enabled!' 
-                        : 'Fingerprint login disabled!',
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      value 
+                          ? 'Fingerprint login enabled!' 
+                          : 'Fingerprint login disabled!',
+                    ),
+                    backgroundColor: Colors.green,
                   ),
-                  backgroundColor: Colors.green,
-                ),
-              );
+                );
+                _markChanged();
+              }
             },
             style: TextButton.styleFrom(
               foregroundColor: AppTheme.primaryColor,
@@ -599,19 +618,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFD4AF37).withOpacity(0.1),  // FIXED: Colors.gold replaced
+              color: Colors.amber.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.3)),  // FIXED: Colors.gold replaced
+              border: Border.all(color: Colors.amber.withOpacity(0.3)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.star, color: Color(0xFFD4AF37)),  // FIXED: Colors.gold replaced
+                const Icon(Icons.star, color: Colors.amber),
                 const SizedBox(width: 12),
                 Text(
                   _user?.role == 'owner' ? 'Owner - Free Forever' : 'Moderator - Free Forever',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFFD4AF37),  // FIXED: Colors.gold replaced
+                    color: Colors.amber.shade700,
                   ),
                 ),
               ],
@@ -659,7 +678,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () async {
               Navigator.pop(context);
               await authService.signOut();
-              Navigator.pushReplacementNamed(context, '/login');
+              if (mounted) {
+                Navigator.pushReplacementNamed(context, '/login');
+              }
             },
             style: TextButton.styleFrom(
               foregroundColor: Colors.red,
