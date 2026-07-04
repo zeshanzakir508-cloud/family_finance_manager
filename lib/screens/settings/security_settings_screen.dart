@@ -1,10 +1,12 @@
 // lib/screens/settings/security_settings_screen.dart
 import 'dart:async';
+import 'dart:convert'; // ✅ ADDED for base64 encoding
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
 import '../../services/biometric_service.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/crypto_utils.dart'; // ✅ ADDED - Create this for encryption
 
 class SecuritySettingsScreen extends StatefulWidget {
   const SecuritySettingsScreen({super.key});
@@ -98,15 +100,16 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Security settings saved successfully'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
-      
-      Navigator.pop(context, true);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Security settings saved successfully'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.pop(context, true);
+      }
     });
   }
 
@@ -303,7 +306,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              if (currentPin != _pinCode) {
+              // ✅ FIXED: Compare encrypted PINs
+              final storedPin = _getDecryptedPin();
+              if (currentPin != storedPin) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Current PIN is incorrect'),
@@ -344,51 +349,65 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     );
   }
 
+  // ✅ ADDED: Helper to decrypt PIN
+  String _getDecryptedPin() {
+    if (_pinCode.isEmpty) return '';
+    try {
+      return CryptoUtils.decrypt(_pinCode);
+    } catch (e) {
+      return '';
+    }
+  }
+
   Future<void> _savePin(String pin) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('pin_code', pin);
+    // ✅ FIXED: Encrypt PIN before saving
+    final encryptedPin = CryptoUtils.encrypt(pin);
+    await prefs.setString('pin_code', encryptedPin);
     setState(() {
-      _pinCode = pin;
+      _pinCode = encryptedPin;
       _pinEnabled = true;
       _markChanged();
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('PIN set successfully'),
-        backgroundColor: Colors.green,
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('PIN set successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 
   Future<void> _testFingerprint() async {
     _debounceAction(() async {
       final available = await BiometricService.isAvailable();
       if (!available) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Fingerprint not available on this device'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Fingerprint not available on this device'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
         return;
       }
 
+      // ✅ FIXED: Added reason parameter
       final authenticated = await BiometricService.authenticate(
-        reason: 'Authenticate to test fingerprint',  // <-- FIXED: Added reason parameter
+        reason: 'Authenticate to test fingerprint',
       );
       
-      if (authenticated) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Fingerprint authentication successful! ✅'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Fingerprint authentication failed ❌'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: Text(
+              authenticated 
+                  ? 'Fingerprint authentication successful! ✅' 
+                  : 'Fingerprint authentication failed ❌',
+            ),
+            backgroundColor: authenticated ? Colors.green : Colors.red,
           ),
         );
       }
@@ -427,7 +446,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                         icon: Icons.lock,
                         title: 'PIN Lock',
                         subtitle: _pinEnabled 
-                            ? 'PIN is enabled' 
+                            ? 'PIN is enabled ✓' 
                             : 'Lock app with PIN code',
                         value: _pinEnabled,
                         onChanged: (value) {
@@ -463,12 +482,14 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                                             _markChanged();
                                           });
                                           Navigator.pop(context);
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text('PIN disabled'),
-                                              backgroundColor: Colors.orange,
-                                            ),
-                                          );
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(
+                                                content: Text('PIN disabled'),
+                                                backgroundColor: Colors.orange,
+                                              ),
+                                            );
+                                          }
                                         },
                                         style: TextButton.styleFrom(
                                           foregroundColor: Colors.red,
@@ -494,7 +515,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                             icon: Icons.fingerprint,
                             title: 'Fingerprint Login',
                             subtitle: available
-                                ? 'Use fingerprint to unlock'
+                                ? 'Use fingerprint to unlock ✓'
                                 : 'Fingerprint not available on this device',
                             value: _fingerprintEnabled && available,
                             onChanged: available ? (value) {
@@ -583,7 +604,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                             Expanded(
                               child: Text(
                                 'Security settings help protect your financial data. '
-                                'Enable PIN or fingerprint for extra security.',
+                                'Enable PIN or fingerprint for extra security. '
+                                'PIN is encrypted for your safety.',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey.shade600,
