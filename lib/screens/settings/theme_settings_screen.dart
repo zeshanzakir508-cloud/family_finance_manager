@@ -1,11 +1,13 @@
 // lib/screens/settings/theme_settings_screen.dart
-import 'dart:async';  // <-- ADD THIS IMPORT
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/app_theme.dart';
 
 class ThemeSettingsScreen extends StatefulWidget {
-  const ThemeSettingsScreen({super.key});
+  final VoidCallback? onThemeChanged;
+
+  const ThemeSettingsScreen({super.key, this.onThemeChanged});
 
   @override
   State<ThemeSettingsScreen> createState() => _ThemeSettingsScreenState();
@@ -16,7 +18,6 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
   String _initialTheme = 'system';
   bool _hasChanges = false;
   
-  // Debounce
   Timer? _debounceTimer;
   bool _isProcessing = false;
 
@@ -70,18 +71,23 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
         _hasChanges = false;
       });
       
-      // Apply theme immediately
+      // ✅ Apply theme immediately and notify parent
       _applyTheme();
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Theme updated to ${_getThemeLabel(_selectedTheme)}'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      if (widget.onThemeChanged != null) {
+        widget.onThemeChanged!();
+      }
       
-      Navigator.pop(context, _selectedTheme);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Theme updated to ${_getThemeLabel(_selectedTheme)}'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        Navigator.pop(context, _selectedTheme);
+      }
     });
   }
 
@@ -127,15 +133,8 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
   }
 
   void _applyTheme() {
-    // Apply theme globally
-    final brightness = _selectedTheme == 'dark' 
-        ? Brightness.dark 
-        : (_selectedTheme == 'light' 
-            ? Brightness.light 
-            : Brightness.light);
-    
-    // Update app theme
-    setState(() {});
+    // Theme is applied globally via main.dart rebuild
+    // parent widget will rebuild and apply new theme
   }
 
   String _getThemeLabel(String theme) {
@@ -191,14 +190,11 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
                   value: 'dark',
                 ),
                 const SizedBox(height: 16),
-                
-                // Preview Section
                 _buildThemePreview(),
                 const SizedBox(height: 24),
               ],
             ),
           ),
-          // Bottom Buttons
           _buildBottomButtons(),
         ],
       ),
