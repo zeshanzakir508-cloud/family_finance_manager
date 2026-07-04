@@ -28,7 +28,9 @@ class _FamilyDashboardState extends State<FamilyDashboard>
   double _totalExpense = 0;
   double _balance = 0;
   bool _isLoading = true;
-  FamilyModel? _currentFamily; // ✅ Changed: Family → FamilyModel
+  bool _hasError = false;
+  String _errorMessage = '';
+  FamilyModel? _currentFamily;
   late TabController _tabController;
 
   final List<Color> _categoryColors = [
@@ -50,22 +52,68 @@ class _FamilyDashboardState extends State<FamilyDashboard>
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = '';
+    });
     
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
-    final userId = authService.userId;
-    
-    if (userId != null) {
-      _currentFamily = familyProvider.currentFamily;
-      if (_currentFamily != null) {
-        _transactions = await DatabaseService.getFamilyTransactions(_currentFamily!.id);
-        _transactions.sort((a, b) => b.date!.compareTo(a.date!));
-        _applyFilters();
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
+      final userId = authService.userId;
+      
+      if (userId == null) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = 'User not logged in';
+          _isLoading = false;
+        });
+        return;
       }
+
+      // Get current family from provider
+      _currentFamily = familyProvider.currentFamily;
+      
+      // If no current family, try to get the first family from the list
+      if (_currentFamily == null && familyProvider.families.isNotEmpty) {
+        _currentFamily = familyProvider.families.first;
+        familyProvider.setCurrentFamily(_currentFamily!);
+      }
+
+      // If still no family, show error
+      if (_currentFamily == null) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = 'No family found. Please create or join a family.';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Load transactions
+      try {
+        _transactions = await DatabaseService.getFamilyTransactions(_currentFamily!.id);
+        _transactions.sort((a, b) => b.date?.compareTo(a.date ?? DateTime.now()) ?? 0);
+        _applyFilters();
+        setState(() {
+          _hasError = false;
+          _isLoading = false;
+        });
+      } catch (e) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = 'Failed to load transactions: $e';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _hasError = true;
+        _errorMessage = 'Failed to load data: $e';
+        _isLoading = false;
+      });
     }
-    
-    setState(() => _isLoading = false);
   }
 
   void _applyFilters() {
@@ -184,19 +232,118 @@ class _FamilyDashboardState extends State<FamilyDashboard>
           indicatorColor: Colors.white,
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildOverviewTab(),
-                  _buildMembersTab(),
-                  _buildTransfersTab(),
-                ],
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_hasError) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Colors.red.shade300,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _errorMessage,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey.shade700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              if (_errorMessage.contains('No family found'))
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pushReplacementNamed(context, '/family-management');
+                  },
+                  icon: const Icon(Icons.family_restroom),
+                  label: const Text('Go to Family Management'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                )
+              else
+                ElevatedButton.icon(
+                  onPressed: _loadData,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_currentFamily == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.family_restroom,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No Family Selected',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade700,
               ),
             ),
+            const SizedBox(height: 8),
+            Text(
+              'Please select a family from the management screen',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pushReplacementNamed(context, '/family-management');
+              },
+              icon: const Icon(Icons.people),
+              label: const Text('Manage Families'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildOverviewTab(),
+          _buildMembersTab(),
+          _buildTransfersTab(),
+        ],
+      ),
     );
   }
 
@@ -642,7 +789,7 @@ class _FamilyDashboardState extends State<FamilyDashboard>
                             ),
                           ),
                           Text(
-                            '${transaction.memberName ?? 'Member'} • ${_getCategoryDisplayName(transaction.category ?? 'other')} • ${DateFormat('MMM dd').format(transaction.date!)}',
+                            '${transaction.memberName ?? 'Member'} • ${_getCategoryDisplayName(transaction.category ?? 'other')} • ${transaction.date != null ? DateFormat('MMM dd').format(transaction.date!) : 'No date'}',
                             style: TextStyle(
                               fontSize: 11,
                               color: Colors.grey.shade600,
