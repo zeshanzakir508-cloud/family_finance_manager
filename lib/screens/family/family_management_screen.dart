@@ -121,11 +121,12 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                       isActive: true,
                     ),
                   ],
-                  settings: FamilySettings(),  // ✅ FIXED: Removed 'const'
+                  settings: FamilySettings(),
                 );
                 
                 await DatabaseService.saveFamily(newFamily);
                 _refreshData();
+                _navigateToDashboard();
               }
             },
             style: ElevatedButton.styleFrom(
@@ -191,6 +192,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                 if (userId != null) {
                   await DatabaseService.joinFamily(code, userId);
                   _refreshData();
+                  _navigateToDashboard();
                 }
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -209,6 +211,14 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _navigateToDashboard() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const FamilyDashboard()),
+      (route) => false,
     );
   }
 
@@ -269,6 +279,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
         title: const Text('Family Management'),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -283,7 +294,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  // Quick Actions
                   Row(
                     children: [
                       Expanded(
@@ -307,7 +317,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Current Family
                   if (_currentFamily != null) ...[
                     const Text(
                       'Current Family',
@@ -321,7 +330,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                     const SizedBox(height: 16),
                   ],
 
-                  // Other Families
                   if (_families.where((f) => f.id != _currentFamily?.id).isNotEmpty) ...[
                     const Text(
                       'Other Families',
@@ -337,7 +345,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                     const SizedBox(height: 16),
                   ],
 
-                  // Empty State
                   if (_families.isEmpty) ...[
                     Container(
                       padding: const EdgeInsets.all(32),
@@ -372,7 +379,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                     ),
                   ],
 
-                  // Info Section
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -526,17 +532,11 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                 tooltip: 'Leave Family',
               ),
             IconButton(
-              icon: Icon(
-                isActive ? Icons.chevron_right : Icons.swap_horiz,
-              ),
+              icon: Icon(isActive ? Icons.chevron_right : Icons.swap_horiz),
               onPressed: () {
-                if (isActive) {
-                  Navigator.pushNamed(context, '/family-dashboard');
-                } else {
-                  final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
-                  familyProvider.setCurrentFamily(family);
-                  Navigator.pushReplacementNamed(context, '/family-dashboard');
-                }
+                final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
+                familyProvider.setCurrentFamily(family);
+                _navigateToDashboard();
               },
             ),
           ],
