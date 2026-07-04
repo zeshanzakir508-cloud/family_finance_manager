@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/family_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
-import '../../models/family_model.dart';  // <-- ADD THIS IMPORT
+import '../../models/family_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
 
@@ -18,8 +18,8 @@ class FamilyManagementScreen extends StatefulWidget {
 class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
   bool _isLoading = true;
   bool _isRefreshing = false;
-  Family? _currentFamily;
-  List<Family> _families = [];
+  FamilyModel? _currentFamily; // ✅ CHANGED: Family → FamilyModel
+  List<FamilyModel> _families = []; // ✅ CHANGED: Family → FamilyModel
   bool _showJoinDialog = false;
 
   @override
@@ -102,7 +102,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
               final userId = authService.userId;
               
               if (userId != null) {
-                final newFamily = Family(
+                final newFamily = FamilyModel( // ✅ CHANGED: Family → FamilyModel
                   id: DateTime.now().millisecondsSinceEpoch.toString(),
                   name: nameController.text.trim(),
                   description: descriptionController.text.trim().isNotEmpty
@@ -122,10 +122,10 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                       isActive: true,
                     ),
                   ],
-                  settings: const FamilySettings(),  // <-- FIXED
+                  settings: const FamilySettings(),
                 );
                 
-                await DatabaseService.createFamily(newFamily);
+                await DatabaseService.saveFamily(newFamily); // ✅ CHANGED: createFamily → saveFamily
                 _refreshData();
               }
             },
@@ -213,7 +213,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     );
   }
 
-  Future<void> _leaveFamily(Family family) async {
+  Future<void> _leaveFamily(FamilyModel family) async { // ✅ CHANGED: Family → FamilyModel
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -235,7 +235,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
               final userId = authService.userId;
               
               if (userId != null) {
-                await DatabaseService.leaveFamily(family.id!, userId);
+                await DatabaseService.leaveFamily(family.id, userId); // ✅ CHANGED: family.id! → family.id
                 _refreshData();
               }
             },
@@ -292,9 +292,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                           icon: Icons.add,
                           label: 'Create',
                           color: Colors.blue,
-                          onTap: () {
-                            Navigator.pushNamed(context, '/family-creation');
-                          },
+                          onTap: _createFamily, // ✅ CHANGED: Navigate to create dialog instead
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -453,7 +451,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     );
   }
 
-  Widget _buildFamilyCard(Family family, {required bool isActive}) {
+  Widget _buildFamilyCard(FamilyModel family, {required bool isActive}) { // ✅ CHANGED: Family → FamilyModel
     final memberCount = family.members?.length ?? 0;
 
     return Card(
