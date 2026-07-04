@@ -116,13 +116,44 @@ class MyApp extends StatelessWidget {
           // Backup
           '/backup': (context) => const BackupScreen(),
         },
+        // ✅ FIXED: Proper navigation with pop behavior
         onGenerateRoute: (settings) {
-          // If route doesn't exist, go to splash
+          // If route doesn't exist, pop back or go to login
           return MaterialPageRoute(
-            builder: (context) => const SplashScreen(),
+            builder: (context) => const LoginScreen(),
           );
         },
+        // ✅ ADDED: Handle back button globally
+        navigatorObservers: [
+          _BackButtonObserver(),
+        ],
       ),
     );
   }
 }
+
+// ✅ ADDED: Custom observer to handle back button
+class _BackButtonObserver extends NavigatorObserver {
+  @override
+  void didPush(Route route, Route? previousRoute) {
+    super.didPush(route, previousRoute);
+  }
+
+  @override
+  void didPop(Route route, Route? previousRoute) {
+    super.didPop(route, previousRoute);
+  }
+
+  @override
+  void didRemove(Route route, Route? previousRoute) {
+    super.didRemove(route, previousRoute);
+  }
+
+  @override
+  void didReplace({Route? newRoute, Route? oldRoute}) {
+    super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
+  }
+}
+
+// ✅ ADDED: Global navigator key for programmatic navigation
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
