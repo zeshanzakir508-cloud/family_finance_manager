@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // ✅ ADDED
 import '../../providers/mode_provider.dart';
 import '../../utils/app_theme.dart';
 
@@ -17,10 +18,20 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
   @override
   void initState() {
     super.initState();
-    final modeProvider = Provider.of<ModeProvider>(context, listen: false);
-    if (modeProvider.rememberChoice) {
-      _selectedMode = modeProvider.currentMode;
-      _rememberChoice = true;
+    _loadSavedMode(); // ✅ Changed: Load from SharedPreferences directly
+  }
+
+  // ✅ ADDED: Load saved mode from SharedPreferences
+  Future<void> _loadSavedMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedMode = prefs.getString('selected_mode');
+    final remember = prefs.getBool('remember_mode') ?? false;
+    
+    if (remember && savedMode != null) {
+      setState(() {
+        _selectedMode = savedMode;
+        _rememberChoice = true;
+      });
     }
   }
 
@@ -203,7 +214,7 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
     );
   }
 
-  void _continue(ModeProvider modeProvider) {
+  void _continue(ModeProvider modeProvider) async {
     if (_selectedMode.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -214,14 +225,13 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
       return;
     }
 
-    // ✅ FIXED: Call setMode with only the mode parameter
-    // The remember choice is handled separately in the provider
+    // Save to SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('selected_mode', _selectedMode);
+    await prefs.setBool('remember_mode', _rememberChoice);
+
+    // Update provider
     modeProvider.setMode(_selectedMode);
-    
-    // ✅ FIXED: Save remember choice separately
-    if (_rememberChoice) {
-      modeProvider.saveRememberChoice(true);
-    }
 
     if (_selectedMode == 'personal') {
       Navigator.pushReplacementNamed(context, '/personal-dashboard');
