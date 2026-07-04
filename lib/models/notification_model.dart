@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
-part 'notification_model.g.dart';
+part 'notification_model.g.dart'; // ✅ Already correct
 
 @HiveType(typeId: 5)
 enum NotificationType {
@@ -76,10 +76,10 @@ class NotificationModel extends HiveObject {
       userId: json['userId'],
       title: json['title'],
       message: json['message'],
-      type: json['type'] != null
+      type: json['type'] != null && json['type'] is int
           ? NotificationType.values[json['type']]
-          : null,
-      isRead: json['isRead'],
+          : null, // ✅ Fixed: added type check
+      isRead: json['isRead'] ?? false, // ✅ Fixed: default value
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
