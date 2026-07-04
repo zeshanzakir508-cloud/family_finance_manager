@@ -20,7 +20,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
   bool _isRefreshing = false;
   FamilyModel? _currentFamily;
   List<FamilyModel> _families = [];
-  bool _showJoinDialog = false;
 
   @override
   void initState() {
@@ -122,7 +121,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                       isActive: true,
                     ),
                   ],
-                  settings: FamilySettings(), // ✅ FIXED: removed const
+                  settings: FamilySettings(),  // ✅ FIXED: Removed 'const'
                 );
                 
                 await DatabaseService.saveFamily(newFamily);
@@ -452,8 +451,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
   }
 
   Widget _buildFamilyCard(FamilyModel family, {required bool isActive}) {
-    final memberCount = family.members?.length ?? 0;
-
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: isActive ? 4 : 1,
