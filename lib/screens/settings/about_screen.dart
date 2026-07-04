@@ -24,10 +24,12 @@ class _AboutScreenState extends State<AboutScreen> {
   Future<void> _loadAppInfo() async {
     try {
       final info = await PackageInfo.fromPlatform();
-      setState(() {
-        _appVersion = info.version;
-        _buildNumber = info.buildNumber;
-      });
+      if (mounted) {
+        setState(() {
+          _appVersion = info.version;
+          _buildNumber = info.buildNumber;
+        });
+      }
     } catch (e) {
       // Use defaults if package info fails
     }
@@ -47,33 +49,7 @@ class _AboutScreenState extends State<AboutScreen> {
         child: Column(
           children: [
             // App Logo
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    spreadRadius: 4,
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.people_alt,
-                  size: 56,
-                  color: AppTheme.primaryColor,
-                ),
-              ),
-            ),
+            _buildAppLogo(),
             const SizedBox(height: 16),
             
             // App Name
@@ -94,213 +70,263 @@ class _AboutScreenState extends State<AboutScreen> {
             const SizedBox(height: 4),
             
             // Version
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                'Version $_appVersion ($_buildNumber)',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
+            _buildVersionBadge(),
             const SizedBox(height: 24),
 
             // Description
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.05),
-                    spreadRadius: 2,
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'About FinFam',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'FinFam is a comprehensive family finance management app designed to help '
-                    'families track income, expenses, transfers, and budgets together. '
-                    'With both Personal and Family modes, you can manage finances individually '
-                    'or as a family unit.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade700,
-                      height: 1.6,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _buildDescriptionCard(),
             const SizedBox(height: 16),
 
             // Features
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.05),
-                    spreadRadius: 2,
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '✨ Key Features',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildFeatureItem(Icons.person, 'Personal Mode'),
-                  _buildFeatureItem(Icons.family_restroom, 'Family Mode'),
-                  _buildFeatureItem(Icons.attach_money, 'Income & Expense Tracking'),
-                  _buildFeatureItem(Icons.swap_horiz, 'Transfers & Approval System'),
-                  _buildFeatureItem(Icons.bar_chart, 'Reports & Analytics'),
-                  _buildFeatureItem(Icons.security, 'Fingerprint & PIN Lock'),
-                  _buildFeatureItem(Icons.backup, 'Backup & Restore'),
-                  _buildFeatureItem(Icons.star, 'Premium Plans Available'),
-                ],
-              ),
-            ),
+            _buildFeaturesCard(),
             const SizedBox(height: 16),
 
             // Links
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.05),
-                    spreadRadius: 2,
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '🔗 Useful Links',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildLinkItem(
-                    icon: Icons.privacy_tip,
-                    title: 'Privacy Policy',
-                    onTap: () {
-                      Navigator.pushNamed(context, '/privacy-policy');
-                    },
-                  ),
-                  _buildLinkItem(
-                    icon: Icons.description,
-                    title: 'Terms of Service',
-                    onTap: () {
-                      _showTermsDialog();
-                    },
-                  ),
-                  _buildLinkItem(
-                    icon: Icons.email,
-                    title: 'Contact Support',
-                    onTap: () {
-                      _launchEmail(context);
-                    },
-                  ),
-                  _buildLinkItem(
-                    icon: Icons.star,
-                    title: 'Rate Us',
-                    onTap: () {
-                      _showRateDialog();
-                    },
-                  ),
-                ],
-              ),
-            ),
+            _buildLinksCard(),
             const SizedBox(height: 24),
 
-            // Owner Info
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFD4AF37).withOpacity(0.05),  // FIXED: Colors.gold replaced
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.2)),  // FIXED: Colors.gold replaced
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD4AF37).withOpacity(0.1),  // FIXED: Colors.gold replaced
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.verified,
-                      color: Color(0xFFD4AF37),  // FIXED: Colors.gold replaced
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Developed with ❤️',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          '© 2024 FinFam. All rights reserved.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // Footer
+            _buildFooter(),
             const SizedBox(height: 24),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildAppLogo() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 4,
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.primaryColor.withOpacity(0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          Icons.people_alt,
+          size: 56,
+          color: AppTheme.primaryColor,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVersionBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        'Version $_appVersion ($_buildNumber)',
+        style: TextStyle(
+          fontSize: 12,
+          color: AppTheme.primaryColor,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDescriptionCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.05),
+            spreadRadius: 2,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'About FinFam',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'FinFam is a comprehensive family finance management app designed to help '
+            'families track income, expenses, transfers, and budgets together. '
+            'With both Personal and Family modes, you can manage finances individually '
+            'or as a family unit.',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade700,
+              height: 1.6,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeaturesCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.05),
+            spreadRadius: 2,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '✨ Key Features',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildFeatureItem(Icons.person, 'Personal Mode'),
+          _buildFeatureItem(Icons.family_restroom, 'Family Mode'),
+          _buildFeatureItem(Icons.attach_money, 'Income & Expense Tracking'),
+          _buildFeatureItem(Icons.swap_horiz, 'Transfers & Approval System'),
+          _buildFeatureItem(Icons.bar_chart, 'Reports & Analytics'),
+          _buildFeatureItem(Icons.security, 'Fingerprint & PIN Lock'),
+          _buildFeatureItem(Icons.backup, 'Backup & Restore'),
+          _buildFeatureItem(Icons.star, 'Premium Plans Available'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLinksCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.05),
+            spreadRadius: 2,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '🔗 Useful Links',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildLinkItem(
+            icon: Icons.privacy_tip,
+            title: 'Privacy Policy',
+            onTap: () {
+              // ✅ FIXED: Navigate to privacy policy with proper handling
+              Navigator.pushNamed(context, '/privacy-policy');
+            },
+          ),
+          _buildLinkItem(
+            icon: Icons.description,
+            title: 'Terms of Service',
+            onTap: _showTermsDialog,
+          ),
+          _buildLinkItem(
+            icon: Icons.email,
+            title: 'Contact Support',
+            onTap: () => _launchEmail(context),
+          ),
+          _buildLinkItem(
+            icon: Icons.star,
+            title: 'Rate Us',
+            onTap: _showRateDialog,
+          ),
+          _buildLinkItem(
+            icon: Icons.code,
+            title: 'Open Source Libraries',
+            onTap: _showOpenSourceDialog,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFooter() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.amber.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.amber.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.amber.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.verified,
+              color: Colors.amber,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Developed with ❤️',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  '© 2024 FinFam. All rights reserved.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -375,6 +401,43 @@ class _AboutScreenState extends State<AboutScreen> {
     );
   }
 
+  void _showOpenSourceDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Open Source Libraries'),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('FinFam uses the following open source libraries:'),
+              SizedBox(height: 8),
+              Text('• Flutter - UI Framework'),
+              Text('• Firebase - Backend Services'),
+              Text('• Hive - Local Storage'),
+              Text('• Provider - State Management'),
+              Text('• Shared Preferences - Settings Storage'),
+              Text('• Local Auth - Biometric Authentication'),
+              Text('• URL Launcher - Link Handling'),
+              Text('• Package Info Plus - Version Information'),
+              SizedBox(height: 8),
+              Text(
+                'Full source code is available on GitHub.',
+                style: TextStyle(fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showRateDialog() {
     showDialog(
       context: context,
@@ -385,7 +448,7 @@ class _AboutScreenState extends State<AboutScreen> {
           children: [
             Icon(
               Icons.star,
-              color: Color(0xFFD4AF37),  // FIXED: Colors.gold replaced
+              color: Colors.amber,
               size: 48,
             ),
             SizedBox(height: 8),
@@ -412,12 +475,7 @@ class _AboutScreenState extends State<AboutScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Thank you! ⭐⭐⭐⭐⭐'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+              _launchPlayStore();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
@@ -430,6 +488,45 @@ class _AboutScreenState extends State<AboutScreen> {
     );
   }
 
+  Future<void> _launchPlayStore() async {
+    // Android Play Store URL
+    final Uri playStoreUri = Uri.parse(
+      'https://play.google.com/store/apps/details?id=com.finfam.app',
+    );
+    
+    try {
+      if (await canLaunchUrl(playStoreUri)) {
+        await launchUrl(playStoreUri);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Thank you for rating us! ⭐⭐⭐⭐⭐'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please rate us on the Play Store'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening Play Store: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _launchEmail(BuildContext context) async {
     final Uri emailUri = Uri(
       scheme: 'mailto',
@@ -440,15 +537,28 @@ class _AboutScreenState extends State<AboutScreen> {
       },
     );
 
-    if (await canLaunchUrl(emailUri)) {
-      await launchUrl(emailUri);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please email us at zeshanzakir508@gmail.com'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+    try {
+      if (await canLaunchUrl(emailUri)) {
+        await launchUrl(emailUri);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please email us at zeshanzakir508@gmail.com'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error launching email: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }
