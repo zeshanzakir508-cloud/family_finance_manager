@@ -97,7 +97,7 @@ class FamilySettings extends HiveObject {
   @HiveField(2)
   final bool requireApproval;
 
-  // ✅ FIXED: Removed 'const' keyword
+  // ✅ No const
   FamilySettings({
     this.currency = 'USD',
     this.allowMembersToAdd = true,
@@ -152,6 +152,7 @@ class FamilyModel extends HiveObject {
   @HiveField(8)
   final DateTime? updatedAt;
 
+  // ✅ FIXED: Default value in initializer list, not parameter
   FamilyModel({
     required this.id,
     required this.name,
@@ -160,9 +161,9 @@ class FamilyModel extends HiveObject {
     this.familyCode,
     required this.createdAt,
     this.members,
-    this.settings = FamilySettings(),  // ✅ FIXED: Removed 'const'
+    FamilySettings? settings,
     this.updatedAt,
-  });
+  }) : settings = settings ?? FamilySettings();  // ← Initializer list
 
   Map<String, dynamic> toJson() {
     return {
@@ -191,7 +192,7 @@ class FamilyModel extends HiveObject {
           : [],
       settings: json['settings'] != null
           ? FamilySettings.fromJson(json['settings'])
-          : FamilySettings(),  // ✅ FIXED: Removed 'const'
+          : FamilySettings(),  // ✅ No const here either
       updatedAt: json['updatedAt'] != null
           ? (json['updatedAt'] as Timestamp).toDate()
           : null,
