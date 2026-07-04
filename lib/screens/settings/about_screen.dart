@@ -48,11 +48,8 @@ class _AboutScreenState extends State<AboutScreen> {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            // App Logo
             _buildAppLogo(),
             const SizedBox(height: 16),
-            
-            // App Name
             const Text(
               'FinFam',
               style: TextStyle(
@@ -68,24 +65,14 @@ class _AboutScreenState extends State<AboutScreen> {
               ),
             ),
             const SizedBox(height: 4),
-            
-            // Version
             _buildVersionBadge(),
             const SizedBox(height: 24),
-
-            // Description
             _buildDescriptionCard(),
             const SizedBox(height: 16),
-
-            // Features
             _buildFeaturesCard(),
             const SizedBox(height: 16),
-
-            // Links
             _buildLinksCard(),
             const SizedBox(height: 24),
-
-            // Footer
             _buildFooter(),
             const SizedBox(height: 24),
           ],
@@ -253,7 +240,6 @@ class _AboutScreenState extends State<AboutScreen> {
             icon: Icons.privacy_tip,
             title: 'Privacy Policy',
             onTap: () {
-              // ✅ FIXED: Navigate to privacy policy with proper handling
               Navigator.pushNamed(context, '/privacy-policy');
             },
           ),
@@ -310,7 +296,7 @@ class _AboutScreenState extends State<AboutScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Developed with ❤️',
+                  'Developed by Zeshan Zakir ❤️',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -489,7 +475,6 @@ class _AboutScreenState extends State<AboutScreen> {
   }
 
   Future<void> _launchPlayStore() async {
-    // Android Play Store URL
     final Uri playStoreUri = Uri.parse(
       'https://play.google.com/store/apps/details?id=com.finfam.app',
     );
