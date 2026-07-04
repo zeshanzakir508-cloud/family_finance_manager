@@ -413,22 +413,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             });
           },
         ),
-        ListTile(
-          leading: const Icon(Icons.language),
-          title: const Text('Language'),
-          subtitle: const Text('English'),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () {
-            _debounceAction(() {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Language settings coming soon!'),
-                  backgroundColor: Colors.orange,
-                ),
-              );
-            });
-          },
-        ),
+        // ✅ FIXED: Removed "Coming Soon" Language Option
+        // Language option removed - app uses English only
       ],
     );
   }
@@ -492,7 +478,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             });
           },
         ),
-        // ✅ FIXED: Implement Change Password
         ListTile(
           leading: const Icon(Icons.lock_reset),
           title: const Text('Change Password'),
@@ -508,7 +493,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ✅ ADDED: Change Password Dialog
+  // Change Password Dialog
   void _showChangePasswordDialog() {
     final currentPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
