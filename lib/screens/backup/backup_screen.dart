@@ -1,5 +1,5 @@
 // lib/screens/backup/backup_screen.dart
-import 'dart:convert'; // ✅ ADDED: For jsonEncode/jsonDecode
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,6 +21,13 @@ class _BackupScreenState extends State<BackupScreen> {
   String _lastBackupDate = 'Never';
   int _backupCount = 0;
   double _storageUsed = 0;
+  
+  // ✅ ADDED: Backup frequency
+  String _backupFrequency = 'weekly';
+  int _maxBackups = 5;
+  
+  final List<String> _frequencies = ['daily', 'weekly', 'monthly'];
+  final List<int> _maxBackupOptions = [3, 5, 10, 20];
 
   @override
   void initState() {
@@ -35,6 +42,8 @@ class _BackupScreenState extends State<BackupScreen> {
       _lastBackupDate = prefs.getString('last_backup_date') ?? 'Never';
       _backupCount = prefs.getInt('backup_count') ?? 0;
       _storageUsed = prefs.getDouble('storage_used') ?? 0;
+      _backupFrequency = prefs.getString('backup_frequency') ?? 'weekly';
+      _maxBackups = prefs.getInt('max_backups') ?? 5;
     });
   }
 
@@ -65,12 +74,23 @@ class _BackupScreenState extends State<BackupScreen> {
 
       // Save backup
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('backup_data', jsonEncode(backupData)); // ✅ FIXED: Use jsonEncode
+      
+      // ✅ ADDED: Rotate backups - keep only last N
+      await _rotateBackups(prefs);
+      
+      // Save new backup with timestamp in key
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      await prefs.setString('backup_data_$timestamp', jsonEncode(backupData));
       await prefs.setString('last_backup_date', DateTime.now().toIso8601String());
       await prefs.setInt('backup_count', _backupCount + 1);
       
+      // Save backup list for rotation
+      final backupList = prefs.getStringList('backup_list') ?? [];
+      backupList.add(timestamp.toString());
+      await prefs.setStringList('backup_list', backupList);
+      
       // Calculate storage used (approximate)
-      final backupSize = jsonEncode(backupData).length / (1024 * 1024); // Convert to MB
+      final backupSize = jsonEncode(backupData).length / (1024 * 1024);
       
       setState(() {
         _lastBackupDate = DateTime.now().toIso8601String();
@@ -96,21 +116,49 @@ class _BackupScreenState extends State<BackupScreen> {
     }
   }
 
+  // ✅ ADDED: Backup rotation method
+  Future<void> _rotateBackups(SharedPreferences prefs) async {
+    final backupList = prefs.getStringList('backup_list') ?? [];
+    
+    if (backupList.length >= _maxBackups) {
+      // Sort backups by timestamp (oldest first)
+      backupList.sort((a, b) => int.parse(a).compareTo(int.parse(b)));
+      
+      // Remove oldest backups
+      final toRemove = backupList.length - _maxBackups + 1;
+      for (int i = 0; i < toRemove; i++) {
+        final key = 'backup_data_${backupList[i]}';
+        await prefs.remove(key);
+      }
+      
+      // Update list
+      backupList.removeRange(0, toRemove);
+      await prefs.setStringList('backup_list', backupList);
+    }
+  }
+
   Future<void> _restoreBackup() async {
     setState(() => _isLoading = true);
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final backupDataString = prefs.getString('backup_data');
+      final backupList = prefs.getStringList('backup_list') ?? [];
       
-      if (backupDataString == null) {
-        throw Exception('No backup found');
+      if (backupList.isEmpty) {
+        throw Exception('No backups found');
       }
 
-      // ✅ FIXED: Parse the backup data
+      // Get the latest backup
+      final latestTimestamp = backupList.last;
+      final backupDataString = prefs.getString('backup_data_$latestTimestamp');
+      
+      if (backupDataString == null) {
+        throw Exception('Backup data not found');
+      }
+
       final backupData = jsonDecode(backupDataString) as Map<String, dynamic>;
       
-      // Show restore confirmation with details
+      // Show restore confirmation
       final transactionCount = backupData['transactionCount'] ?? 0;
       final familyCount = backupData['familyCount'] ?? 0;
       final backupDate = backupData['date'] ?? 'Unknown';
@@ -157,7 +205,6 @@ class _BackupScreenState extends State<BackupScreen> {
       }
 
       // In a real app, this would restore data from backup
-      // For now, show a success message
       
       setState(() => _isLoading = false);
       
@@ -182,7 +229,7 @@ class _BackupScreenState extends State<BackupScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Backup?'),
+        title: const Text('Delete All Backups?'),
         content: const Text('Are you sure you want to delete all backup data? This action cannot be undone.'),
         actions: [
           TextButton(
@@ -193,10 +240,17 @@ class _BackupScreenState extends State<BackupScreen> {
             onPressed: () async {
               Navigator.pop(context);
               final prefs = await SharedPreferences.getInstance();
-              await prefs.remove('backup_data');
+              
+              // Delete all backup data
+              final backupList = prefs.getStringList('backup_list') ?? [];
+              for (var timestamp in backupList) {
+                await prefs.remove('backup_data_$timestamp');
+              }
+              await prefs.remove('backup_list');
               await prefs.remove('last_backup_date');
               await prefs.remove('backup_count');
               await prefs.remove('storage_used');
+              
               setState(() {
                 _lastBackupDate = 'Never';
                 _backupCount = 0;
@@ -204,7 +258,7 @@ class _BackupScreenState extends State<BackupScreen> {
               });
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Backup deleted successfully'),
+                  content: Text('All backups deleted successfully'),
                   backgroundColor: Colors.orange,
                 ),
               );
@@ -212,7 +266,7 @@ class _BackupScreenState extends State<BackupScreen> {
             style: TextButton.styleFrom(
               foregroundColor: Colors.red,
             ),
-            child: const Text('Delete'),
+            child: const Text('Delete All'),
           ),
         ],
       ),
@@ -274,7 +328,170 @@ class _BackupScreenState extends State<BackupScreen> {
                         _buildStatRow('Last Backup', formattedDate),
                         _buildStatRow('Backup Count', _backupCount.toString()),
                         _buildStatRow('Storage Used', '${_storageUsed.toStringAsFixed(2)} MB'),
+                        _buildStatRow('Max Backups', '$_maxBackups'),
                         _buildStatRow('Auto Backup', _autoBackup ? 'Enabled ✅' : 'Disabled ❌'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Auto Backup Settings
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          spreadRadius: 2,
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Auto Backup Settings',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        
+                        // Auto Backup Toggle
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.schedule,
+                                  color: _autoBackup ? Colors.green : Colors.grey,
+                                ),
+                                const SizedBox(width: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Auto Backup',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    Text(
+                                      _autoBackup
+                                          ? 'Backup $_backupFrequency automatically'
+                                          : 'Manual backup only',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            Switch(
+                              value: _autoBackup,
+                              onChanged: (value) async {
+                                final prefs = await SharedPreferences.getInstance();
+                                await prefs.setBool('auto_backup', value);
+                                setState(() => _autoBackup = value);
+                                
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      value 
+                                          ? 'Auto backup enabled ✅' 
+                                          : 'Auto backup disabled ❌',
+                                    ),
+                                    backgroundColor: value ? Colors.green : Colors.grey,
+                                  ),
+                                );
+                              },
+                              activeColor: AppTheme.primaryColor,
+                            ),
+                          ],
+                        ),
+                        
+                        if (_autoBackup) ...[
+                          const SizedBox(height: 12),
+                          // Backup Frequency
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.repeat,
+                                color: Colors.blue,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Frequency:',
+                                style: TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: DropdownButton<String>(
+                                  value: _backupFrequency,
+                                  items: _frequencies.map((freq) {
+                                    return DropdownMenuItem(
+                                      value: freq,
+                                      child: Text(freq[0].toUpperCase() + freq.substring(1)),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) async {
+                                    if (value != null) {
+                                      final prefs = await SharedPreferences.getInstance();
+                                      await prefs.setString('backup_frequency', value);
+                                      setState(() => _backupFrequency = value);
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                          
+                          const SizedBox(height: 8),
+                          
+                          // Max Backups
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.save,
+                                color: Colors.orange,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Keep Last:',
+                                style: TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: DropdownButton<int>(
+                                  value: _maxBackups,
+                                  items: _maxBackupOptions.map((count) {
+                                    return DropdownMenuItem(
+                                      value: count,
+                                      child: Text('$count backups'),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) async {
+                                    if (value != null) {
+                                      final prefs = await SharedPreferences.getInstance();
+                                      await prefs.setInt('max_backups', value);
+                                      setState(() => _maxBackups = value);
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -315,82 +532,10 @@ class _BackupScreenState extends State<BackupScreen> {
                         const Divider(),
                         _buildActionButton(
                           icon: Icons.delete,
-                          title: 'Delete Backup',
+                          title: 'Delete All Backups',
                           subtitle: 'Delete all backup data',
                           color: Colors.red,
                           onTap: _deleteBackup,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Auto Backup Toggle
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          spreadRadius: 2,
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.schedule,
-                              color: _autoBackup ? Colors.green : Colors.grey,
-                            ),
-                            const SizedBox(width: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Auto Backup',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                Text(
-                                  _autoBackup
-                                      ? 'Backup daily automatically'
-                                      : 'Manual backup only',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        Switch(
-                          value: _autoBackup,
-                          onChanged: (value) async {
-                            final prefs = await SharedPreferences.getInstance();
-                            await prefs.setBool('auto_backup', value);
-                            setState(() => _autoBackup = value);
-                            
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  value 
-                                      ? 'Auto backup enabled ✅' 
-                                      : 'Auto backup disabled ❌',
-                                ),
-                                backgroundColor: value ? Colors.green : Colors.grey,
-                              ),
-                            );
-                          },
-                          activeColor: AppTheme.primaryColor,
                         ),
                       ],
                     ),
@@ -412,7 +557,8 @@ class _BackupScreenState extends State<BackupScreen> {
                         Expanded(
                           child: Text(
                             'Your data is encrypted and securely stored. '
-                            'Regular backups ensure your financial data is safe.',
+                            'Regular backups ensure your financial data is safe. '
+                            'Auto backup keeps the last $_maxBackups backups.',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey.shade700,
