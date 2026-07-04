@@ -22,6 +22,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
   List<GoalModel> _goals = [];
   double _currentSavings = 0;
+  bool _isLoading = true; // ✅ ADDED: Loading state
 
   @override
   void initState() {
@@ -29,32 +30,47 @@ class _GoalsScreenState extends State<GoalsScreen> {
     _loadData();
   }
 
-  void _loadData() {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final userId = authService.userId;
+  // ✅ CHANGED: Made async and added loading state
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final userId = authService.userId;
 
-    if (userId != null) {
-      // Load transactions to calculate savings
-      final transactions = DatabaseService.getUserTransactions(userId);
-      double income = 0;
-      double expense = 0;
-      for (var t in transactions) {
-        if (t.type == 'income') {
-          income += t.amount ?? 0;
-        } else if (t.type == 'expense') {
-          expense += t.amount ?? 0;
+      if (userId != null) {
+        // ✅ FIXED: Added await to get transactions
+        final transactions = await DatabaseService.getUserTransactions(userId);
+        double income = 0;
+        double expense = 0;
+        for (var t in transactions) {
+          if (t.type == 'income') {
+            income += t.amount ?? 0;
+          } else if (t.type == 'expense') {
+            expense += t.amount ?? 0;
+          }
         }
+        _currentSavings = income - expense;
+
+        // Load goals from Hive
+        final goalsBox = Hive.box<GoalModel>('goals');
+        _goals = goalsBox.values
+            .where((g) => g.userId == userId)
+            .toList()
+            .cast<GoalModel>();
       }
-      _currentSavings = income - expense;
-
-      // Load goals from Hive
-      final goalsBox = Hive.box<GoalModel>('goals');
-      _goals = goalsBox.values
-          .where((g) => g.userId == userId)
-          .toList();
+    } catch (e) {
+      // Handle error
+      print('Error loading goals: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load goals: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
-
-    setState(() {});
+    
+    setState(() => _isLoading = false);
   }
 
   @override
@@ -69,18 +85,25 @@ class _GoalsScreenState extends State<GoalsScreen> {
             icon: const Icon(Icons.add),
             onPressed: _showAddGoalDialog,
           ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadData,
+            tooltip: 'Refresh',
+          ),
         ],
       ),
-      body: _goals.isEmpty
-          ? _buildEmptyState()
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _goals.length,
-              itemBuilder: (context, index) {
-                final goal = _goals[index];
-                return _buildGoalCard(goal);
-              },
-            ),
+      body: _isLoading // ✅ ADDED: Loading indicator
+          ? const Center(child: CircularProgressIndicator())
+          : _goals.isEmpty
+              ? _buildEmptyState()
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _goals.length,
+                  itemBuilder: (context, index) {
+                    final goal = _goals[index];
+                    return _buildGoalCard(goal);
+                  },
+                ),
     );
   }
 
@@ -350,7 +373,15 @@ class _GoalsScreenState extends State<GoalsScreen> {
     final authService = Provider.of<AuthService>(context, listen: false);
     final userId = authService.userId;
 
-    if (userId == null) return;
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You must be logged in to create a goal'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     final goal = GoalModel(
       id: Helpers.generateId(),
@@ -363,19 +394,30 @@ class _GoalsScreenState extends State<GoalsScreen> {
       createdAt: DateTime.now(),
     );
 
-    final goalsBox = Hive.box<GoalModel>('goals');
-    await goalsBox.add(goal);
+    try {
+      final goalsBox = Hive.box<GoalModel>('goals');
+      await goalsBox.add(goal);
 
-    _loadData();
+      await _loadData();
 
-    if (mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Goal created successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Goal created successfully! 🎯'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to create goal: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -402,17 +444,36 @@ class _GoalsScreenState extends State<GoalsScreen> {
     );
 
     if (confirm == true) {
-      final goalsBox = Hive.box<GoalModel>('goals');
-      await goalsBox.delete(goal.key);
-      _loadData();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Goal deleted'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+      try {
+        final goalsBox = Hive.box<GoalModel>('goals');
+        await goalsBox.delete(goal.key);
+        await _loadData(); // ✅ Changed to await
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Goal deleted'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete goal: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _goalNameController.dispose();
+    _goalAmountController.dispose();
+    _goalNoteController.dispose();
+    super.dispose();
   }
 }
