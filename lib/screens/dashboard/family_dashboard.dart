@@ -50,6 +50,12 @@ class _FamilyDashboardState extends State<FamilyDashboard>
     super.dispose();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadData();
+  }
+
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
@@ -316,8 +322,6 @@ class _FamilyDashboardState extends State<FamilyDashboard>
       ),
     );
   }
-
-  // ==================== OVERVIEW TAB ====================
 
   Widget _buildOverviewTab() {
     return SingleChildScrollView(
@@ -794,8 +798,6 @@ class _FamilyDashboardState extends State<FamilyDashboard>
     );
   }
 
-  // ==================== MEMBERS TAB ====================
-
   Widget _buildMembersTab() {
     final familyProvider = Provider.of<FamilyProvider>(context);
     final members = familyProvider.getFamilyMembers();
@@ -928,8 +930,6 @@ class _FamilyDashboardState extends State<FamilyDashboard>
       ),
     );
   }
-
-  // ==================== TRANSFERS TAB ====================
 
   Widget _buildTransfersTab() {
     final transfers = [
@@ -1078,8 +1078,6 @@ class _FamilyDashboardState extends State<FamilyDashboard>
       ),
     );
   }
-
-  // ==================== HELPER METHODS ====================
 
   Map<String, double> _getCategoryData() {
     final Map<String, double> categoryData = {};
