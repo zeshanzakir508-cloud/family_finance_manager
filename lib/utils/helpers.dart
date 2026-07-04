@@ -1,9 +1,40 @@
+// lib/utils/helpers.dart
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Helpers {
-  // Format currency
-  static String formatCurrency(double amount, {String currencySymbol = '\$'}) {
-    return '$currencySymbol${amount.toStringAsFixed(2)}';
+  // ✅ ADDED: Get current currency from SharedPreferences
+  static Future<String> getCurrentCurrency() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('currency') ?? 'USD';
+    } catch (e) {
+      return 'USD';
+    }
+  }
+
+  // ✅ FIXED: Format currency with dynamic symbol
+  static String formatCurrency(double amount, {String? currencyCode}) {
+    final String symbol;
+    if (currencyCode != null) {
+      symbol = getCurrencySymbol(currencyCode);
+    } else {
+      // Try to get from SharedPreferences
+      try {
+        final prefs = SharedPreferences.getInstance();
+        final code = prefs as String? ?? 'USD';
+        symbol = getCurrencySymbol(code);
+      } catch (e) {
+        symbol = '\$';
+      }
+    }
+    return '$symbol${amount.toStringAsFixed(2)}';
+  }
+
+  // ✅ ADDED: Format with currency code
+  static String formatCurrencyWithCode(double amount, String currencyCode) {
+    final symbol = getCurrencySymbol(currencyCode);
+    return '$symbol${amount.toStringAsFixed(2)} $currencyCode';
   }
 
   // Format date
@@ -90,9 +121,9 @@ class Helpers {
     return NumberFormat('#,##0.00').format(number);
   }
 
-  // Get currency symbol
+  // ✅ FIXED: Get currency symbol with more currencies
   static String getCurrencySymbol(String currencyCode) {
-    switch (currencyCode) {
+    switch (currencyCode.toUpperCase()) {
       case 'USD': return '\$';
       case 'EUR': return '€';
       case 'GBP': return '£';
@@ -103,7 +134,41 @@ class Helpers {
       case 'CAD': return 'C\$';
       case 'AUD': return 'A\$';
       case 'JPY': return '¥';
+      case 'CNY': return '¥';
+      case 'KRW': return '₩';
+      case 'BHD': return 'BD';
+      case 'KWD': return 'KD';
+      case 'OMR': return 'RO';
+      case 'QAR': return '﷼';
+      case 'EGP': return 'E£';
+      case 'TRY': return '₺';
+      case 'RUB': return '₽';
+      case 'BRL': return 'R\$';
+      case 'ZAR': return 'R';
+      case 'SGD': return 'S\$';
+      case 'MYR': return 'RM';
+      case 'PHP': return '₱';
+      case 'IDR': return 'Rp';
+      case 'THB': return '฿';
+      case 'VND': return '₫';
       default: return '\$';
+    }
+  }
+
+  // ✅ ADDED: Get currency name
+  static String getCurrencyName(String currencyCode) {
+    switch (currencyCode.toUpperCase()) {
+      case 'USD': return 'US Dollar';
+      case 'EUR': return 'Euro';
+      case 'GBP': return 'British Pound';
+      case 'PKR': return 'Pakistani Rupee';
+      case 'INR': return 'Indian Rupee';
+      case 'AED': return 'UAE Dirham';
+      case 'SAR': return 'Saudi Riyal';
+      case 'CAD': return 'Canadian Dollar';
+      case 'AUD': return 'Australian Dollar';
+      case 'JPY': return 'Japanese Yen';
+      default: return currencyCode;
     }
   }
 }
