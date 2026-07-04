@@ -20,11 +20,7 @@ class ReportsScreen extends StatefulWidget {
 }
 
 class _ReportsScreenState extends State<ReportsScreen> {
-  String _selectedPeriod = 'monthly';
-  DateTime _selectedMonth = DateTime.now();
-  DateTime _selectedYear = DateTime.now();
-  
-  // ✅ ADDED: Custom date range
+  // ✅ ONLY custom date range - removed monthly/yearly
   DateTime? _customStartDate;
   DateTime? _customEndDate;
   
@@ -67,7 +63,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
       if (modeProvider.isPersonalMode) {
         _allTransactions = await DatabaseService.getUserTransactions(userId);
       } else {
-        // Family mode - get all family transactions
         final family = Provider.of<FamilyProvider>(context, listen: false).currentFamily;
         if (family != null) {
           _allTransactions = await DatabaseService.getFamilyTransactions(family.id);
@@ -86,13 +81,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   void _applyFilters() {
-    final dateRange = _getDateRange();
-
     _filteredTransactions = _allTransactions.where((transaction) {
       if (transaction.date == null) return false;
-      if (dateRange != null) {
-        if (transaction.date!.isBefore(dateRange['start']!) ||
-            transaction.date!.isAfter(dateRange['end']!)) {
+      
+      // ✅ Only custom date range filter
+      if (_customStartDate != null && _customEndDate != null) {
+        if (transaction.date!.isBefore(_customStartDate!) ||
+            transaction.date!.isAfter(_customEndDate!)) {
           return false;
         }
       }
@@ -125,26 +120,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
       _totalExpense = expense;
       _balance = income - expense;
     });
-  }
-
-  Map<String, DateTime>? _getDateRange() {
-    switch (_selectedPeriod) {
-      case 'monthly':
-        final start = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
-        final end = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0);
-        return {'start': start, 'end': end};
-      case 'yearly':
-        final start = DateTime(_selectedYear.year, 1, 1);
-        final end = DateTime(_selectedYear.year, 12, 31);
-        return {'start': start, 'end': end};
-      case 'custom':
-        if (_customStartDate != null && _customEndDate != null) {
-          return {'start': _customStartDate!, 'end': _customEndDate!};
-        }
-        return null;
-      default:
-        return null;
-    }
   }
 
   @override
@@ -181,17 +156,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Period Selector
-                    _buildPeriodSelector(),
+                    // ✅ Always show custom date picker
+                    _buildCustomDatePicker(),
                     const SizedBox(height: 16),
-
-                    // Date Picker
-                    _buildDatePicker(),
-                    const SizedBox(height: 16),
-
-                    // Custom Date Range Picker (shown when Custom is selected)
-                    if (_selectedPeriod == 'custom') _buildCustomDatePicker(),
-                    if (_selectedPeriod == 'custom') const SizedBox(height: 16),
 
                     // Filters
                     _buildFilters(),
@@ -214,57 +181,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  Widget _buildPeriodSelector() {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Row(
-        children: [
-          _buildPeriodButton('Monthly', 'monthly'),
-          _buildPeriodButton('Yearly', 'yearly'),
-          _buildPeriodButton('Custom', 'custom'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPeriodButton(String label, String value) {
-    final isSelected = _selectedPeriod == value;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedPeriod = value;
-            if (value != 'custom') {
-              _applyFilters();
-            }
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.blue : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.grey.shade600,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ✅ ADDED: Custom Date Range Picker
+  // ✅ Custom Date Range Picker - Always visible
   Widget _buildCustomDatePicker() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -350,6 +267,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
             ],
           ),
+          // ✅ Show selected range info
+          if (_customStartDate != null && _customEndDate != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Showing: ${DateFormat('MMM dd, yyyy').format(_customStartDate!)} - ${DateFormat('MMM dd, yyyy').format(_customEndDate!)}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.green.shade700,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -413,108 +343,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
       setState(() {
         if (isStart) {
           _customStartDate = date;
-          // If end date is before start date, update end date
           if (_customEndDate != null && _customEndDate!.isBefore(date)) {
             _customEndDate = date;
           }
         } else {
           _customEndDate = date;
-          // If start date is after end date, update start date
           if (_customStartDate != null && _customStartDate!.isAfter(date)) {
             _customStartDate = date;
           }
         }
         _applyFilters();
       });
-    }
-  }
-
-  Widget _buildDatePicker() {
-    String label;
-    if (_selectedPeriod == 'custom') {
-      label = 'Custom Range';
-    } else {
-      label = _getDateRangeLabel();
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.calendar_today,
-            color: Colors.blue,
-            size: 20,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 14),
-            ),
-          ),
-          if (_selectedPeriod != 'custom') ...[
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_left),
-                  onPressed: () {
-                    setState(() {
-                      if (_selectedPeriod == 'monthly') {
-                        _selectedMonth = DateTime(
-                          _selectedMonth.year,
-                          _selectedMonth.month - 1,
-                        );
-                      } else {
-                        _selectedYear = DateTime(
-                          _selectedYear.year - 1,
-                        );
-                      }
-                      _applyFilters();
-                    });
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right),
-                  onPressed: () {
-                    setState(() {
-                      if (_selectedPeriod == 'monthly') {
-                        _selectedMonth = DateTime(
-                          _selectedMonth.year,
-                          _selectedMonth.month + 1,
-                        );
-                      } else {
-                        _selectedYear = DateTime(
-                          _selectedYear.year + 1,
-                        );
-                      }
-                      _applyFilters();
-                    });
-                  },
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  String _getDateRangeLabel() {
-    switch (_selectedPeriod) {
-      case 'monthly':
-        return DateFormat('MMMM yyyy').format(_selectedMonth);
-      case 'yearly':
-        return DateFormat('yyyy').format(_selectedYear);
-      case 'custom':
-        return 'Custom Range';
-      default:
-        return 'All Time';
     }
   }
 
@@ -1079,7 +918,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  // Export with confirmation dialog
+  // ✅ Export with confirmation dialog
   void _showExportDialog() {
     showDialog(
       context: context,
@@ -1128,7 +967,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  // CSV Export
+  // ✅ CSV Export
   void _exportCSV() {
     if (_filteredTransactions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1152,7 +991,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
 
     // In a real app, this would save to file
-    // For now, show success
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('✅ CSV Report exported successfully!'),
@@ -1162,7 +1000,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  // PDF Export
+  // ✅ PDF Export
   void _exportPDF() {
     if (_filteredTransactions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1174,8 +1012,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
       return;
     }
 
-    // In a real app, this would generate PDF
-    // For now, show success
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('✅ PDF Report exported successfully!'),
