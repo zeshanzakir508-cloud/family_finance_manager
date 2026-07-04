@@ -40,17 +40,41 @@ import 'services/database_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  
-  final prefs = await SharedPreferences.getInstance();
-  final isDarkMode = prefs.getBool('isDarkMode') ?? false;
-  
-  runApp(MyApp(isDarkMode: isDarkMode));
+  runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  final bool isDarkMode;
-  
-  const MyApp({super.key, required this.isDarkMode});
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  ThemeMode _themeMode = ThemeMode.system;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTheme();
+  }
+
+  Future<void> _loadTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    final themeMode = prefs.getString('theme_mode') ?? 'system';
+    setState(() {
+      _themeMode = themeMode == 'dark'
+          ? ThemeMode.dark
+          : themeMode == 'light'
+              ? ThemeMode.light
+              : ThemeMode.system;
+    });
+  }
+
+  // Method to refresh theme from settings
+  void refreshTheme() {
+    _loadTheme();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,97 +87,48 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'FinFam - Family Finance Manager',
         debugShowCheckedModeBanner: false,
-        theme: isDarkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: _themeMode,
         initialRoute: '/splash',
         routes: {
-          // Auth
           '/login': (context) => const LoginScreen(),
           '/signup': (context) => const SignupScreen(),
           '/forgot-password': (context) => const ForgotPasswordScreen(),
-          
-          // Splash & Onboarding
           '/splash': (context) => const SplashScreen(),
           '/onboarding': (context) => const OnboardingScreen(),
-          
-          // Mode Selection
           '/mode-selection': (context) => const ModeSelectionScreen(),
-          
-          // Dashboards
           '/personal-dashboard': (context) => const PersonalDashboard(),
           '/family-dashboard': (context) => const FamilyDashboard(),
-          
-          // Settings
           '/settings': (context) => const SettingsScreen(),
-          '/theme-settings': (context) => const ThemeSettingsScreen(),
+          '/theme-settings': (context) => ThemeSettingsScreen(
+              onThemeChanged: refreshTheme,
+            ),
           '/currency-settings': (context) => const CurrencySettingsScreen(),
           '/security-settings': (context) => const SecuritySettingsScreen(),
           '/notification-settings': (context) => const NotificationSettingsScreen(),
           '/privacy-policy': (context) => const PrivacyPolicyScreen(),
           '/about': (context) => const AboutScreen(),
           '/profile': (context) => const ProfileScreen(),
-          
-          // Transactions
           '/add-income': (context) => const AddIncomeScreen(),
           '/add-expense': (context) => const AddExpenseScreen(),
           '/transfer': (context) => const TransferScreen(),
           '/edit-transaction': (context) => const EditTransactionScreen(),
           '/transaction-detail': (context) => const TransactionDetailScreen(),
-          
-          // Reports
           '/reports': (context) => const ReportsScreen(),
-          
-          // Family
           '/family-management': (context) => const FamilyManagementScreen(),
           '/add-member': (context) => const AddMemberScreen(),
           '/family-creation': (context) => const FamilyCreationScreen(),
-          
-          // Goals
           '/goals': (context) => const GoalsScreen(),
-          
-          // Owner
           '/owner-dashboard': (context) => const OwnerDashboard(),
-          
-          // Backup
           '/backup': (context) => const BackupScreen(),
         },
-        // ✅ FIXED: Proper navigation with pop behavior
         onGenerateRoute: (settings) {
-          // If route doesn't exist, pop back or go to login
           return MaterialPageRoute(
             builder: (context) => const LoginScreen(),
           );
         },
-        // ✅ ADDED: Handle back button globally
-        navigatorObservers: [
-          _BackButtonObserver(),
-        ],
       ),
     );
   }
 }
-
-// ✅ ADDED: Custom observer to handle back button
-class _BackButtonObserver extends NavigatorObserver {
-  @override
-  void didPush(Route route, Route? previousRoute) {
-    super.didPush(route, previousRoute);
-  }
-
-  @override
-  void didPop(Route route, Route? previousRoute) {
-    super.didPop(route, previousRoute);
-  }
-
-  @override
-  void didRemove(Route route, Route? previousRoute) {
-    super.didRemove(route, previousRoute);
-  }
-
-  @override
-  void didReplace({Route? newRoute, Route? oldRoute}) {
-    super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
-  }
-}
-
-// ✅ ADDED: Global navigator key for programmatic navigation
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
