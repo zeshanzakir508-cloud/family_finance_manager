@@ -60,7 +60,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     if (confirmed == true) {
       setState(() => _isDeleting = true);
       try {
-        await DatabaseService.deleteTransaction(widget.transaction!);
+        // ✅ FIXED: Pass the transaction ID string, not the whole transaction
+        await DatabaseService.deleteTransaction(widget.transaction!.id!);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -229,6 +230,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                         _buildDetailRow('Type', 'Family Transaction'),
                       if (t.isRecurring ?? false)
                         _buildDetailRow('Recurring', t.recurringInterval ?? ''),
+                      if (t.tags != null && t.tags!.isNotEmpty)
+                        _buildDetailRow('Tags', t.tags!.join(', ')),
                       _buildDetailRow('Notes', t.notes ?? 'No notes'),
                     ],
                   ),
