@@ -1,21 +1,54 @@
 // lib/models/transfer_model.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hive/hive.dart';
 
-class TransferModel {
+part 'transfer_model.g.dart'; // ✅ ADDED
+
+@HiveType(typeId: 3) // ✅ ADDED - Using a unique typeId
+class TransferModel extends HiveObject { // ✅ Changed to extend HiveObject
+  @HiveField(0) // ✅ ADDED
   final String id;
+  
+  @HiveField(1) // ✅ ADDED
   final String familyId;
+  
+  @HiveField(2) // ✅ ADDED
   final String fromUserId;
+  
+  @HiveField(3) // ✅ ADDED
   final String toUserId;
+  
+  @HiveField(4) // ✅ ADDED
   final String fromUserName;
+  
+  @HiveField(5) // ✅ ADDED
   final String toUserName;
+  
+  @HiveField(6) // ✅ ADDED
   final double amount;
+  
+  @HiveField(7) // ✅ ADDED
   final DateTime date;
+  
+  @HiveField(8) // ✅ ADDED
   final String? description;
+  
+  @HiveField(9) // ✅ ADDED
   final String status; // pending, approved, rejected, completed
+  
+  @HiveField(10) // ✅ ADDED
   final bool isRecurring;
+  
+  @HiveField(11) // ✅ ADDED
   final String? recurringType; // daily, weekly, monthly, yearly
+  
+  @HiveField(12) // ✅ ADDED
   final String createdBy;
+  
+  @HiveField(13) // ✅ ADDED
   final DateTime createdAt;
+  
+  @HiveField(14) // ✅ ADDED
   final DateTime? updatedAt;
 
   TransferModel({
@@ -35,6 +68,12 @@ class TransferModel {
     required this.createdAt,
     this.updatedAt,
   });
+
+  // ✅ ADDED: Helper getters
+  bool get isPending => status == 'pending';
+  bool get isApproved => status == 'approved';
+  bool get isRejected => status == 'rejected';
+  bool get isCompleted => status == 'completed';
 
   TransferModel copyWith({
     String? id,
