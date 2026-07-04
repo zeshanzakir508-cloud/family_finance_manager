@@ -2,7 +2,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:local_auth/local_auth.dart';
+import 'package:provider/provider.dart';  // ✅ ADDED
 import '../../services/biometric_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
@@ -180,7 +180,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     });
   }
 
-  // ✅ ADDED: Enable fingerprint at login screen
   Future<void> _enableFingerprintForLogin() async {
     final available = await BiometricService.isAvailable();
     if (!available) {
@@ -195,7 +194,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
       return;
     }
 
-    // Test authentication first
     final authenticated = await BiometricService.authenticate(
       reason: 'Enable fingerprint login',
     );
@@ -206,7 +204,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
         _markChanged();
       });
       
-      // Save to AuthService for login screen
       final authService = Provider.of<AuthService>(context, listen: false);
       await authService.setFingerprintEnabled(true);
       
@@ -276,7 +273,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                   child: ListView(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     children: [
-                      // Fingerprint
                       FutureBuilder<bool>(
                         future: BiometricService.isAvailable(),
                         builder: (context, snapshot) {
@@ -305,7 +301,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                       
                       const Divider(height: 24),
                       
-                      // Auto Logout
                       _buildSwitchTile(
                         icon: Icons.timer,
                         title: 'Auto Logout',
@@ -357,7 +352,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                           ),
                         ),
                       
-                      // Security Info
                       const SizedBox(height: 16),
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 16),
