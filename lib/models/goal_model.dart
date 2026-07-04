@@ -1,6 +1,6 @@
 import 'package:hive/hive.dart';
 
-part 'goal_model.g.dart';
+part 'goal_model.g.dart'; // ✅ Already present - good!
 
 @HiveType(typeId: 8)
 class GoalModel extends HiveObject {
@@ -57,12 +57,12 @@ class GoalModel extends HiveObject {
       id: json['id'],
       userId: json['userId'],
       name: json['name'],
-      totalAmount: json['totalAmount'],
+      totalAmount: json['totalAmount']?.toDouble(), // ✅ Fixed: ensure double
       note: json['note'],
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
-      currentProgress: json['currentProgress'] ?? 0,
+      currentProgress: json['currentProgress']?.toDouble() ?? 0, // ✅ Fixed: ensure double
       isCompleted: json['isCompleted'] ?? false,
     );
   }
