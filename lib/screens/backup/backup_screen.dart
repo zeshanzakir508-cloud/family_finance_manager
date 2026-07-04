@@ -1,4 +1,5 @@
 // lib/screens/backup/backup_screen.dart
+import 'dart:convert'; // ✅ ADDED: For jsonEncode/jsonDecode
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -64,13 +65,17 @@ class _BackupScreenState extends State<BackupScreen> {
 
       // Save backup
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('backup_data', backupData.toString());
+      await prefs.setString('backup_data', jsonEncode(backupData)); // ✅ FIXED: Use jsonEncode
       await prefs.setString('last_backup_date', DateTime.now().toIso8601String());
       await prefs.setInt('backup_count', _backupCount + 1);
+      
+      // Calculate storage used (approximate)
+      final backupSize = jsonEncode(backupData).length / (1024 * 1024); // Convert to MB
       
       setState(() {
         _lastBackupDate = DateTime.now().toIso8601String();
         _backupCount++;
+        _storageUsed = backupSize;
         _isLoading = false;
       });
 
@@ -96,14 +101,63 @@ class _BackupScreenState extends State<BackupScreen> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final backupData = prefs.getString('backup_data');
+      final backupDataString = prefs.getString('backup_data');
       
-      if (backupData == null) {
+      if (backupDataString == null) {
         throw Exception('No backup found');
       }
 
+      // ✅ FIXED: Parse the backup data
+      final backupData = jsonDecode(backupDataString) as Map<String, dynamic>;
+      
+      // Show restore confirmation with details
+      final transactionCount = backupData['transactionCount'] ?? 0;
+      final familyCount = backupData['familyCount'] ?? 0;
+      final backupDate = backupData['date'] ?? 'Unknown';
+      
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Restore Backup?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('This will restore the following:'),
+              const SizedBox(height: 8),
+              Text('• $transactionCount transactions'),
+              Text('• $familyCount families'),
+              Text('• Date: ${Helpers.formatDate(DateTime.parse(backupDate))}'),
+              const SizedBox(height: 8),
+              const Text(
+                'Warning: This will overwrite current data!',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.green,
+              ),
+              child: const Text('Restore'),
+            ),
+          ],
+        ),
+      );
+      
+      if (confirm != true) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
       // In a real app, this would restore data from backup
-      // For now, just show a message
+      // For now, show a success message
       
       setState(() => _isLoading = false);
       
@@ -141,6 +195,8 @@ class _BackupScreenState extends State<BackupScreen> {
               final prefs = await SharedPreferences.getInstance();
               await prefs.remove('backup_data');
               await prefs.remove('last_backup_date');
+              await prefs.remove('backup_count');
+              await prefs.remove('storage_used');
               setState(() {
                 _lastBackupDate = 'Never';
                 _backupCount = 0;
@@ -148,7 +204,7 @@ class _BackupScreenState extends State<BackupScreen> {
               });
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Backup deleted'),
+                  content: Text('Backup deleted successfully'),
                   backgroundColor: Colors.orange,
                 ),
               );
@@ -175,6 +231,13 @@ class _BackupScreenState extends State<BackupScreen> {
         title: const Text('Backup & Restore'),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadSettings,
+            tooltip: 'Refresh',
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -211,7 +274,7 @@ class _BackupScreenState extends State<BackupScreen> {
                         _buildStatRow('Last Backup', formattedDate),
                         _buildStatRow('Backup Count', _backupCount.toString()),
                         _buildStatRow('Storage Used', '${_storageUsed.toStringAsFixed(2)} MB'),
-                        _buildStatRow('Auto Backup', _autoBackup ? 'Enabled' : 'Disabled'),
+                        _buildStatRow('Auto Backup', _autoBackup ? 'Enabled ✅' : 'Disabled ❌'),
                       ],
                     ),
                   ),
@@ -315,6 +378,17 @@ class _BackupScreenState extends State<BackupScreen> {
                             final prefs = await SharedPreferences.getInstance();
                             await prefs.setBool('auto_backup', value);
                             setState(() => _autoBackup = value);
+                            
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  value 
+                                      ? 'Auto backup enabled ✅' 
+                                      : 'Auto backup disabled ❌',
+                                ),
+                                backgroundColor: value ? Colors.green : Colors.grey,
+                              ),
+                            );
                           },
                           activeColor: AppTheme.primaryColor,
                         ),
