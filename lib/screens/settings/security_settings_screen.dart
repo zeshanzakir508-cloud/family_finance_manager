@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
 import '../../services/biometric_service.dart';
+import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
@@ -14,15 +15,12 @@ class SecuritySettingsScreen extends StatefulWidget {
 }
 
 class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
-  bool _pinEnabled = false;
-  bool _initialPinEnabled = false;
   bool _fingerprintEnabled = false;
   bool _initialFingerprintEnabled = false;
   bool _autoLogout = false;
   bool _initialAutoLogout = false;
   int _autoLogoutTime = 5;
   int _initialAutoLogoutTime = 5;
-  String _pinCode = '';
   bool _hasChanges = false;
   bool _isLoading = false;
   bool _isProcessing = false;
@@ -56,15 +54,12 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     setState(() => _isLoading = true);
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _pinEnabled = prefs.getBool('pin_enabled') ?? false;
-      _initialPinEnabled = _pinEnabled;
       _fingerprintEnabled = prefs.getBool('fingerprint_enabled') ?? false;
       _initialFingerprintEnabled = _fingerprintEnabled;
       _autoLogout = prefs.getBool('auto_logout') ?? false;
       _initialAutoLogout = _autoLogout;
       _autoLogoutTime = prefs.getInt('auto_logout_time') ?? 5;
       _initialAutoLogoutTime = _autoLogoutTime;
-      _pinCode = prefs.getString('pin_code') ?? '';
       _hasChanges = false;
       _isLoading = false;
     });
@@ -72,8 +67,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
 
   void _markChanged() {
     setState(() {
-      _hasChanges = _pinEnabled != _initialPinEnabled ||
-          _fingerprintEnabled != _initialFingerprintEnabled ||
+      _hasChanges = _fingerprintEnabled != _initialFingerprintEnabled ||
           _autoLogout != _initialAutoLogout ||
           _autoLogoutTime != _initialAutoLogoutTime;
     });
@@ -84,13 +78,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
       setState(() => _isLoading = true);
       
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('pin_enabled', _pinEnabled);
       await prefs.setBool('fingerprint_enabled', _fingerprintEnabled);
       await prefs.setBool('auto_logout', _autoLogout);
       await prefs.setInt('auto_logout_time', _autoLogoutTime);
       
       setState(() {
-        _initialPinEnabled = _pinEnabled;
         _initialFingerprintEnabled = _fingerprintEnabled;
         _initialAutoLogout = _autoLogout;
         _initialAutoLogoutTime = _autoLogoutTime;
@@ -128,7 +120,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                 onPressed: () {
                   Navigator.pop(context);
                   setState(() {
-                    _pinEnabled = _initialPinEnabled;
                     _fingerprintEnabled = _initialFingerprintEnabled;
                     _autoLogout = _initialAutoLogout;
                     _autoLogoutTime = _initialAutoLogoutTime;
@@ -153,318 +144,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
         Navigator.pop(context);
       }
     });
-  }
-
-  Future<void> _setupPin() async {
-    _debounceAction(() {
-      if (_pinEnabled) {
-        _showChangePinDialog();
-      } else {
-        _showSetPinDialog();
-      }
-    });
-  }
-
-  void _showSetPinDialog() {
-    String newPin = '';
-    String confirmPin = '';
-    
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Set PIN'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Enter a 4-6 digit PIN to lock the app'),
-            const SizedBox(height: 16),
-            TextField(
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 6,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'New PIN',
-                prefixIcon: Icon(Icons.lock_outline),
-              ),
-              onChanged: (value) => newPin = value,
-            ),
-            TextField(
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 6,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Confirm PIN',
-                prefixIcon: Icon(Icons.lock_outline),
-              ),
-              onChanged: (value) => confirmPin = value,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _pinEnabled = false;
-                _markChanged();
-              });
-              Navigator.pop(context);
-            },
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (newPin.length < 4) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('PIN must be at least 4 digits'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                return;
-              }
-              if (newPin != confirmPin) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('PINs do not match'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                return;
-              }
-              _savePin(newPin);
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Set PIN'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showChangePinDialog() {
-    String currentPin = '';
-    String newPin = '';
-    String confirmPin = '';
-    
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Change PIN'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 6,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Current PIN',
-                prefixIcon: Icon(Icons.lock_outline),
-              ),
-              onChanged: (value) => currentPin = value,
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 6,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'New PIN',
-                prefixIcon: Icon(Icons.lock_outline),
-              ),
-              onChanged: (value) => newPin = value,
-            ),
-            TextField(
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 6,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Confirm PIN',
-                prefixIcon: Icon(Icons.lock_outline),
-              ),
-              onChanged: (value) => confirmPin = value,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (currentPin != _pinCode) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Current PIN is incorrect'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                return;
-              }
-              if (newPin.length < 4) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('PIN must be at least 4 digits'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                return;
-              }
-              if (newPin != confirmPin) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('PINs do not match'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                return;
-              }
-              _savePin(newPin);
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Change PIN'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _savePin(String pin) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('pin_code', pin);
-    setState(() {
-      _pinCode = pin;
-      _pinEnabled = true;
-      _markChanged();
-    });
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('PIN set successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
-  }
-
-  // ✅ FIXED: PIN Lock Screen
-  Future<bool> _showPinLockScreen() async {
-    if (!_pinEnabled) return true;
-
-    final Completer<bool> completer = Completer<bool>();
-    String enteredPin = '';
-    int attempts = 0;
-    const int maxAttempts = 5;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Enter PIN'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.lock, size: 48, color: Colors.blue),
-              const SizedBox(height: 16),
-              Text(
-                'Enter your PIN to continue',
-                style: TextStyle(color: Colors.grey.shade600),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                keyboardType: TextInputType.number,
-                obscureText: true,
-                maxLength: 6,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: 'PIN',
-                  prefixIcon: Icon(Icons.lock_outline),
-                ),
-                onChanged: (value) {
-                  enteredPin = value;
-                  if (value.length >= 4) {
-                    _verifyPin(value, context, completer, setState, attempts, maxAttempts);
-                  }
-                },
-              ),
-              if (attempts >= maxAttempts)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    'Too many attempts. Please try again later.',
-                    style: TextStyle(color: Colors.red.shade700, fontSize: 12),
-                  ),
-                ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                completer.complete(false);
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                _verifyPin(enteredPin, context, completer, setState, attempts, maxAttempts);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Unlock'),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    return completer.future;
-  }
-
-  // ✅ FIXED: PIN verification with proper variables
-  void _verifyPin(
-    String enteredPin,
-    BuildContext context,
-    Completer<bool> completer,
-    StateSetter setState,
-    int attempts,
-    int maxAttempts,
-  ) {
-    if (enteredPin == _pinCode) {
-      Navigator.pop(context);
-      completer.complete(true);
-    } else {
-      final newAttempts = attempts + 1;
-      setState(() {
-        // Update attempts in the dialog
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Incorrect PIN. ${maxAttempts - newAttempts} attempts remaining'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
   }
 
   Future<void> _testFingerprint() async {
@@ -501,6 +180,75 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     });
   }
 
+  // ✅ ADDED: Enable fingerprint at login screen
+  Future<void> _enableFingerprintForLogin() async {
+    final available = await BiometricService.isAvailable();
+    if (!available) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Fingerprint not available on this device'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Test authentication first
+    final authenticated = await BiometricService.authenticate(
+      reason: 'Enable fingerprint login',
+    );
+    
+    if (authenticated) {
+      setState(() {
+        _fingerprintEnabled = true;
+        _markChanged();
+      });
+      
+      // Save to AuthService for login screen
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.setFingerprintEnabled(true);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Fingerprint login enabled! 🔐'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Fingerprint authentication failed. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _disableFingerprintForLogin() async {
+    setState(() {
+      _fingerprintEnabled = false;
+      _markChanged();
+    });
+    
+    final authService = Provider.of<AuthService>(context, listen: false);
+    await authService.setFingerprintEnabled(false);
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Fingerprint login disabled'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -528,71 +276,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                   child: ListView(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     children: [
-                      // PIN Lock
-                      _buildSwitchTile(
-                        icon: Icons.lock,
-                        title: 'PIN Lock',
-                        subtitle: _pinEnabled 
-                            ? 'PIN is enabled ✓' 
-                            : 'Lock app with PIN code',
-                        value: _pinEnabled,
-                        onChanged: (value) {
-                          _debounceAction(() {
-                            setState(() {
-                              _pinEnabled = value;
-                              if (value) {
-                                _setupPin();
-                              } else {
-                                // Disable PIN
-                                showDialog(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    title: const Text('Disable PIN?'),
-                                    content: const Text('Are you sure you want to disable PIN lock?'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () {
-                                          setState(() {
-                                            _pinEnabled = true;
-                                            _markChanged();
-                                          });
-                                          Navigator.pop(context);
-                                        },
-                                        child: const Text('Cancel'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () async {
-                                          final prefs = await SharedPreferences.getInstance();
-                                          await prefs.remove('pin_code');
-                                          setState(() {
-                                            _pinCode = '';
-                                            _markChanged();
-                                          });
-                                          Navigator.pop(context);
-                                          if (mounted) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(
-                                                content: Text('PIN disabled'),
-                                                backgroundColor: Colors.orange,
-                                              ),
-                                            );
-                                          }
-                                        },
-                                        style: TextButton.styleFrom(
-                                          foregroundColor: Colors.red,
-                                        ),
-                                        child: const Text('Disable'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }
-                              _markChanged();
-                            });
-                          });
-                        },
-                      ),
-                      
                       // Fingerprint
                       FutureBuilder<bool>(
                         future: BiometricService.isAvailable(),
@@ -602,18 +285,18 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                             icon: Icons.fingerprint,
                             title: 'Fingerprint Login',
                             subtitle: available
-                                ? 'Use fingerprint to unlock ✓'
+                                ? _fingerprintEnabled
+                                    ? 'Fingerprint login enabled ✓'
+                                    : 'Enable fingerprint to unlock'
                                 : 'Fingerprint not available on this device',
                             value: _fingerprintEnabled && available,
                             onChanged: available ? (value) {
                               _debounceAction(() {
                                 if (value) {
-                                  _testFingerprint();
+                                  _enableFingerprintForLogin();
+                                } else {
+                                  _disableFingerprintForLogin();
                                 }
-                                setState(() {
-                                  _fingerprintEnabled = value;
-                                  _markChanged();
-                                });
                               });
                             } : null,
                           );
@@ -690,8 +373,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                'Security settings help protect your financial data. '
-                                'Enable PIN or fingerprint for extra security.',
+                                'Enable fingerprint for quick and secure login.',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey.shade600,
@@ -705,7 +387,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                     ],
                   ),
                 ),
-                // Bottom Buttons
                 _buildBottomButtons(),
               ],
             ),
