@@ -25,8 +25,6 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
   double _totalExpense = 0;
   double _balance = 0;
   bool _isLoading = true;
-  bool _hasError = false;
-  String _errorMessage = '';
 
   final List<Color> _categoryColors = [
     Colors.blue, Colors.green, Colors.red, Colors.orange, Colors.purple,
@@ -39,49 +37,32 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
     _loadData();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadData();
+  }
+
   Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-      _hasError = false;
-      _errorMessage = '';
-    });
+    setState(() => _isLoading = true);
     
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       final userId = authService.userId;
       
-      print('👤 Loading transactions for user: $userId');
-      
       if (userId != null) {
         _transactions = await DatabaseService.getUserTransactions(userId);
-        print('📊 Found ${_transactions.length} transactions');
-        
-        _transactions.sort((a, b) => b.date?.compareTo(a.date ?? DateTime.now()) ?? 0);
+        _transactions.sort((a, b) => b.date!.compareTo(a.date!));
         _applyFilters();
-        
-        setState(() {
-          _hasError = false;
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _hasError = true;
-          _errorMessage = 'User not logged in. Please login again.';
-          _isLoading = false;
-        });
       }
     } catch (e) {
-      print('❌ Error loading transactions: $e');
-      setState(() {
-        _hasError = true;
-        _errorMessage = 'Failed to load transactions: $e';
-        _isLoading = false;
-      });
+      print('Error loading transactions: $e');
     }
+    
+    setState(() => _isLoading = false);
   }
 
   void _applyFilters() {
-    // Show all transactions - no date filter
     _filteredTransactions = _transactions;
 
     double income = 0;
@@ -101,6 +82,13 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
     });
   }
 
+  void _navigateAndRefresh(String route) async {
+    final result = await Navigator.pushNamed(context, route);
+    if (result == true) {
+      _loadData();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -109,9 +97,8 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
         title: const Text('Personal Dashboard'),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
-        automaticallyImplyLeading: false, // ✅ Remove back button
+        automaticallyImplyLeading: false,
         actions: [
-          // Mode Badge
           Container(
             margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -145,87 +132,31 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
           ),
         ],
       ),
-      body: _buildBody(),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_hasError) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.error_outline,
-                size: 64,
-                color: Colors.red.shade300,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _errorMessage,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey.shade700,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: _loadData,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadData,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildBalanceCards(),
+                    const SizedBox(height: 16),
+                    _buildChartsSection(),
+                    const SizedBox(height: 16),
+                    _buildCategoryBreakdown(),
+                    const SizedBox(height: 16),
+                    _buildRecentTransactions(),
+                    const SizedBox(height: 16),
+                    _buildQuickActions(),
+                    const SizedBox(height: 16),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: _loadData,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ✅ REMOVED Period Selector
-            
-            // Balance Cards
-            _buildBalanceCards(),
-            const SizedBox(height: 16),
-            
-            // Charts Section
-            _buildChartsSection(),
-            const SizedBox(height: 16),
-            
-            // Category Breakdown
-            _buildCategoryBreakdown(),
-            const SizedBox(height: 16),
-            
-            // Recent Transactions
-            _buildRecentTransactions(),
-            const SizedBox(height: 16),
-            
-            // Quick Action Buttons
-            _buildQuickActions(),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
+            ),
     );
   }
-
-  // ==================== BALANCE CARDS ====================
 
   Widget _buildBalanceCards() {
     return Row(
@@ -300,8 +231,6 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
       ),
     );
   }
-
-  // ==================== CHARTS SECTION ====================
 
   Widget _buildChartsSection() {
     final categoryData = _getCategoryData();
@@ -429,8 +358,6 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
     );
   }
 
-  // ==================== CATEGORY BREAKDOWN ====================
-
   Widget _buildCategoryBreakdown() {
     final categoryData = _getCategoryData();
     if (categoryData.isEmpty) return const SizedBox();
@@ -498,8 +425,6 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
       ),
     );
   }
-
-  // ==================== RECENT TRANSACTIONS ====================
 
   Widget _buildRecentTransactions() {
     final recent = _filteredTransactions.take(5).toList();
@@ -585,7 +510,7 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
                             ),
                           ),
                           Text(
-                            '${_getCategoryDisplayName(transaction.category ?? 'other')} • ${transaction.date != null ? DateFormat('MMM dd').format(transaction.date!) : 'No date'}',
+                            '${_getCategoryDisplayName(transaction.category ?? 'other')} • ${DateFormat('MMM dd').format(transaction.date!)}',
                             style: TextStyle(
                               fontSize: 11,
                               color: Colors.grey.shade600,
@@ -611,8 +536,6 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
     );
   }
 
-  // ==================== QUICK ACTIONS ====================
-
   Widget _buildQuickActions() {
     return Row(
       children: [
@@ -621,9 +544,7 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
             icon: Icons.add_circle_outline,
             label: 'Add Income',
             color: Colors.green,
-            onTap: () {
-              Navigator.pushNamed(context, '/add-income');
-            },
+            onTap: () => _navigateAndRefresh('/add-income'),
           ),
         ),
         const SizedBox(width: 12),
@@ -632,9 +553,7 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
             icon: Icons.remove_circle_outline,
             label: 'Add Expense',
             color: Colors.red,
-            onTap: () {
-              Navigator.pushNamed(context, '/add-expense');
-            },
+            onTap: () => _navigateAndRefresh('/add-expense'),
           ),
         ),
         const SizedBox(width: 12),
@@ -643,20 +562,16 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
             icon: Icons.bar_chart_outlined,
             label: 'Reports',
             color: Colors.blue,
-            onTap: () {
-              Navigator.pushNamed(context, '/reports');
-            },
+            onTap: () => Navigator.pushNamed(context, '/reports'),
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: _buildActionButton(
-            icon: Icons.settings_outlined,
-            label: 'Settings',
-            color: Colors.grey,
-            onTap: () {
-              Navigator.pushNamed(context, '/settings');
-            },
+            icon: Icons.person_outline,
+            label: 'Profile',
+            color: Colors.purple,
+            onTap: () => Navigator.pushNamed(context, '/profile'),
           ),
         ),
       ],
@@ -695,8 +610,6 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
       ),
     );
   }
-
-  // ==================== HELPER METHODS ====================
 
   Map<String, double> _getCategoryData() {
     final Map<String, double> categoryData = {};
