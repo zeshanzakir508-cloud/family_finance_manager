@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
 import '../../services/biometric_service.dart';
 import '../../utils/app_theme.dart';
-// ❌ REMOVED: import '../../utils/crypto_utils.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
   const SecuritySettingsScreen({super.key});
@@ -305,7 +304,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              // ✅ FIXED: Compare PINs directly (no encryption)
               if (currentPin != _pinCode) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -347,11 +345,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     );
   }
 
-  // ❌ REMOVED: _getDecryptedPin() - no longer needed
-
   Future<void> _savePin(String pin) async {
     final prefs = await SharedPreferences.getInstance();
-    // ✅ FIXED: Store PIN directly (no encryption)
     await prefs.setString('pin_code', pin);
     setState(() {
       _pinCode = pin;
@@ -363,6 +358,103 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
         const SnackBar(
           content: Text('PIN set successfully'),
           backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  // ✅ ADDED: PIN Lock Screen
+  Future<bool> _showPinLockScreen() async {
+    if (!_pinEnabled) return true;
+
+    final Completer<bool> completer = Completer<bool>();
+    String enteredPin = '';
+    int attempts = 0;
+    const int maxAttempts = 5;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Enter PIN'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.lock, size: 48, color: Colors.blue),
+              const SizedBox(height: 16),
+              Text(
+                'Enter your PIN to continue',
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                keyboardType: TextInputType.number,
+                obscureText: true,
+                maxLength: 6,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'PIN',
+                  prefixIcon: Icon(Icons.lock_outline),
+                ),
+                onChanged: (value) {
+                  setState(() => enteredPin = value);
+                  if (value.length >= 4) {
+                    // Auto-submit when 4 digits entered
+                    _verifyPin(value, context, completer, setState);
+                  }
+                },
+              ),
+              if (attempts >= maxAttempts)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Too many attempts. Please try again later.',
+                    style: TextStyle(color: Colors.red.shade700, fontSize: 12),
+                  ),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                completer.complete(false);
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                _verifyPin(enteredPin, context, completer, setState);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Unlock'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    return completer.future;
+  }
+
+  void _verifyPin(String enteredPin, BuildContext context, Completer<bool> completer, StateSetter setState) {
+    if (enteredPin == _pinCode) {
+      Navigator.pop(context);
+      completer.complete(true);
+    } else {
+      setState(() {
+        attempts++;
+        enteredPin = '';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Incorrect PIN. ${5 - attempts} attempts remaining'),
+          backgroundColor: Colors.red,
         ),
       );
     }
