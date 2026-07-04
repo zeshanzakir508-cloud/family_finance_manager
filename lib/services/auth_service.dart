@@ -63,7 +63,7 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  // ✅ ADDED: Change Password with re-authentication
+  // ✅ Change Password with re-authentication
   Future<bool> changePassword(String currentPassword, String newPassword) async {
     try {
       final user = _auth.currentUser;
@@ -86,7 +86,6 @@ class AuthService extends ChangeNotifier {
     } on FirebaseAuthException catch (e) {
       print('❌ Firebase error changing password: ${e.code}');
       
-      // Handle specific errors
       if (e.code == 'wrong-password') {
         throw Exception('Current password is incorrect');
       } else if (e.code == 'requires-recent-login') {
@@ -140,17 +139,14 @@ class AuthService extends ChangeNotifier {
 
   bool get isFingerprintEnabled => _isFingerprintEnabled;
 
-  // ✅ ADDED: Get current user email
   String? getCurrentUserEmail() {
     return _user?.email;
   }
 
-  // ✅ ADDED: Check if user is logged in
   bool isLoggedIn() {
     return _user != null;
   }
 
-  // ✅ ADDED: Re-authenticate user
   Future<bool> reauthenticateUser(String password) async {
     try {
       final user = _auth.currentUser;
