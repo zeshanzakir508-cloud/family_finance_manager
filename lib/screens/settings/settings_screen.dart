@@ -9,6 +9,7 @@ import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
+import '../../utils/user_roles.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -24,7 +25,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _selectedCurrency = 'USD';
   bool _hasChanges = false;
 
-  // Debounce
   Timer? _debounceTimer;
   bool _isProcessing = false;
 
@@ -240,18 +240,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildUserInfoSection(BuildContext context) {
-    final isOwner = _user?.role == 'owner';
-    final displayName = isOwner ? 'Owner' : (_user?.displayName ?? 'User');
+    final email = _user?.email ?? '';
+    final uid = _user?.id ?? '';
+    
+    final isOwner = UserRoles.isOwner(email, uid);
+    final isModerator = UserRoles.isModerator(email, uid);
+    final roleDisplay = UserRoles.getRole(email, uid);
+    final roleColor = UserRoles.getRoleColor(email, uid);
     
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: isOwner ? Colors.amber : AppTheme.primaryColor,
+        backgroundColor: isOwner ? Colors.amber : (isModerator ? Colors.blue : AppTheme.primaryColor),
         child: Text(
-          isOwner ? '👑' : (_user?.initials ?? 'U'),
+          isOwner ? '👑' : (isModerator ? '🛡️' : (_user?.initials ?? 'U')),
           style: const TextStyle(color: Colors.white),
         ),
       ),
-      title: Text(displayName),
+      title: Row(
+        children: [
+          Text(_user?.displayName ?? 'User'),
+          const SizedBox(width: 8),
+          if (isOwner || isModerator)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: roleColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: roleColor),
+              ),
+              child: Text(
+                roleDisplay,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: roleColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+        ],
+      ),
       subtitle: Text(_user?.email ?? 'No email'),
       trailing: const Icon(Icons.chevron_right),
       onTap: () {
@@ -413,8 +440,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             });
           },
         ),
-        // ✅ FIXED: Removed "Coming Soon" Language Option
-        // Language option removed - app uses English only
       ],
     );
   }
@@ -493,7 +518,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // Change Password Dialog
   void _showChangePasswordDialog() {
     final currentPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
@@ -550,7 +574,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: isLoading
                   ? null
                   : () async {
-                      // Validate
                       if (currentPasswordController.text.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -681,6 +704,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildAppSettings(BuildContext context) {
+    final email = _user?.email ?? '';
+    final uid = _user?.id ?? '';
+    final isOwner = UserRoles.isOwner(email, uid);
+    final isModerator = UserRoles.isModerator(email, uid);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -735,25 +763,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
             });
           },
         ),
-        // Premium Section (Owner/Moderator Free)
-        if (_user?.role == 'owner' || _user?.role == 'moderator')
+        if (isOwner || isModerator)
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.amber.withOpacity(0.1),
+              color: isOwner ? Colors.amber.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.amber.withOpacity(0.3)),
+              border: Border.all(
+                color: isOwner ? Colors.amber.withOpacity(0.3) : Colors.blue.withOpacity(0.3),
+              ),
             ),
             child: Row(
               children: [
-                const Icon(Icons.star, color: Colors.amber),
+                Icon(
+                  isOwner ? Icons.star : Icons.shield,
+                  color: isOwner ? Colors.amber : Colors.blue,
+                ),
                 const SizedBox(width: 12),
                 Text(
-                  _user?.role == 'owner' ? 'Owner - Free Forever' : 'Moderator - Free Forever',
+                  isOwner ? '👑 Owner - Free Forever' : '🛡️ Moderator - Free Forever',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: Colors.amber.shade700,
+                    color: isOwner ? Colors.amber.shade700 : Colors.blue.shade700,
                   ),
                 ),
               ],
