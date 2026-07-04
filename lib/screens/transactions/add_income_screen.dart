@@ -25,8 +25,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
 
   String _selectedCategory = 'salary';
   DateTime _selectedDate = DateTime.now();
-  String _selectedMemberId = '';  // ✅ Changed to store ID
-  String _selectedMemberName = ''; // ✅ Added to store name
+  String _selectedMemberId = '';
   bool _isLoading = false;
 
   final List<String> _incomeCategories = [
@@ -81,7 +80,13 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
   }
 
   Future<void> _saveIncome() async {
-    if (!_formKey.currentState!.validate()) return;
+    // Validate form
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    // Prevent double submission
+    if (_isLoading) return;
 
     setState(() => _isLoading = true);
 
@@ -95,7 +100,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
         throw Exception('User not logged in');
       }
 
-      // ✅ FIXED: Store member name instead of ID
+      // Get member name if selected
       String? memberName;
       String? memberId;
       
@@ -117,25 +122,30 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
         memberId = selectedMember.id;
       }
 
+      final amount = double.parse(_amountController.text.trim());
+      final description = _descriptionController.text.trim();
+
       final transaction = TransactionModel(
         userId: userId,
         type: 'income',
         category: _selectedCategory,
-        amount: double.parse(_amountController.text.trim()),
+        amount: amount,
         date: _selectedDate,
-        description: _descriptionController.text.trim().isNotEmpty
-            ? _descriptionController.text.trim()
-            : null,
-        memberName: memberName,  // ✅ Store name, not ID
-        memberId: memberId,      // ✅ Store ID separately if needed
+        description: description.isNotEmpty ? description : null,
+        memberName: memberName,
+        memberId: memberId,
         familyId: modeProvider.isFamilyMode ? familyProvider.currentFamily?.id : null,
         isFamilyTransaction: modeProvider.isFamilyMode,
+        createdAt: DateTime.now(),
       );
 
+      // Save with timeout
       if (modeProvider.isPersonalMode) {
-        await DatabaseService.addPersonalTransaction(transaction);
+        await DatabaseService.addPersonalTransaction(transaction)
+            .timeout(const Duration(seconds: 15));
       } else {
-        await DatabaseService.addFamilyTransaction(transaction);
+        await DatabaseService.addFamilyTransaction(transaction)
+            .timeout(const Duration(seconds: 15));
       }
 
       if (mounted) {
@@ -143,22 +153,32 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
           const SnackBar(
             content: Text('Income added successfully! 💰'),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
           ),
         );
         Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = 'Failed to save income';
+        if (e.toString().contains('Timeout')) {
+          errorMessage = 'Connection timeout. Please check your internet and try again.';
+        } else {
+          errorMessage = 'Error: $e';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
           ),
         );
       }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
-
-    setState(() => _isLoading = false);
   }
 
   @override
@@ -196,31 +216,18 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Income Icon
               _buildHeader(),
               const SizedBox(height: 16),
-
-              // Amount
               _buildAmountField(),
               const SizedBox(height: 16),
-
-              // Category
               _buildCategorySelector(),
               const SizedBox(height: 16),
-
-              // Date
               _buildDatePicker(),
               const SizedBox(height: 16),
-
-              // Member (Family Mode)
               if (isFamilyMode) _buildMemberSelector(members),
               if (isFamilyMode) const SizedBox(height: 16),
-
-              // Description
               _buildDescriptionField(),
               const SizedBox(height: 24),
-
-              // Save Button
               _buildSaveButton(),
             ],
           ),
@@ -452,7 +459,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
               if (members.isNotEmpty)
                 ...members.map((member) {
                   return DropdownMenuItem<String>(
-                    value: member.id,  // ✅ Store ID
+                    value: member.id,
                     child: Row(
                       children: [
                         CircleAvatar(
