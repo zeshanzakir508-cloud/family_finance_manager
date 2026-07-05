@@ -1,17 +1,6 @@
 {
-  "buildCommand": "flutter build web --release",
+  "buildCommand": "bash setup.sh",
   "outputDirectory": "build/web",
   "framework": null,
-  "installCommand": "flutter pub get",
-  "routes": [
-    { "src": "/assets/(.*)", "dest": "/assets/$1" },
-    { "src": "/favicon.ico", "dest": "/favicon.ico" },
-    { "src": "/manifest.json", "dest": "/manifest.json" },
-    { "src": "/flutter.js", "dest": "/flutter.js" },
-    { "src": "/main.dart.js", "dest": "/main.dart.js" },
-    { "src": "/(.*)", "dest": "/index.html" }
-  ],
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  "installCommand": "npm install"
 }
