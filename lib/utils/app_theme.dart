@@ -1,3 +1,4 @@
+// lib/utils/app_theme.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -100,7 +101,8 @@ class AppTheme {
         ),
       ),
     ),
-    cardTheme: CardTheme(
+    // ✅ FIXED: CardTheme → CardThemeData
+    cardTheme: CardThemeData(
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
@@ -212,7 +214,8 @@ class AppTheme {
         ),
       ),
     ),
-    cardTheme: CardTheme(
+    // ✅ FIXED: CardTheme → CardThemeData
+    cardTheme: CardThemeData(
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
