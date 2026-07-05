@@ -13,9 +13,9 @@ import 'screens/mode_selection/mode_selection_screen.dart';
 import 'screens/dashboard/personal_dashboard.dart';
 import 'screens/dashboard/family_dashboard.dart';
 import 'screens/settings/settings_screen.dart';
-import 'screens/settings/theme_settings_screen.dart';
+import 'screens/settings/theme_settings_screen.dart' show ThemeSettingsScreen;
 import 'screens/settings/currency_settings_screen.dart';
-import 'screens/settings/security_settings_screen.dart';
+import 'screens/settings/security_settings_screen.dart' show SecuritySettingsScreen;
 import 'screens/settings/notification_settings_screen.dart';
 import 'screens/settings/privacy_policy_screen.dart';
 import 'screens/settings/about_screen.dart';
@@ -180,7 +180,9 @@ class _MyAppState extends State<MyApp> {
           '/personal-dashboard': (context) => const PersonalDashboard(),
           '/family-dashboard': (context) => const FamilyDashboard(),
           '/settings': (context) => const SettingsScreen(),
-          '/theme-settings': (context) => ThemeSettingsScreen(onThemeChanged: refreshTheme),
+          '/theme-settings': (context) => ThemeSettingsScreen(
+              onThemeChanged: refreshTheme,
+            ),
           '/currency-settings': (context) => const CurrencySettingsScreen(),
           '/security-settings': (context) => const SecuritySettingsScreen(),
           '/notification-settings': (context) => const NotificationSettingsScreen(),
