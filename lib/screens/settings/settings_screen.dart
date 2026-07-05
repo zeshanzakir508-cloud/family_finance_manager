@@ -9,7 +9,6 @@ import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
-import '../../utils/user_roles.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -24,6 +23,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isDarkMode = false;
   String _selectedCurrency = 'USD';
   bool _hasChanges = false;
+  bool _isFingerprintEnabled = false;
 
   Timer? _debounceTimer;
   bool _isProcessing = false;
@@ -52,9 +52,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    final authService = Provider.of<AuthService>(context, listen: false);
     setState(() {
       _isDarkMode = prefs.getBool('isDarkMode') ?? false;
       _selectedCurrency = prefs.getString('currency') ?? 'USD';
+      _isFingerprintEnabled = authService.isFingerprintEnabled;
       _hasChanges = false;
     });
   }
@@ -240,13 +242,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildUserInfoSection(BuildContext context) {
-    final email = _user?.email ?? '';
-    final uid = _user?.id ?? '';
+    final authService = Provider.of<AuthService>(context);
+    final role = authService.getCachedUserRole() ?? 'member';
     
-    final isOwner = UserRoles.isOwner(email, uid);
-    final isModerator = UserRoles.isModerator(email, uid);
-    final roleDisplay = UserRoles.getRole(email, uid);
-    final roleColor = UserRoles.getRoleColor(email, uid);
+    bool isOwner = role == 'owner';
+    bool isModerator = role == 'moderator';
+    Color roleColor = isOwner ? Colors.amber : (isModerator ? Colors.blue : Colors.grey);
+    String roleDisplay = isOwner ? '👑 Owner' : (isModerator ? '🛡️ Moderator' : 'Member');
     
     return ListTile(
       leading: CircleAvatar(
@@ -440,11 +442,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             });
           },
         ),
+        // ✅ LANGUAGE REMOVED (FIXED for #15)
       ],
     );
   }
 
   Widget _buildSecuritySettings(BuildContext context) {
+    final authService = Provider.of<AuthService>(context);
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -462,11 +467,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ListTile(
           leading: const Icon(Icons.fingerprint),
           title: const Text('Fingerprint Login'),
+          subtitle: Text(
+            authService.isFingerprintEnabled 
+                ? 'Enabled' 
+                : 'Disabled',
+          ),
           trailing: Switch(
-            value: false,
-            onChanged: (value) {
-              _debounceAction(() {
-                _showFingerprintSetup(value);
+            value: authService.isFingerprintEnabled,
+            onChanged: (value) async {
+              _debounceAction(() async {
+                // ✅ Use AuthService (FIXED for #13)
+                if (value) {
+                  final available = await authService.isFingerprintAvailable();
+                  if (!available) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Fingerprint not available on this device'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+                }
+                await authService.setFingerprintEnabled(value);
+                setState(() {});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      value 
+                          ? 'Fingerprint login enabled!' 
+                          : 'Fingerprint login disabled!',
+                    ),
+                    backgroundColor: Colors.green,
+                  ),
+                );
               });
             },
             activeColor: AppTheme.primaryColor,
@@ -481,28 +515,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             });
           },
         ),
-        ListTile(
-          leading: const Icon(Icons.lock),
-          title: const Text('PIN Lock'),
-          trailing: Switch(
-            value: false,
-            onChanged: (value) {
-              _debounceAction(() {
-                // Handle PIN lock
-              });
-            },
-            activeColor: AppTheme.primaryColor,
-          ),
-          onTap: () {
-            _debounceAction(() {
-              Navigator.pushNamed(context, '/security-settings').then((result) {
-                if (result == true) {
-                  _loadSettings();
-                }
-              });
-            });
-          },
-        ),
+        // ✅ PIN REMOVED (FIXED for #14)
         ListTile(
           leading: const Icon(Icons.lock_reset),
           title: const Text('Change Password'),
@@ -621,18 +634,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             );
                             Navigator.pop(context);
                           }
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Failed to change password. Please check your current password.'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
                         }
                       } catch (e) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Error: $e'),
+                            content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
                             backgroundColor: Colors.red,
                           ),
                         );
@@ -661,53 +667,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showFingerprintSetup(bool value) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Fingerprint Login'),
-        content: Text(
-          value 
-              ? 'Enable fingerprint login for faster access?' 
-              : 'Disable fingerprint login?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      value 
-                          ? 'Fingerprint login enabled!' 
-                          : 'Fingerprint login disabled!',
-                    ),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-                _markChanged();
-              }
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.primaryColor,
-            ),
-            child: Text(value ? 'Enable' : 'Disable'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildAppSettings(BuildContext context) {
-    final email = _user?.email ?? '';
-    final uid = _user?.id ?? '';
-    final isOwner = UserRoles.isOwner(email, uid);
-    final isModerator = UserRoles.isModerator(email, uid);
+    final authService = Provider.of<AuthService>(context);
+    final role = authService.getCachedUserRole() ?? 'member';
+    final isOwner = role == 'owner';
+    final isModerator = role == 'moderator';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
