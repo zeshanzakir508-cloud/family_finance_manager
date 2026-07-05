@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/themes.dart'; // Add this file later
 
 class ThemeSettingsScreen extends StatefulWidget {
   final VoidCallback? onThemeChanged;
@@ -71,8 +72,8 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
         _hasChanges = false;
       });
       
-      // ✅ Apply theme immediately and notify parent
-      _applyTheme();
+      // ✅ Apply theme immediately
+      await _applyTheme();
       
       if (widget.onThemeChanged != null) {
         widget.onThemeChanged!();
@@ -89,6 +90,23 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
         Navigator.pop(context, _selectedTheme);
       }
     });
+  }
+
+  // ✅ FIXED: Actually apply theme
+  Future<void> _applyTheme() async {
+    // Save to SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('theme_mode', _selectedTheme);
+    
+    // Notify parent to rebuild with new theme
+    if (widget.onThemeChanged != null) {
+      widget.onThemeChanged!();
+    }
+    
+    // Force rebuild of entire app
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _cancelChanges() {
@@ -130,11 +148,6 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
         Navigator.pop(context);
       }
     });
-  }
-
-  void _applyTheme() {
-    // Theme is applied globally via main.dart rebuild
-    // parent widget will rebuild and apply new theme
   }
 
   String _getThemeLabel(String theme) {
