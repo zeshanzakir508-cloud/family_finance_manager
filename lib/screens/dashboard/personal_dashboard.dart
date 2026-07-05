@@ -25,6 +25,7 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
   double _totalExpense = 0;
   double _balance = 0;
   bool _isLoading = true;
+  DateTime? _lastBackPress;
 
   final List<Color> _categoryColors = [
     Colors.blue, Colors.green, Colors.red, Colors.orange, Colors.purple,
@@ -40,7 +41,9 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _loadData();
+    if (!_isLoading) {
+      _loadData();
+    }
   }
 
   Future<void> _loadData() async {
@@ -89,72 +92,160 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
     }
   }
 
+  // ✅ Back button handling (FIXED for #10)
+  Future<bool> _onWillPop() async {
+    final now = DateTime.now();
+    if (_lastBackPress == null || now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
+      _lastBackPress = now;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tap again to exit'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return false;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
-      appBar: AppBar(
-        title: const Text('Personal Dashboard'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        automaticallyImplyLeading: false,
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.person,
-                  size: 16,
-                  color: Colors.white.withOpacity(0.8),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  'Personal',
-                  style: TextStyle(
-                    fontSize: 12,
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        backgroundColor: AppTheme.backgroundColor,
+        appBar: AppBar(
+          title: const Text('Personal Dashboard'),
+          backgroundColor: AppTheme.primaryColor,
+          foregroundColor: Colors.white,
+          automaticallyImplyLeading: false,
+          actions: [
+            // ✅ Mode indicator
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.person,
+                    size: 16,
                     color: Colors.white.withOpacity(0.8),
                   ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-            tooltip: 'Refresh',
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildBalanceCards(),
-                    const SizedBox(height: 16),
-                    _buildChartsSection(),
-                    const SizedBox(height: 16),
-                    _buildCategoryBreakdown(),
-                    const SizedBox(height: 16),
-                    _buildRecentTransactions(),
-                    const SizedBox(height: 16),
-                    _buildQuickActions(),
-                    const SizedBox(height: 16),
-                  ],
-                ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Personal',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.8),
+                    ),
+                  ),
+                ],
               ),
             ),
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _loadData,
+              tooltip: 'Refresh',
+            ),
+            // ✅ Settings moved to AppBar (FIXED for #29)
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: () => Navigator.pushNamed(context, '/settings'),
+              tooltip: 'Settings',
+            ),
+          ],
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _loadData,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ✅ Role badge (FIXED for #30)
+                      _buildRoleBadge(),
+                      const SizedBox(height: 12),
+                      _buildBalanceCards(),
+                      const SizedBox(height: 16),
+                      _buildChartsSection(),
+                      const SizedBox(height: 16),
+                      _buildCategoryBreakdown(),
+                      const SizedBox(height: 16),
+                      _buildRecentTransactions(),
+                      const SizedBox(height: 16),
+                      _buildQuickActions(),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+              ),
+      ),
+    );
+  }
+
+  // ✅ Role Badge (FIXED for #30)
+  Widget _buildRoleBadge() {
+    final authService = Provider.of<AuthService>(context);
+    final role = authService.getCachedUserRole() ?? 'member';
+    
+    IconData icon;
+    Color color;
+    String label;
+    
+    switch (role) {
+      case 'owner':
+        icon = Icons.crown;
+        color = Colors.amber;
+        label = '👑 Owner';
+        break;
+      case 'moderator':
+        icon = Icons.shield;
+        color = Colors.blue;
+        label = '🛡️ Moderator';
+        break;
+      case 'admin':
+        icon = Icons.admin_panel_settings;
+        color = Colors.purple;
+        label = '⚙️ Admin';
+        break;
+      default:
+        icon = Icons.person;
+        color = Colors.grey;
+        label = '👤 Member';
+    }
+
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 16),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
