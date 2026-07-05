@@ -97,7 +97,6 @@ class FamilySettings extends HiveObject {
   @HiveField(2)
   final bool requireApproval;
 
-  // ✅ No const
   FamilySettings({
     this.currency = 'USD',
     this.allowMembersToAdd = true,
@@ -152,7 +151,10 @@ class FamilyModel extends HiveObject {
   @HiveField(8)
   final DateTime? updatedAt;
 
-  // ✅ FIXED: Default value in initializer list, not parameter
+  // ✅ ADDED: memberIds field for efficient querying
+  @HiveField(9)
+  final List<String>? memberIds;
+
   FamilyModel({
     required this.id,
     required this.name,
@@ -163,7 +165,8 @@ class FamilyModel extends HiveObject {
     this.members,
     FamilySettings? settings,
     this.updatedAt,
-  }) : settings = settings ?? FamilySettings();  // ← Initializer list
+    this.memberIds,
+  }) : settings = settings ?? FamilySettings();
 
   Map<String, dynamic> toJson() {
     return {
@@ -176,6 +179,7 @@ class FamilyModel extends HiveObject {
       'members': members?.map((m) => m.toJson()).toList() ?? [],
       'settings': settings.toJson(),
       'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
+      'memberIds': memberIds ?? members?.map((m) => m.userId).toList() ?? [],
     };
   }
 
@@ -192,9 +196,12 @@ class FamilyModel extends HiveObject {
           : [],
       settings: json['settings'] != null
           ? FamilySettings.fromJson(json['settings'])
-          : FamilySettings(),  // ✅ No const here either
+          : FamilySettings(),
       updatedAt: json['updatedAt'] != null
           ? (json['updatedAt'] as Timestamp).toDate()
+          : null,
+      memberIds: json['memberIds'] != null
+          ? List<String>.from(json['memberIds'])
           : null,
     );
   }
@@ -209,6 +216,7 @@ class FamilyModel extends HiveObject {
     List<FamilyMember>? members,
     FamilySettings? settings,
     DateTime? updatedAt,
+    List<String>? memberIds,
   }) {
     return FamilyModel(
       id: id ?? this.id,
@@ -220,6 +228,7 @@ class FamilyModel extends HiveObject {
       members: members ?? this.members,
       settings: settings ?? this.settings,
       updatedAt: updatedAt ?? this.updatedAt,
+      memberIds: memberIds ?? this.memberIds,
     );
   }
 }
