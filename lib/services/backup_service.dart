@@ -1,3 +1,4 @@
+// lib/services/backup_service.dart
 import 'dart:convert';
 import 'dart:io';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -15,13 +16,14 @@ import '../utils/helpers.dart';
 class BackupService {
   static Future<BackupModel?> createBackup(String userId) async {
     try {
-      final user = DatabaseService.getUser(userId);
+      final user = await DatabaseService.getUser(userId);
       if (user == null) return null;
 
-      final transactions = DatabaseService.getUserTransactions(userId);
-      final families = DatabaseService.getAllFamilies();
-      final transfers = DatabaseService.getUserTransfers(userId);
-      final notifications = DatabaseService.getUserNotifications(userId);
+      // ✅ FIXED: Only get user's families
+      final transactions = await DatabaseService.getUserTransactions(userId);
+      final families = await DatabaseService.getUserFamilies(userId);
+      final transfers = await DatabaseService.getUserTransfers(userId);
+      final notifications = await DatabaseService.getUserNotifications(userId);
 
       final backupData = {
         'user': user.toJson(),
@@ -35,14 +37,19 @@ class BackupService {
 
       final jsonString = jsonEncode(backupData);
       final directory = await getApplicationDocumentsDirectory();
+      final backupDir = Directory('${directory.path}/backups');
+      if (!await backupDir.exists()) {
+        await backupDir.create(recursive: true);
+      }
+      
       final fileName = 'backup_${Helpers.generateId()}.json';
-      final filePath = '${directory.path}/$fileName';
+      final filePath = '${backupDir.path}/$fileName';
       final file = File(filePath);
       await file.writeAsString(jsonString);
 
       int totalMembers = 0;
       for (var family in families) {
-        totalMembers += (family.memberIds?.length ?? 0);
+        totalMembers += (family.members?.length ?? 0);
       }
 
       final backup = BackupModel(
@@ -61,7 +68,7 @@ class BackupService {
       await DatabaseService.saveBackup(backup);
       return backup;
     } catch (e) {
-      print('Backup error: $e');
+      print('❌ Backup error: $e');
       return null;
     }
   }
@@ -69,9 +76,15 @@ class BackupService {
   static Future<bool> restoreBackup(String filePath, String userId) async {
     try {
       final file = File(filePath);
+      if (!await file.exists()) {
+        print('❌ Backup file not found: $filePath');
+        return false;
+      }
+
       final jsonString = await file.readAsString();
       final backupData = jsonDecode(jsonString) as Map<String, dynamic>;
 
+      // Clear existing data
       await DatabaseService.clearAllData();
 
       if (backupData['user'] != null) {
@@ -115,9 +128,10 @@ class BackupService {
         }
       }
 
+      print('✅ Backup restored successfully');
       return true;
     } catch (e) {
-      print('Restore error: $e');
+      print('❌ Restore error: $e');
       return false;
     }
   }
@@ -135,19 +149,19 @@ class BackupService {
       await DatabaseService.deleteBackup(backup);
       return true;
     } catch (e) {
-      print('Delete backup error: $e');
+      print('❌ Delete backup error: $e');
       return false;
     }
   }
 
   static Future<String?> exportData(String userId) async {
     try {
-      final user = DatabaseService.getUser(userId);
+      final user = await DatabaseService.getUser(userId);
       if (user == null) return null;
 
-      final transactions = DatabaseService.getUserTransactions(userId);
-      final families = DatabaseService.getAllFamilies();
-      final transfers = DatabaseService.getUserTransfers(userId);
+      final transactions = await DatabaseService.getUserTransactions(userId);
+      final families = await DatabaseService.getUserFamilies(userId);
+      final transfers = await DatabaseService.getUserTransfers(userId);
 
       final exportData = {
         'user': user.toJson(),
@@ -159,7 +173,7 @@ class BackupService {
 
       return jsonEncode(exportData);
     } catch (e) {
-      print('Export error: $e');
+      print('❌ Export error: $e');
       return null;
     }
   }
@@ -200,10 +214,45 @@ class BackupService {
         }
       }
 
+      print('✅ Data imported successfully');
       return true;
     } catch (e) {
-      print('Import error: $e');
+      print('❌ Import error: $e');
       return false;
+    }
+  }
+
+  // ✅ NEW: Delete old backups (keep only N)
+  static Future<void> deleteOldBackups(String userId, int keepCount) async {
+    try {
+      final backups = await getBackups(userId);
+      if (backups.length <= keepCount) return;
+
+      // Sort by date (newest first)
+      backups.sort((a, b) => b.backupDate.compareTo(a.backupDate));
+
+      // Keep only latest 'keepCount', delete the rest
+      for (int i = keepCount; i < backups.length; i++) {
+        await deleteBackupFile(backups[i]);
+      }
+
+      print('✅ Deleted ${backups.length - keepCount} old backups');
+    } catch (e) {
+      print('❌ Delete old backups error: $e');
+    }
+  }
+
+  // ✅ NEW: Get total backup size
+  static Future<double> getTotalBackupSize(String userId) async {
+    try {
+      final backups = await getBackups(userId);
+      double totalSize = 0;
+      for (var backup in backups) {
+        totalSize += backup.fileSize ?? 0;
+      }
+      return totalSize;
+    } catch (e) {
+      return 0;
     }
   }
 }
