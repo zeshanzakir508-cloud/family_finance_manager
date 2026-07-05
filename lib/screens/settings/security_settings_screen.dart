@@ -2,7 +2,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:provider/provider.dart';  // ✅ ADDED
+import 'package:provider/provider.dart';
 import '../../services/biometric_service.dart';
 import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
@@ -53,8 +53,10 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   Future<void> _loadSettings() async {
     setState(() => _isLoading = true);
     final prefs = await SharedPreferences.getInstance();
+    final authService = Provider.of<AuthService>(context, listen: false);
+    
     setState(() {
-      _fingerprintEnabled = prefs.getBool('fingerprint_enabled') ?? false;
+      _fingerprintEnabled = authService.isFingerprintEnabled;
       _initialFingerprintEnabled = _fingerprintEnabled;
       _autoLogout = prefs.getBool('auto_logout') ?? false;
       _initialAutoLogout = _autoLogout;
@@ -78,9 +80,10 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
       setState(() => _isLoading = true);
       
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('fingerprint_enabled', _fingerprintEnabled);
       await prefs.setBool('auto_logout', _autoLogout);
       await prefs.setInt('auto_logout_time', _autoLogoutTime);
+      
+      // Fingerprint already saved via AuthService
       
       setState(() {
         _initialFingerprintEnabled = _fingerprintEnabled;
@@ -199,13 +202,13 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     );
     
     if (authenticated) {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.setFingerprintEnabled(true);
+      
       setState(() {
         _fingerprintEnabled = true;
         _markChanged();
       });
-      
-      final authService = Provider.of<AuthService>(context, listen: false);
-      await authService.setFingerprintEnabled(true);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -228,13 +231,13 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   }
 
   Future<void> _disableFingerprintForLogin() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    await authService.setFingerprintEnabled(false);
+    
     setState(() {
       _fingerprintEnabled = false;
       _markChanged();
     });
-    
-    final authService = Provider.of<AuthService>(context, listen: false);
-    await authService.setFingerprintEnabled(false);
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -351,6 +354,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
                             ),
                           ),
                         ),
+                      
+                      // ✅ PIN REMOVED (FIXED for #14)
                       
                       const SizedBox(height: 16),
                       Container(
