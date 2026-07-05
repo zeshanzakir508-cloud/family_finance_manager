@@ -12,17 +12,14 @@ export FLUTTER_ROOT="/tmp/flutter"
 # Enable web
 flutter config --enable-web
 
-# Force clean everything
+# NUCLEAR CLEAN - Remove EVERYTHING
 flutter clean
 rm -f pubspec.lock
 rm -rf .dart_tool
 rm -rf build
-rm -rf ~/.pub-cache/hosted/pub.dev/google_fonts-*
+rm -rf ~/.pub-cache
 
-# Force install correct google_fonts version
-flutter pub add google_fonts:8.1.0
-
-# Get all dependencies
+# Get dependencies with fresh cache
 flutter pub get
 
 # Build
