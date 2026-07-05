@@ -98,7 +98,6 @@ class _FamilyDashboardState extends State<FamilyDashboard>
       }
 
       try {
-        // ✅ FIXED: Pass userId for permission check
         _transactions = await DatabaseService.getFamilyTransactions(
           _currentFamily!.id,
           _userId!,
@@ -152,7 +151,6 @@ class _FamilyDashboardState extends State<FamilyDashboard>
     }
   }
 
-  // ✅ Back button handling (FIXED for #10)
   Future<bool> _onWillPop() async {
     final now = DateTime.now();
     if (_lastBackPress == null || now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
@@ -183,10 +181,8 @@ class _FamilyDashboardState extends State<FamilyDashboard>
           foregroundColor: Colors.white,
           automaticallyImplyLeading: false,
           actions: [
-            // ✅ Role badge (FIXED for #30)
             _buildRoleBadge(),
             const SizedBox(width: 4),
-            // Family indicator
             Container(
               margin: const EdgeInsets.only(right: 4),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -225,7 +221,6 @@ class _FamilyDashboardState extends State<FamilyDashboard>
               },
               tooltip: 'Manage Family',
             ),
-            // ✅ Settings in AppBar (FIXED for #29)
             IconButton(
               icon: const Icon(Icons.settings),
               onPressed: () => Navigator.pushNamed(context, '/settings'),
@@ -249,7 +244,7 @@ class _FamilyDashboardState extends State<FamilyDashboard>
     );
   }
 
-  // ✅ Role Badge (FIXED for #30)
+  // ✅ FIXED: Icons.crown → Icons.star
   Widget _buildRoleBadge() {
     final authService = Provider.of<AuthService>(context);
     final role = authService.getCachedUserRole() ?? 'member';
@@ -260,7 +255,7 @@ class _FamilyDashboardState extends State<FamilyDashboard>
     
     switch (role) {
       case 'owner':
-        icon = Icons.crown;
+        icon = Icons.star;
         color = Colors.amber;
         label = '👑';
         break;
