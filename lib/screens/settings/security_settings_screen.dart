@@ -1,31 +1,37 @@
-// lib/screens/settings/theme_settings_screen.dart
+// lib/screens/settings/security_settings_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import '../../services/biometric_service.dart';
+import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
-// ✅ REMOVED: import '../../utils/themes.dart';
 
-class ThemeSettingsScreen extends StatefulWidget {
-  final VoidCallback? onThemeChanged;
-
-  const ThemeSettingsScreen({super.key, this.onThemeChanged});
+class SecuritySettingsScreen extends StatefulWidget {
+  const SecuritySettingsScreen({super.key});
 
   @override
-  State<ThemeSettingsScreen> createState() => _ThemeSettingsScreenState();
+  State<SecuritySettingsScreen> createState() => _SecuritySettingsScreenState();
 }
 
-class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
-  String _selectedTheme = 'system';
-  String _initialTheme = 'system';
+class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
+  bool _fingerprintEnabled = false;
+  bool _initialFingerprintEnabled = false;
+  bool _autoLogout = false;
+  bool _initialAutoLogout = false;
+  int _autoLogoutTime = 5;
+  int _initialAutoLogoutTime = 5;
   bool _hasChanges = false;
-  
-  Timer? _debounceTimer;
+  bool _isLoading = false;
   bool _isProcessing = false;
+
+  Timer? _debounceTimer;
+  final List<int> _logoutTimes = [1, 5, 10, 15, 30, 60];
 
   @override
   void initState() {
     super.initState();
-    _loadTheme();
+    _loadSettings();
   }
 
   @override
@@ -44,64 +50,58 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
     });
   }
 
-  Future<void> _loadTheme() async {
+  Future<void> _loadSettings() async {
+    setState(() => _isLoading = true);
     final prefs = await SharedPreferences.getInstance();
-    final savedTheme = prefs.getString('theme_mode') ?? 'system';
+    final authService = Provider.of<AuthService>(context, listen: false);
+    
     setState(() {
-      _selectedTheme = savedTheme;
-      _initialTheme = savedTheme;
+      _fingerprintEnabled = authService.isFingerprintEnabled;
+      _initialFingerprintEnabled = _fingerprintEnabled;
+      _autoLogout = prefs.getBool('auto_logout') ?? false;
+      _initialAutoLogout = _autoLogout;
+      _autoLogoutTime = prefs.getInt('auto_logout_time') ?? 5;
+      _initialAutoLogoutTime = _autoLogoutTime;
       _hasChanges = false;
+      _isLoading = false;
     });
   }
 
-  void _selectTheme(String theme) {
-    _debounceAction(() {
-      setState(() {
-        _selectedTheme = theme;
-        _hasChanges = _selectedTheme != _initialTheme;
-      });
+  void _markChanged() {
+    setState(() {
+      _hasChanges = _fingerprintEnabled != _initialFingerprintEnabled ||
+          _autoLogout != _initialAutoLogout ||
+          _autoLogoutTime != _initialAutoLogoutTime;
     });
   }
 
-  Future<void> _saveTheme() async {
+  Future<void> _saveSettings() async {
     _debounceAction(() async {
+      setState(() => _isLoading = true);
+      
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('theme_mode', _selectedTheme);
+      await prefs.setBool('auto_logout', _autoLogout);
+      await prefs.setInt('auto_logout_time', _autoLogoutTime);
+      
       setState(() {
-        _initialTheme = _selectedTheme;
+        _initialFingerprintEnabled = _fingerprintEnabled;
+        _initialAutoLogout = _autoLogout;
+        _initialAutoLogoutTime = _autoLogoutTime;
         _hasChanges = false;
+        _isLoading = false;
       });
-      
-      await _applyTheme();
-      
-      if (widget.onThemeChanged != null) {
-        widget.onThemeChanged!();
-      }
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Theme updated to ${_getThemeLabel(_selectedTheme)}'),
+          const SnackBar(
+            content: Text('Security settings saved successfully'),
             backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
+            duration: Duration(seconds: 2),
           ),
         );
-        Navigator.pop(context, _selectedTheme);
+        Navigator.pop(context, true);
       }
     });
-  }
-
-  Future<void> _applyTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('theme_mode', _selectedTheme);
-    
-    if (widget.onThemeChanged != null) {
-      widget.onThemeChanged!();
-    }
-    
-    if (mounted) {
-      setState(() {});
-    }
   }
 
   void _cancelChanges() {
@@ -111,7 +111,7 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Discard Changes?'),
-            content: const Text('You have unsaved theme changes. Are you sure you want to discard them?'),
+            content: const Text('You have unsaved security changes. Are you sure you want to discard them?'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -121,12 +121,14 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
                 onPressed: () {
                   Navigator.pop(context);
                   setState(() {
-                    _selectedTheme = _initialTheme;
+                    _fingerprintEnabled = _initialFingerprintEnabled;
+                    _autoLogout = _initialAutoLogout;
+                    _autoLogoutTime = _initialAutoLogoutTime;
                     _hasChanges = false;
                   });
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Theme changes discarded'),
+                      content: Text('Security changes discarded'),
                       backgroundColor: Colors.grey,
                     ),
                   );
@@ -145,12 +147,103 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
     });
   }
 
-  String _getThemeLabel(String theme) {
-    switch (theme) {
-      case 'system': return 'System Default';
-      case 'light': return 'Light Mode';
-      case 'dark': return 'Dark Mode';
-      default: return theme;
+  Future<void> _testFingerprint() async {
+    _debounceAction(() async {
+      final available = await BiometricService.isAvailable();
+      if (!available) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Fingerprint not available on this device'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      final authenticated = await BiometricService.authenticate(
+        reason: 'Authenticate to test fingerprint',
+      );
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              authenticated 
+                  ? 'Fingerprint authentication successful! ✅' 
+                  : 'Fingerprint authentication failed ❌',
+            ),
+            backgroundColor: authenticated ? Colors.green : Colors.red,
+          ),
+        );
+      }
+    });
+  }
+
+  Future<void> _enableFingerprintForLogin() async {
+    final available = await BiometricService.isAvailable();
+    if (!available) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Fingerprint not available on this device'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    final authenticated = await BiometricService.authenticate(
+      reason: 'Enable fingerprint login',
+    );
+    
+    if (authenticated) {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.setFingerprintEnabled(true);
+      
+      setState(() {
+        _fingerprintEnabled = true;
+        _markChanged();
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Fingerprint login enabled! 🔐'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Fingerprint authentication failed. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _disableFingerprintForLogin() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    await authService.setFingerprintEnabled(false);
+    
+    setState(() {
+      _fingerprintEnabled = false;
+      _markChanged();
+    });
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Fingerprint login disabled'),
+          backgroundColor: Colors.orange,
+        ),
+      );
     }
   }
 
@@ -159,13 +252,13 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: const Text('Theme Settings'),
+        title: const Text('Security Settings'),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         actions: [
           if (_hasChanges)
             TextButton(
-              onPressed: _saveTheme,
+              onPressed: _saveSettings,
               style: TextButton.styleFrom(
                 foregroundColor: Colors.white,
               ),
@@ -173,259 +266,178 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
             ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
               children: [
-                const SizedBox(height: 8),
-                _buildThemeTile(
-                  icon: Icons.phone_android,
-                  title: 'System Default',
-                  subtitle: 'Follow device theme',
-                  value: 'system',
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    children: [
+                      FutureBuilder<bool>(
+                        future: BiometricService.isAvailable(),
+                        builder: (context, snapshot) {
+                          final available = snapshot.data ?? false;
+                          return _buildSwitchTile(
+                            icon: Icons.fingerprint,
+                            title: 'Fingerprint Login',
+                            subtitle: available
+                                ? _fingerprintEnabled
+                                    ? 'Fingerprint login enabled ✓'
+                                    : 'Enable fingerprint to unlock'
+                                : 'Fingerprint not available on this device',
+                            value: _fingerprintEnabled && available,
+                            onChanged: available ? (value) {
+                              _debounceAction(() {
+                                if (value) {
+                                  _enableFingerprintForLogin();
+                                } else {
+                                  _disableFingerprintForLogin();
+                                }
+                              });
+                            } : null,
+                          );
+                        },
+                      ),
+                      
+                      const Divider(height: 24),
+                      
+                      _buildSwitchTile(
+                        icon: Icons.timer,
+                        title: 'Auto Logout',
+                        subtitle: _autoLogout
+                            ? 'Logout after $_autoLogoutTime minutes of inactivity'
+                            : 'Auto logout after inactivity',
+                        value: _autoLogout,
+                        onChanged: (value) {
+                          _debounceAction(() {
+                            setState(() {
+                              _autoLogout = value;
+                              _markChanged();
+                            });
+                          });
+                        },
+                      ),
+                      
+                      if (_autoLogout)
+                        Card(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: BorderSide(color: Colors.grey.shade200),
+                          ),
+                          child: ListTile(
+                            leading: const Icon(Icons.timer_outlined, color: Colors.blue),
+                            title: const Text('Logout Time'),
+                            subtitle: Text('$_autoLogoutTime minutes'),
+                            trailing: DropdownButton<int>(
+                              value: _autoLogoutTime,
+                              items: _logoutTimes.map((time) {
+                                return DropdownMenuItem(
+                                  value: time,
+                                  child: Text('$time min'),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                _debounceAction(() {
+                                  if (value != null) {
+                                    setState(() {
+                                      _autoLogoutTime = value;
+                                      _markChanged();
+                                    });
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                      
+                      const SizedBox(height: 16),
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.security, color: Colors.blue),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Enable fingerprint for quick and secure login.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
                 ),
-                _buildThemeTile(
-                  icon: Icons.light_mode,
-                  title: 'Light Mode',
-                  subtitle: 'Always use light theme',
-                  value: 'light',
-                ),
-                _buildThemeTile(
-                  icon: Icons.dark_mode,
-                  title: 'Dark Mode',
-                  subtitle: 'Always use dark theme',
-                  value: 'dark',
-                ),
-                const SizedBox(height: 16),
-                _buildThemePreview(),
-                const SizedBox(height: 24),
+                _buildBottomButtons(),
               ],
             ),
-          ),
-          _buildBottomButtons(),
-        ],
-      ),
     );
   }
 
-  Widget _buildThemeTile({
+  Widget _buildSwitchTile({
     required IconData icon,
     required String title,
     required String subtitle,
-    required String value,
+    required bool value,
+    required Function(bool)? onChanged,
   }) {
-    final isSelected = _selectedTheme == value;
-    
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      elevation: isSelected ? 4 : 1,
+      elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: isSelected 
-              ? AppTheme.primaryColor 
-              : Colors.transparent,
-          width: 2,
+          color: value ? AppTheme.primaryColor.withOpacity(0.3) : Colors.grey.shade200,
+          width: value ? 2 : 1,
         ),
       ),
-      child: ListTile(
-        leading: Container(
+      child: SwitchListTile(
+        secondary: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: isSelected 
-                ? AppTheme.primaryColor.withOpacity(0.1) 
-                : Colors.grey.withOpacity(0.1),
+            color: value ? AppTheme.primaryColor.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(
             icon,
-            color: isSelected ? AppTheme.primaryColor : Colors.grey,
-            size: 24,
+            color: value ? AppTheme.primaryColor : Colors.grey,
+            size: 22,
           ),
         ),
         title: Text(
           title,
           style: TextStyle(
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            color: isSelected ? AppTheme.primaryColor : null,
+            fontWeight: value ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
-        subtitle: Text(subtitle),
-        trailing: isSelected
-            ? Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.check,
-                  color: Colors.white,
-                  size: 16,
-                ),
-              )
-            : null,
-        onTap: () => _selectTheme(value),
-        selected: isSelected,
-        selectedTileColor: AppTheme.primaryColor.withOpacity(0.05),
-      ),
-    );
-  }
-
-  Widget _buildThemePreview() {
-    final isDark = _selectedTheme == 'dark';
-    
-    final previewColor = isDark ? Colors.grey[900] : Colors.white;
-    final textColor = isDark ? Colors.white : Colors.black;
-    final cardColor = isDark ? Colors.grey[800] : Colors.grey[100];
-    
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: previewColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Theme Preview',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: textColor.withOpacity(0.7),
-            ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade600,
           ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: const BoxDecoration(
-                    color: Colors.blue,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Sample Title',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: textColor,
-                        ),
-                      ),
-                      Text(
-                        'Sample subtitle text',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: textColor.withOpacity(0.7),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    'Active',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    'Income: \$5,000',
-                    style: TextStyle(
-                      color: Colors.green,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    'Expense: \$2,000',
-                    style: TextStyle(
-                      color: Colors.red,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Selected: ${_getThemeLabel(_selectedTheme)}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: textColor.withOpacity(0.7),
-                  ),
-                ),
-                Icon(
-                  _selectedTheme == 'dark' 
-                      ? Icons.dark_mode 
-                      : (_selectedTheme == 'light' 
-                          ? Icons.light_mode 
-                          : Icons.phone_android),
-                  color: Colors.blue,
-                  size: 16,
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
+        value: value,
+        onChanged: onChanged,
+        activeColor: AppTheme.primaryColor,
+        activeTrackColor: AppTheme.primaryColor.withOpacity(0.3),
+        inactiveThumbColor: Colors.grey.shade400,
+        inactiveTrackColor: Colors.grey.shade200,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
       ),
     );
   }
@@ -463,7 +475,7 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: ElevatedButton(
-              onPressed: _hasChanges ? _saveTheme : null,
+              onPressed: _hasChanges ? _saveSettings : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: _hasChanges 
                     ? AppTheme.primaryColor 
