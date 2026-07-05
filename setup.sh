@@ -3,15 +3,13 @@
 git clone https://github.com/flutter/flutter.git -b stable /tmp/flutter
 export PATH="$PATH:/tmp/flutter/bin"
 
+# ✅ DELETE pubspec.lock
+rm -f pubspec.lock
+
 # Enable web
 flutter config --enable-web
 
-# Clean cache
-rm -rf .dart_tool
-rm -rf build
-rm -f pubspec.lock
-
-# Get dependencies
+# Get dependencies (this creates new pubspec.lock without google_fonts)
 flutter pub get
 
 # Generate Hive adapters
