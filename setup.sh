@@ -3,10 +3,6 @@
 git clone https://github.com/flutter/flutter.git -b stable /tmp/flutter
 export PATH="$PATH:/tmp/flutter/bin"
 
-# Force google_fonts version
-echo "dependencies:
-  google_fonts: 6.1.0" > pubspec_overrides.yaml
-
 # Enable web
 flutter config --enable-web
 
