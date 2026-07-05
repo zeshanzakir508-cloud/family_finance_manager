@@ -1,3 +1,4 @@
+// lib/screens/settings/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -21,6 +22,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _phoneController = TextEditingController();
 
   UserModel? _user;
+  String? _role;
   bool _isLoading = true;
   bool _isSaving = false;
 
@@ -28,6 +30,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadUser();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // ✅ Auto-refresh when returning to screen
+    if (!_isLoading) {
+      _loadUser();
+    }
   }
 
   @override
@@ -43,7 +54,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final userId = authService.userId;
     
     if (userId != null) {
-      _user = await DatabaseService.getUser(userId);
+      // ✅ Try to get from cache first
+      final cachedProfile = authService.userProfile;
+      if (cachedProfile != null) {
+        _user = UserModel.fromJson(cachedProfile);
+        _role = cachedProfile['role'] ?? 'member';
+      }
+      
+      // ✅ Then fetch fresh from Firestore
+      final user = await DatabaseService.getUser(userId);
+      if (user != null) {
+        _user = user;
+        _role = await DatabaseService.getUserRole(userId) ?? 'member';
+      }
+      
       if (_user != null) {
         _displayNameController.text = _user!.displayName ?? '';
         _usernameController.text = _user!.username ?? '';
@@ -68,16 +92,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
       
       await DatabaseService.saveUser(updatedUser);
       
+      // ✅ Refresh AuthService cache
+      final authService = Provider.of<AuthService>(context, listen: false);
+      if (authService.userId != null) {
+        await authService.fetchUserProfile(authService.userId!);
+      }
+      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Profile updated successfully'),
+          content: Text('✅ Profile updated successfully'),
           backgroundColor: Colors.green,
         ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: $e'),
+          content: Text('❌ Error: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -174,6 +204,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 12),
+
+              // ✅ ROLE BADGE (FIXED)
+              _buildRoleBadge(),
               const SizedBox(height: 24),
 
               // Email (read-only)
@@ -284,6 +318,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // ✅ Build Role Badge (FIXED for #30, #39)
+  Widget _buildRoleBadge() {
+    final role = _role ?? 'member';
+    
+    IconData icon;
+    Color color;
+    String label;
+    
+    switch (role) {
+      case 'owner':
+        icon = Icons.crown;
+        color = Colors.amber;
+        label = '👑 Owner';
+        break;
+      case 'moderator':
+        icon = Icons.shield;
+        color = Colors.blue;
+        label = '🛡️ Moderator';
+        break;
+      case 'admin':
+        icon = Icons.admin_panel_settings;
+        color = Colors.purple;
+        label = '⚙️ Admin';
+        break;
+      default:
+        icon = Icons.person;
+        color = Colors.grey;
+        label = '👤 Member';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        ],
       ),
     );
   }
