@@ -63,10 +63,11 @@ Future<void> _requestPermissions() async {
       }
     }
 
+    // ✅ FIXED: notification (singular)
     await [
       Permission.storage,
       Permission.camera,
-      Permission.notifications,
+      Permission.notification,
     ].request();
 
     await prefs.setBool('permissions_asked', true);
