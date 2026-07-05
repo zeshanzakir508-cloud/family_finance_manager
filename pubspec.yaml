@@ -26,13 +26,13 @@ dependencies:
   # State management & data
   provider: 6.1.2
   shared_preferences: 2.2.3
-  sqflite: 2.4.1
+  sqflite: 2.3.3  # ✅ Downgraded
   
   # Utilities
   intl: 0.18.1
   path_provider: 2.1.5
   image_picker: 1.1.2
-  permission_handler: 11.0.0  # ✅ Downgraded
+  permission_handler: 11.0.0
   connectivity_plus: 5.0.2
   share_plus: 7.2.2
   url_launcher: 6.3.1
