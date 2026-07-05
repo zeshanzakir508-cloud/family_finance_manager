@@ -11,7 +11,9 @@ import '../models/goal_model.dart';
 class DatabaseService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // ==================== USER METHODS ====================
+  // ============================================================
+  // USER / PROFILE METHODS (FIXED)
+  // ============================================================
 
   static Future<UserModel?> getUser(String userId) async {
     try {
@@ -29,92 +31,57 @@ class DatabaseService {
     await _firestore.collection('users').doc(user.id).set(user.toJson());
   }
 
-  // ==================== TRANSACTION METHODS ====================
-
-  static Future<void> addPersonalTransaction(TransactionModel transaction) async {
-    await _firestore.collection('transactions').add(transaction.toJson());
-  }
-
-  static Future<void> addFamilyTransaction(TransactionModel transaction) async {
-    await _firestore.collection('transactions').add(transaction.toJson());
-  }
-
-  static Future<void> saveTransaction(TransactionModel transaction) async {
+  /// ✅ Check if user profile exists
+  static Future<bool> userProfileExists(String userId) async {
     try {
-      if (transaction.id != null && transaction.id!.isNotEmpty) {
-        // Update existing transaction
-        final snapshot = await _firestore
-            .collection('transactions')
-            .where('id', isEqualTo: transaction.id)
-            .limit(1)
-            .get();
-        
-        if (snapshot.docs.isNotEmpty) {
-          await _firestore
-              .collection('transactions')
-              .doc(snapshot.docs.first.id)
-              .update(transaction.toJson());
-        } else {
-          await _firestore.collection('transactions').add(transaction.toJson());
-        }
-      } else {
-        // New transaction
-        await _firestore.collection('transactions').add(transaction.toJson());
+      final doc = await _firestore.collection('users').doc(userId).get();
+      return doc.exists;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// ✅ Get user role from Firestore
+  static Future<String?> getUserRole(String userId) async {
+    try {
+      final doc = await _firestore.collection('users').doc(userId).get();
+      if (doc.exists) {
+        return doc.data()?['role'] as String?;
       }
+      return null;
     } catch (e) {
-      throw Exception('Failed to save transaction: $e');
+      return null;
     }
   }
 
-  static Future<List<TransactionModel>> getUserTransactions(String userId) async {
+  /// ✅ Get full user profile
+  static Future<Map<String, dynamic>?> getUserProfile(String userId) async {
     try {
-      final snapshot = await _firestore
-          .collection('transactions')
-          .where('userId', isEqualTo: userId)
-          .orderBy('date', descending: true)
-          .get();
-      
-      return snapshot.docs.map((doc) {
-        return TransactionModel.fromJson(doc.data());
-      }).toList();
-    } catch (e) {
-      return [];
-    }
-  }
-
-  static Future<List<TransactionModel>> getFamilyTransactions(String familyId) async {
-    try {
-      final snapshot = await _firestore
-          .collection('transactions')
-          .where('familyId', isEqualTo: familyId)
-          .orderBy('date', descending: true)
-          .get();
-      
-      return snapshot.docs.map((doc) {
-        return TransactionModel.fromJson(doc.data());
-      }).toList();
-    } catch (e) {
-      return [];
-    }
-  }
-
-  static Future<void> deleteTransaction(String transactionId) async {
-    try {
-      final snapshot = await _firestore
-          .collection('transactions')
-          .where('id', isEqualTo: transactionId)
-          .limit(1)
-          .get();
-      
-      if (snapshot.docs.isNotEmpty) {
-        await _firestore.collection('transactions').doc(snapshot.docs.first.id).delete();
+      final doc = await _firestore.collection('users').doc(userId).get();
+      if (doc.exists) {
+        return doc.data();
       }
+      return null;
     } catch (e) {
-      throw Exception('Failed to delete transaction: $e');
+      return null;
     }
   }
 
-  // ==================== FAMILY METHODS ====================
+  /// ✅ Update user role
+  static Future<void> updateUserRole(String userId, String role) async {
+    try {
+      await _firestore.collection('users').doc(userId).update({
+        'role': role,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Failed to update user role: $e');
+    }
+  }
+
+  // ============================================================
+  // FAMILY METHODS (FIXED)
+  // ============================================================
 
   static Future<void> saveFamily(FamilyModel family) async {
     try {
@@ -139,6 +106,74 @@ class DatabaseService {
     }
   }
 
+  /// ✅ FIXED: Get user families using memberIds array
+  static Future<List<FamilyModel>> getUserFamilies(String userId) async {
+    try {
+      // Method 1: Query using memberIds array (if available)
+      final snapshot = await _firestore
+          .collection('families')
+          .where('memberIds', arrayContains: userId)
+          .get();
+      
+      if (snapshot.docs.isNotEmpty) {
+        return snapshot.docs.map((doc) {
+          return FamilyModel.fromJson(doc.data());
+        }).toList();
+      }
+      
+      // Method 2: Fallback - query all and filter (for backward compatibility)
+      final allSnapshot = await _firestore.collection('families').get();
+      return allSnapshot.docs
+          .map((doc) => FamilyModel.fromJson(doc.data()))
+          .where((family) => family.members?.any((m) => m.userId == userId) ?? false)
+          .toList();
+    } catch (e) {
+      // If arrayContains fails, fallback to filter method
+      try {
+        final allSnapshot = await _firestore.collection('families').get();
+        return allSnapshot.docs
+            .map((doc) => FamilyModel.fromJson(doc.data()))
+            .where((family) => family.members?.any((m) => m.userId == userId) ?? false)
+            .toList();
+      } catch (e2) {
+        return [];
+      }
+    }
+  }
+
+  static Future<FamilyModel?> getFamily(String familyId) async {
+    try {
+      final doc = await _firestore.collection('families').doc(familyId).get();
+      if (doc.exists) {
+        return FamilyModel.fromJson(doc.data()!);
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// ✅ Check if user is member of a family
+  static Future<bool> isUserInFamily(String userId, String familyId) async {
+    try {
+      final family = await getFamily(familyId);
+      if (family == null) return false;
+      return family.members?.any((m) => m.userId == userId) ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// ✅ Get family members
+  static Future<List<FamilyMember>> getFamilyMembers(String familyId) async {
+    try {
+      final family = await getFamily(familyId);
+      return family?.members ?? [];
+    } catch (e) {
+      return [];
+    }
+  }
+
   static Future<void> joinFamily(String familyCode, String userId) async {
     try {
       final snapshot = await _firestore
@@ -154,7 +189,6 @@ class DatabaseService {
       final familyDoc = snapshot.docs.first;
       final family = FamilyModel.fromJson(familyDoc.data());
       
-      // Add user as member
       final newMember = FamilyMember(
         id: userId,
         userId: userId,
@@ -168,8 +202,15 @@ class DatabaseService {
       final updatedMembers = List<FamilyMember>.from(family.members ?? []);
       updatedMembers.add(newMember);
       
+      // ✅ Update memberIds array for better querying
+      final updatedMemberIds = List<String>.from(family.memberIds ?? []);
+      if (!updatedMemberIds.contains(userId)) {
+        updatedMemberIds.add(userId);
+      }
+      
       await _firestore.collection('families').doc(familyDoc.id).update({
         'members': updatedMembers.map((m) => m.toJson()).toList(),
+        'memberIds': updatedMemberIds,
       });
     } catch (e) {
       throw Exception('Failed to join family: $e');
@@ -186,8 +227,13 @@ class DatabaseService {
       final family = FamilyModel.fromJson(doc.data()!);
       final updatedMembers = family.members?.where((m) => m.id != userId).toList() ?? [];
       
+      // ✅ Update memberIds array
+      final updatedMemberIds = List<String>.from(family.memberIds ?? []);
+      updatedMemberIds.remove(userId);
+      
       await _firestore.collection('families').doc(familyId).update({
         'members': updatedMembers.map((m) => m.toJson()).toList(),
+        'memberIds': updatedMemberIds,
       });
     } catch (e) {
       throw Exception('Failed to leave family: $e');
@@ -205,42 +251,161 @@ class DatabaseService {
       final updatedMembers = List<FamilyMember>.from(family.members ?? []);
       updatedMembers.add(member);
       
+      // ✅ Update memberIds array
+      final updatedMemberIds = List<String>.from(family.memberIds ?? []);
+      if (!updatedMemberIds.contains(member.userId)) {
+        updatedMemberIds.add(member.userId);
+      }
+      
       await _firestore.collection('families').doc(familyId).update({
         'members': updatedMembers.map((m) => m.toJson()).toList(),
+        'memberIds': updatedMemberIds,
       });
     } catch (e) {
       throw Exception('Failed to add member: $e');
     }
   }
 
-  static Future<List<FamilyModel>> getUserFamilies(String userId) async {
+  // ============================================================
+  // TRANSACTION METHODS (FIXED)
+  // ============================================================
+
+  /// ✅ Add personal transaction
+  static Future<void> addPersonalTransaction(TransactionModel transaction) async {
     try {
-      // Note: arrayContains on objects doesn't work well in Firestore
-      // We need to use a different approach - query all families and filter
-      final snapshot = await _firestore.collection('families').get();
+      // Ensure it's marked as personal
+      final data = transaction.toJson();
+      data['type'] = 'personal';
+      await _firestore.collection('transactions').add(data);
+    } catch (e) {
+      throw Exception('Failed to add personal transaction: $e');
+    }
+  }
+
+  /// ✅ Add family transaction
+  static Future<void> addFamilyTransaction(TransactionModel transaction) async {
+    try {
+      // Ensure it's marked as family
+      final data = transaction.toJson();
+      data['type'] = 'family';
+      await _firestore.collection('transactions').add(data);
+    } catch (e) {
+      throw Exception('Failed to add family transaction: $e');
+    }
+  }
+
+  static Future<void> saveTransaction(TransactionModel transaction) async {
+    try {
+      if (transaction.id != null && transaction.id!.isNotEmpty) {
+        final snapshot = await _firestore
+            .collection('transactions')
+            .where('id', isEqualTo: transaction.id)
+            .limit(1)
+            .get();
+        
+        if (snapshot.docs.isNotEmpty) {
+          await _firestore
+              .collection('transactions')
+              .doc(snapshot.docs.first.id)
+              .update(transaction.toJson());
+        } else {
+          await _firestore.collection('transactions').add(transaction.toJson());
+        }
+      } else {
+        await _firestore.collection('transactions').add(transaction.toJson());
+      }
+    } catch (e) {
+      throw Exception('Failed to save transaction: $e');
+    }
+  }
+
+  /// ✅ Get user personal transactions
+  static Future<List<TransactionModel>> getUserTransactions(String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('transactions')
+          .where('userId', isEqualTo: userId)
+          .where('type', isEqualTo: 'personal')
+          .orderBy('date', descending: true)
+          .get();
       
-      return snapshot.docs
-          .map((doc) => FamilyModel.fromJson(doc.data()))
-          .where((family) => family.members?.any((m) => m.userId == userId) ?? false)
-          .toList();
+      return snapshot.docs.map((doc) {
+        return TransactionModel.fromJson(doc.data());
+      }).toList();
     } catch (e) {
       return [];
     }
   }
 
-  static Future<FamilyModel?> getFamily(String familyId) async {
+  /// ✅ FIXED: Get family transactions with role/permission check
+  static Future<List<TransactionModel>> getFamilyTransactions(
+    String familyId, 
+    String userId,  // ✅ Added userId for permission check
+  ) async {
     try {
-      final doc = await _firestore.collection('families').doc(familyId).get();
-      if (doc.exists) {
-        return FamilyModel.fromJson(doc.data()!);
+      // ✅ Verify user is in family
+      final isMember = await isUserInFamily(userId, familyId);
+      if (!isMember) {
+        print('⚠️ User $userId is not a member of family $familyId');
+        return [];
       }
-      return null;
+
+      final snapshot = await _firestore
+          .collection('transactions')
+          .where('familyId', isEqualTo: familyId)
+          .where('type', isEqualTo: 'family')
+          .orderBy('date', descending: true)
+          .get();
+      
+      return snapshot.docs.map((doc) {
+        return TransactionModel.fromJson(doc.data());
+      }).toList();
     } catch (e) {
-      return null;
+      return [];
     }
   }
 
-  // ==================== TRANSFER METHODS ====================
+  /// ✅ Get all transactions for a user (both personal AND family)
+  static Future<List<TransactionModel>> getAllUserTransactions(String userId) async {
+    try {
+      final personal = await getUserTransactions(userId);
+      
+      // Get all families user belongs to
+      final families = await getUserFamilies(userId);
+      List<TransactionModel> allTransactions = List.from(personal);
+      
+      for (final family in families) {
+        final familyTxn = await getFamilyTransactions(family.id, userId);
+        allTransactions.addAll(familyTxn);
+      }
+      
+      // Sort by date descending
+      allTransactions.sort((a, b) => b.date.compareTo(a.date));
+      return allTransactions;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  static Future<void> deleteTransaction(String transactionId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('transactions')
+          .where('id', isEqualTo: transactionId)
+          .limit(1)
+          .get();
+      
+      if (snapshot.docs.isNotEmpty) {
+        await _firestore.collection('transactions').doc(snapshot.docs.first.id).delete();
+      }
+    } catch (e) {
+      throw Exception('Failed to delete transaction: $e');
+    }
+  }
+
+  // ============================================================
+  // TRANSFER METHODS
+  // ============================================================
 
   static Future<void> saveTransfer(TransferModel transfer) async {
     try {
@@ -298,7 +463,9 @@ class DatabaseService {
     }
   }
 
-  // ==================== NOTIFICATION METHODS ====================
+  // ============================================================
+  // NOTIFICATION METHODS
+  // ============================================================
 
   static Future<void> saveNotification(NotificationModel notification) async {
     try {
@@ -343,7 +510,9 @@ class DatabaseService {
     }
   }
 
-  // ==================== BACKUP METHODS ====================
+  // ============================================================
+  // BACKUP METHODS
+  // ============================================================
 
   static Future<void> saveBackup(BackupModel backup) async {
     try {
@@ -369,7 +538,25 @@ class DatabaseService {
     }
   }
 
-  // ==================== GOAL METHODS ====================
+  static Future<List<BackupModel>> getUserBackups(String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('backups')
+          .where('userId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true)
+          .get();
+      
+      return snapshot.docs.map((doc) {
+        return BackupModel.fromJson(doc.data());
+      }).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // ============================================================
+  // GOAL METHODS
+  // ============================================================
 
   static Future<void> saveGoal(GoalModel goal) async {
     try {
@@ -379,11 +566,28 @@ class DatabaseService {
     }
   }
 
-  // ==================== CLEAR ALL DATA ====================
+  static Future<List<GoalModel>> getUserGoals(String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('goals')
+          .where('userId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true)
+          .get();
+      
+      return snapshot.docs.map((doc) {
+        return GoalModel.fromJson(doc.data());
+      }).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // ============================================================
+  // CLEAR ALL DATA
+  // ============================================================
 
   static Future<void> clearAllData() async {
     try {
-      // Delete all collections - be careful with this!
       final collections = ['users', 'transactions', 'families', 'transfers', 'notifications', 'backups', 'goals'];
       
       for (final collection in collections) {
