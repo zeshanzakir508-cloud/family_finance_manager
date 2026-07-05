@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'providers/mode_provider.dart';
 import 'providers/family_provider.dart';
 import 'screens/auth/login_screen.dart';
@@ -34,13 +35,49 @@ import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/transactions/edit_transaction_screen.dart';
 import 'screens/transactions/transaction_detail_screen.dart';
 import 'utils/app_theme.dart';
+import 'utils/helpers.dart';
 import 'services/auth_service.dart';
 import 'services/database_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  
+  // ✅ Initialize currency before app starts
+  await Helpers.initCurrency();
+  
+  // ✅ Check and request permissions
+  await _requestPermissions();
+  
   runApp(const MyApp());
+}
+
+// ✅ Permission handling
+Future<void> _requestPermissions() async {
+  // Request storage permission (Android)
+  if (await Permission.storage.isDenied) {
+    final result = await Permission.storage.request();
+    if (result.isDenied) {
+      // User denied - show info
+      print('⚠️ Storage permission denied. Backup features will be limited.');
+    }
+  }
+
+  // Request camera permission (for receipts)
+  if (await Permission.camera.isDenied) {
+    final result = await Permission.camera.request();
+    if (result.isDenied) {
+      print('⚠️ Camera permission denied. Receipt scanning disabled.');
+    }
+  }
+
+  // Request notification permission (Android 13+)
+  if (await Permission.notification.isDenied) {
+    final result = await Permission.notification.request();
+    if (result.isDenied) {
+      print('⚠️ Notification permission denied.');
+    }
+  }
 }
 
 class MyApp extends StatefulWidget {
@@ -71,7 +108,7 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
-  // Method to refresh theme from settings
+  // ✅ Refresh theme from settings
   void refreshTheme() {
     _loadTheme();
   }
