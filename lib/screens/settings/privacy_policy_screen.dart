@@ -1,6 +1,6 @@
 // lib/screens/settings/privacy_policy_screen.dart
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+// ✅ REMOVED: url_launcher (not needed)
 import '../../utils/app_theme.dart';
 
 class PrivacyPolicyScreen extends StatefulWidget {
@@ -163,7 +163,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Contact Us
+            // Contact Us - Email only (FIXED for #18, #37)
             _buildSection(
               title: '8. Contact Us',
               content: 'If you have questions about this Privacy Policy, please contact us at:',
@@ -174,8 +174,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
             ),
             const SizedBox(height: 24),
 
-            // ✅ REMOVED: Contact Us button - email already listed above
-            // ✅ KEPT: Consent/Agreement text only
+            // Consent/Agreement
             Center(
               child: Container(
                 padding: const EdgeInsets.all(16),
