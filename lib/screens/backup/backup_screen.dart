@@ -1,8 +1,10 @@
 // lib/screens/backup/backup_screen.dart
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../utils/app_theme.dart';
@@ -21,8 +23,6 @@ class _BackupScreenState extends State<BackupScreen> {
   String _lastBackupDate = 'Never';
   int _backupCount = 0;
   double _storageUsed = 0;
-  
-  // ✅ ADDED: Backup frequency
   String _backupFrequency = 'weekly';
   int _maxBackups = 5;
   
@@ -47,6 +47,15 @@ class _BackupScreenState extends State<BackupScreen> {
     });
   }
 
+  Future<String> _getBackupDirectory() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final backupDir = Directory('${dir.path}/backups');
+    if (!await backupDir.exists()) {
+      await backupDir.create(recursive: true);
+    }
+    return backupDir.path;
+  }
+
   Future<void> _createBackup() async {
     setState(() => _isLoading = true);
 
@@ -61,36 +70,41 @@ class _BackupScreenState extends State<BackupScreen> {
       // Get all user data
       final transactions = await DatabaseService.getUserTransactions(userId);
       final families = await DatabaseService.getUserFamilies(userId);
+      final userProfile = await DatabaseService.getUserProfile(userId);
       
-      // Create backup data as JSON
+      // Create backup data
       final backupData = {
         'userId': userId,
         'date': DateTime.now().toIso8601String(),
         'transactionCount': transactions.length,
         'familyCount': families.length,
+        'userProfile': userProfile,
         'transactions': transactions.map((t) => t.toJson()).toList(),
         'families': families.map((f) => f.toJson()).toList(),
       };
 
-      // Save backup
+      // Save to local file
+      final backupDir = await _getBackupDirectory();
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final file = File('$backupDir/backup_$timestamp.json');
+      await file.writeAsString(jsonEncode(backupData));
+
+      // Save metadata
       final prefs = await SharedPreferences.getInstance();
       
-      // ✅ ADDED: Rotate backups - keep only last N
-      await _rotateBackups(prefs);
+      // Rotate backups
+      await _rotateBackups(backupDir, prefs);
       
-      // Save new backup with timestamp in key
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      await prefs.setString('backup_data_$timestamp', jsonEncode(backupData));
+      // Update metadata
       await prefs.setString('last_backup_date', DateTime.now().toIso8601String());
       await prefs.setInt('backup_count', _backupCount + 1);
       
-      // Save backup list for rotation
       final backupList = prefs.getStringList('backup_list') ?? [];
       backupList.add(timestamp.toString());
       await prefs.setStringList('backup_list', backupList);
       
-      // Calculate storage used (approximate)
-      final backupSize = jsonEncode(backupData).length / (1024 * 1024);
+      // Calculate storage used
+      final backupSize = await file.length() / (1024 * 1024);
       
       setState(() {
         _lastBackupDate = DateTime.now().toIso8601String();
@@ -116,22 +130,20 @@ class _BackupScreenState extends State<BackupScreen> {
     }
   }
 
-  // ✅ ADDED: Backup rotation method
-  Future<void> _rotateBackups(SharedPreferences prefs) async {
+  Future<void> _rotateBackups(String backupDir, SharedPreferences prefs) async {
     final backupList = prefs.getStringList('backup_list') ?? [];
     
     if (backupList.length >= _maxBackups) {
-      // Sort backups by timestamp (oldest first)
       backupList.sort((a, b) => int.parse(a).compareTo(int.parse(b)));
       
-      // Remove oldest backups
       final toRemove = backupList.length - _maxBackups + 1;
       for (int i = 0; i < toRemove; i++) {
-        final key = 'backup_data_${backupList[i]}';
-        await prefs.remove(key);
+        final file = File('$backupDir/backup_${backupList[i]}.json');
+        if (await file.exists()) {
+          await file.delete();
+        }
       }
       
-      // Update list
       backupList.removeRange(0, toRemove);
       await prefs.setStringList('backup_list', backupList);
     }
@@ -148,17 +160,17 @@ class _BackupScreenState extends State<BackupScreen> {
         throw Exception('No backups found');
       }
 
-      // Get the latest backup
+      final backupDir = await _getBackupDirectory();
       final latestTimestamp = backupList.last;
-      final backupDataString = prefs.getString('backup_data_$latestTimestamp');
+      final file = File('$backupDir/backup_$latestTimestamp.json');
       
-      if (backupDataString == null) {
-        throw Exception('Backup data not found');
+      if (!await file.exists()) {
+        throw Exception('Backup file not found');
       }
 
+      final backupDataString = await file.readAsString();
       final backupData = jsonDecode(backupDataString) as Map<String, dynamic>;
       
-      // Show restore confirmation
       final transactionCount = backupData['transactionCount'] ?? 0;
       final familyCount = backupData['familyCount'] ?? 0;
       final backupDate = backupData['date'] ?? 'Unknown';
@@ -204,7 +216,7 @@ class _BackupScreenState extends State<BackupScreen> {
         return;
       }
 
-      // In a real app, this would restore data from backup
+      // Restore logic would go here
       
       setState(() => _isLoading = false);
       
@@ -240,16 +252,22 @@ class _BackupScreenState extends State<BackupScreen> {
             onPressed: () async {
               Navigator.pop(context);
               final prefs = await SharedPreferences.getInstance();
-              
-              // Delete all backup data
               final backupList = prefs.getStringList('backup_list') ?? [];
+              final backupDir = await _getBackupDirectory();
+              
               for (var timestamp in backupList) {
-                await prefs.remove('backup_data_$timestamp');
+                final file = File('$backupDir/backup_$timestamp.json');
+                if (await file.exists()) {
+                  await file.delete();
+                }
               }
+              
               await prefs.remove('backup_list');
               await prefs.remove('last_backup_date');
               await prefs.remove('backup_count');
               await prefs.remove('storage_used');
+              await prefs.remove('backup_frequency');
+              await prefs.remove('max_backups');
               
               setState(() {
                 _lastBackupDate = 'Never';
