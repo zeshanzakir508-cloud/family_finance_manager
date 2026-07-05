@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/app_theme.dart';
-import '../../utils/themes.dart'; // Add this file later
+// ✅ REMOVED: import '../../utils/themes.dart';
 
 class ThemeSettingsScreen extends StatefulWidget {
   final VoidCallback? onThemeChanged;
@@ -72,7 +72,6 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
         _hasChanges = false;
       });
       
-      // ✅ Apply theme immediately
       await _applyTheme();
       
       if (widget.onThemeChanged != null) {
@@ -92,18 +91,14 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
     });
   }
 
-  // ✅ FIXED: Actually apply theme
   Future<void> _applyTheme() async {
-    // Save to SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('theme_mode', _selectedTheme);
     
-    // Notify parent to rebuild with new theme
     if (widget.onThemeChanged != null) {
       widget.onThemeChanged!();
     }
     
-    // Force rebuild of entire app
     if (mounted) {
       setState(() {});
     }
