@@ -6,6 +6,11 @@ export PATH="$PATH:/tmp/flutter/bin"
 # Enable web
 flutter config --enable-web
 
+# Clean cache
+rm -rf .dart_tool
+rm -rf build
+rm -f pubspec.lock
+
 # Get dependencies
 flutter pub get
 
