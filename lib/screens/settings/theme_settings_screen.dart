@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/app_theme.dart';
-// ✅ REMOVED: import '../../utils/themes.dart';
 
 class ThemeSettingsScreen extends StatefulWidget {
   final VoidCallback? onThemeChanged;
