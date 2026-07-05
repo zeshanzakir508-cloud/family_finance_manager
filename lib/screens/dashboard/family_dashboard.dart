@@ -31,6 +31,8 @@ class _FamilyDashboardState extends State<FamilyDashboard>
   String _errorMessage = '';
   FamilyModel? _currentFamily;
   late TabController _tabController;
+  DateTime? _lastBackPress;
+  String? _userId;
 
   final List<Color> _categoryColors = [
     Colors.blue, Colors.green, Colors.red, Colors.orange, Colors.purple,
@@ -53,7 +55,9 @@ class _FamilyDashboardState extends State<FamilyDashboard>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _loadData();
+    if (!_isLoading) {
+      _loadData();
+    }
   }
 
   Future<void> _loadData() async {
@@ -66,9 +70,9 @@ class _FamilyDashboardState extends State<FamilyDashboard>
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
-      final userId = authService.userId;
+      _userId = authService.userId;
       
-      if (userId == null) {
+      if (_userId == null) {
         setState(() {
           _hasError = true;
           _errorMessage = 'Please login again';
@@ -94,7 +98,11 @@ class _FamilyDashboardState extends State<FamilyDashboard>
       }
 
       try {
-        _transactions = await DatabaseService.getFamilyTransactions(_currentFamily!.id);
+        // ✅ FIXED: Pass userId for permission check
+        _transactions = await DatabaseService.getFamilyTransactions(
+          _currentFamily!.id,
+          _userId!,
+        );
         _transactions.sort((a, b) => b.date?.compareTo(a.date ?? DateTime.now()) ?? 0);
         _applyFilters();
         setState(() {
@@ -144,71 +152,137 @@ class _FamilyDashboardState extends State<FamilyDashboard>
     }
   }
 
+  // ✅ Back button handling (FIXED for #10)
+  Future<bool> _onWillPop() async {
+    final now = DateTime.now();
+    if (_lastBackPress == null || now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
+      _lastBackPress = now;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tap again to exit'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return false;
+    }
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
-      appBar: AppBar(
-        title: Text(
-          _currentFamily?.name ?? 'Family Dashboard',
-          style: const TextStyle(fontSize: 18),
-        ),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        automaticallyImplyLeading: false,
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.family_restroom,
-                  size: 16,
-                  color: Colors.white,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  'Family',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white.withOpacity(0.8),
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        backgroundColor: AppTheme.backgroundColor,
+        appBar: AppBar(
+          title: Text(
+            _currentFamily?.name ?? 'Family Dashboard',
+            style: const TextStyle(fontSize: 18),
+          ),
+          backgroundColor: AppTheme.primaryColor,
+          foregroundColor: Colors.white,
+          automaticallyImplyLeading: false,
+          actions: [
+            // ✅ Role badge (FIXED for #30)
+            _buildRoleBadge(),
+            const SizedBox(width: 4),
+            // Family indicator
+            Container(
+              margin: const EdgeInsets.only(right: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.family_restroom,
+                    size: 16,
+                    color: Colors.white,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 4),
+                  Text(
+                    'Family',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.8),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-            tooltip: 'Refresh',
-          ),
-          IconButton(
-            icon: const Icon(Icons.people),
-            onPressed: () {
-              Navigator.pushNamed(context, '/family-management').then((_) => _loadData());
-            },
-            tooltip: 'Manage Family',
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Overview'),
-            Tab(text: 'Members'),
-            Tab(text: 'Transfers'),
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _loadData,
+              tooltip: 'Refresh',
+            ),
+            IconButton(
+              icon: const Icon(Icons.people),
+              onPressed: () {
+                Navigator.pushNamed(context, '/family-management').then((_) => _loadData());
+              },
+              tooltip: 'Manage Family',
+            ),
+            // ✅ Settings in AppBar (FIXED for #29)
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: () => Navigator.pushNamed(context, '/settings'),
+              tooltip: 'Settings',
+            ),
           ],
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          indicatorColor: Colors.white,
+          bottom: TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(text: 'Overview'),
+              Tab(text: 'Members'),
+              Tab(text: 'Transfers'),
+            ],
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            indicatorColor: Colors.white,
+          ),
         ),
+        body: _buildBody(),
       ),
-      body: _buildBody(),
+    );
+  }
+
+  // ✅ Role Badge (FIXED for #30)
+  Widget _buildRoleBadge() {
+    final authService = Provider.of<AuthService>(context);
+    final role = authService.getCachedUserRole() ?? 'member';
+    
+    IconData icon;
+    Color color;
+    String label;
+    
+    switch (role) {
+      case 'owner':
+        icon = Icons.crown;
+        color = Colors.amber;
+        label = '👑';
+        break;
+      case 'moderator':
+        icon = Icons.shield;
+        color = Colors.blue;
+        label = '🛡️';
+        break;
+      default:
+        return const SizedBox();
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 14),
+      ),
     );
   }
 
