@@ -50,9 +50,9 @@ dependencies:
   timezone: 0.9.4
   flutter_launcher_icons: 0.13.1
   google_mobile_ads: 4.0.0
-  in_app_purchase: 3.2.3
+  in_app_purchase: 3.0.0  # ✅ Downgraded
   local_auth: 2.3.0
-  webview_flutter: 4.7.0  # ✅ Downgraded to Dart 3.4.0 compatible
+  webview_flutter: 4.7.0
   hive: 2.2.3
   hive_flutter: 1.1.0
   cached_network_image: 3.4.0
