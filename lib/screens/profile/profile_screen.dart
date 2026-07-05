@@ -35,7 +35,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // ✅ Auto-refresh when returning to screen
     if (!_isLoading) {
       _loadUser();
     }
@@ -54,14 +53,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final userId = authService.userId;
     
     if (userId != null) {
-      // ✅ Try to get from cache first
       final cachedProfile = authService.userProfile;
       if (cachedProfile != null) {
         _user = UserModel.fromJson(cachedProfile);
         _role = cachedProfile['role'] ?? 'member';
       }
       
-      // ✅ Then fetch fresh from Firestore
       final user = await DatabaseService.getUser(userId);
       if (user != null) {
         _user = user;
@@ -92,7 +89,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       
       await DatabaseService.saveUser(updatedUser);
       
-      // ✅ Refresh AuthService cache
       final authService = Provider.of<AuthService>(context, listen: false);
       if (authService.userId != null) {
         await authService.fetchUserProfile(authService.userId!);
@@ -206,7 +202,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 12),
 
-              // ✅ ROLE BADGE (FIXED)
               _buildRoleBadge(),
               const SizedBox(height: 24),
 
@@ -322,7 +317,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ✅ Build Role Badge (FIXED for #30, #39)
+  // ✅ FIXED: Icons.crown → Icons.star
   Widget _buildRoleBadge() {
     final role = _role ?? 'member';
     
@@ -332,7 +327,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     
     switch (role) {
       case 'owner':
-        icon = Icons.crown;
+        icon = Icons.star;
         color = Colors.amber;
         label = '👑 Owner';
         break;
