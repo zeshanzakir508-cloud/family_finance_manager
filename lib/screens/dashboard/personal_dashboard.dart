@@ -92,7 +92,6 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
     }
   }
 
-  // ✅ Back button handling (FIXED for #10)
   Future<bool> _onWillPop() async {
     final now = DateTime.now();
     if (_lastBackPress == null || now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
@@ -120,7 +119,6 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
           foregroundColor: Colors.white,
           automaticallyImplyLeading: false,
           actions: [
-            // ✅ Mode indicator
             Container(
               margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -152,7 +150,6 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
               onPressed: _loadData,
               tooltip: 'Refresh',
             ),
-            // ✅ Settings moved to AppBar (FIXED for #29)
             IconButton(
               icon: const Icon(Icons.settings),
               onPressed: () => Navigator.pushNamed(context, '/settings'),
@@ -169,7 +166,6 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ✅ Role badge (FIXED for #30)
                       _buildRoleBadge(),
                       const SizedBox(height: 12),
                       _buildBalanceCards(),
@@ -190,7 +186,6 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
     );
   }
 
-  // ✅ Role Badge (FIXED for #30)
   Widget _buildRoleBadge() {
     final authService = Provider.of<AuthService>(context);
     final role = authService.getCachedUserRole() ?? 'member';
@@ -201,7 +196,8 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
     
     switch (role) {
       case 'owner':
-        icon = Icons.crown;
+        // ✅ FIXED: Icons.crown → Icons.star
+        icon = Icons.star;
         color = Colors.amber;
         label = '👑 Owner';
         break;
