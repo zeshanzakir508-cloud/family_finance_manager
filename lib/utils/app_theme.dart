@@ -74,7 +74,8 @@ class AppTheme {
         textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
       ),
     ),
-    cardTheme: CardThemeData(
+    // ✅ FIXED: CardThemeData → CardTheme
+    cardTheme: CardTheme(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       color: surfaceColor,
@@ -155,7 +156,8 @@ class AppTheme {
         textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
       ),
     ),
-    cardTheme: CardThemeData(
+    // ✅ FIXED: CardThemeData → CardTheme
+    cardTheme: CardTheme(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       color: Colors.grey[800],
