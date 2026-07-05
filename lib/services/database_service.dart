@@ -12,7 +12,7 @@ class DatabaseService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // ============================================================
-  // USER / PROFILE METHODS (FIXED)
+  // USER / PROFILE METHODS
   // ============================================================
 
   static Future<UserModel?> getUser(String userId) async {
@@ -31,7 +31,6 @@ class DatabaseService {
     await _firestore.collection('users').doc(user.id).set(user.toJson());
   }
 
-  /// ✅ Check if user profile exists
   static Future<bool> userProfileExists(String userId) async {
     try {
       final doc = await _firestore.collection('users').doc(userId).get();
@@ -41,7 +40,6 @@ class DatabaseService {
     }
   }
 
-  /// ✅ Get user role from Firestore
   static Future<String?> getUserRole(String userId) async {
     try {
       final doc = await _firestore.collection('users').doc(userId).get();
@@ -54,7 +52,6 @@ class DatabaseService {
     }
   }
 
-  /// ✅ Get full user profile
   static Future<Map<String, dynamic>?> getUserProfile(String userId) async {
     try {
       final doc = await _firestore.collection('users').doc(userId).get();
@@ -67,7 +64,6 @@ class DatabaseService {
     }
   }
 
-  /// ✅ Update user role
   static Future<void> updateUserRole(String userId, String role) async {
     try {
       await _firestore.collection('users').doc(userId).update({
@@ -80,7 +76,7 @@ class DatabaseService {
   }
 
   // ============================================================
-  // FAMILY METHODS (FIXED)
+  // FAMILY METHODS
   // ============================================================
 
   static Future<void> saveFamily(FamilyModel family) async {
@@ -106,10 +102,8 @@ class DatabaseService {
     }
   }
 
-  /// ✅ FIXED: Get user families using memberIds array
   static Future<List<FamilyModel>> getUserFamilies(String userId) async {
     try {
-      // Method 1: Query using memberIds array (if available)
       final snapshot = await _firestore
           .collection('families')
           .where('memberIds', arrayContains: userId)
@@ -121,14 +115,12 @@ class DatabaseService {
         }).toList();
       }
       
-      // Method 2: Fallback - query all and filter (for backward compatibility)
       final allSnapshot = await _firestore.collection('families').get();
       return allSnapshot.docs
           .map((doc) => FamilyModel.fromJson(doc.data()))
           .where((family) => family.members?.any((m) => m.userId == userId) ?? false)
           .toList();
     } catch (e) {
-      // If arrayContains fails, fallback to filter method
       try {
         final allSnapshot = await _firestore.collection('families').get();
         return allSnapshot.docs
@@ -153,7 +145,6 @@ class DatabaseService {
     }
   }
 
-  /// ✅ Check if user is member of a family
   static Future<bool> isUserInFamily(String userId, String familyId) async {
     try {
       final family = await getFamily(familyId);
@@ -164,7 +155,6 @@ class DatabaseService {
     }
   }
 
-  /// ✅ Get family members
   static Future<List<FamilyMember>> getFamilyMembers(String familyId) async {
     try {
       final family = await getFamily(familyId);
@@ -202,7 +192,7 @@ class DatabaseService {
       final updatedMembers = List<FamilyMember>.from(family.members ?? []);
       updatedMembers.add(newMember);
       
-      // ✅ Update memberIds array for better querying
+      // ✅ FIXED: memberIds added to FamilyModel
       final updatedMemberIds = List<String>.from(family.memberIds ?? []);
       if (!updatedMemberIds.contains(userId)) {
         updatedMemberIds.add(userId);
@@ -227,7 +217,7 @@ class DatabaseService {
       final family = FamilyModel.fromJson(doc.data()!);
       final updatedMembers = family.members?.where((m) => m.id != userId).toList() ?? [];
       
-      // ✅ Update memberIds array
+      // ✅ FIXED: memberIds added to FamilyModel
       final updatedMemberIds = List<String>.from(family.memberIds ?? []);
       updatedMemberIds.remove(userId);
       
@@ -251,7 +241,7 @@ class DatabaseService {
       final updatedMembers = List<FamilyMember>.from(family.members ?? []);
       updatedMembers.add(member);
       
-      // ✅ Update memberIds array
+      // ✅ FIXED: memberIds added to FamilyModel
       final updatedMemberIds = List<String>.from(family.memberIds ?? []);
       if (!updatedMemberIds.contains(member.userId)) {
         updatedMemberIds.add(member.userId);
@@ -267,13 +257,11 @@ class DatabaseService {
   }
 
   // ============================================================
-  // TRANSACTION METHODS (FIXED)
+  // TRANSACTION METHODS
   // ============================================================
 
-  /// ✅ Add personal transaction
   static Future<void> addPersonalTransaction(TransactionModel transaction) async {
     try {
-      // Ensure it's marked as personal
       final data = transaction.toJson();
       data['type'] = 'personal';
       await _firestore.collection('transactions').add(data);
@@ -282,10 +270,8 @@ class DatabaseService {
     }
   }
 
-  /// ✅ Add family transaction
   static Future<void> addFamilyTransaction(TransactionModel transaction) async {
     try {
-      // Ensure it's marked as family
       final data = transaction.toJson();
       data['type'] = 'family';
       await _firestore.collection('transactions').add(data);
@@ -319,7 +305,6 @@ class DatabaseService {
     }
   }
 
-  /// ✅ Get user personal transactions
   static Future<List<TransactionModel>> getUserTransactions(String userId) async {
     try {
       final snapshot = await _firestore
@@ -337,13 +322,11 @@ class DatabaseService {
     }
   }
 
-  /// ✅ FIXED: Get family transactions with role/permission check
   static Future<List<TransactionModel>> getFamilyTransactions(
     String familyId, 
-    String userId,  // ✅ Added userId for permission check
+    String userId,
   ) async {
     try {
-      // ✅ Verify user is in family
       final isMember = await isUserInFamily(userId, familyId);
       if (!isMember) {
         print('⚠️ User $userId is not a member of family $familyId');
@@ -365,12 +348,10 @@ class DatabaseService {
     }
   }
 
-  /// ✅ Get all transactions for a user (both personal AND family)
   static Future<List<TransactionModel>> getAllUserTransactions(String userId) async {
     try {
       final personal = await getUserTransactions(userId);
       
-      // Get all families user belongs to
       final families = await getUserFamilies(userId);
       List<TransactionModel> allTransactions = List.from(personal);
       
@@ -379,8 +360,12 @@ class DatabaseService {
         allTransactions.addAll(familyTxn);
       }
       
-      // Sort by date descending
-      allTransactions.sort((a, b) => b.date.compareTo(a.date));
+      // ✅ FIXED: Null-safe date sorting
+      allTransactions.sort((a, b) {
+        final dateA = a.date ?? DateTime(1970);
+        final dateB = b.date ?? DateTime(1970);
+        return dateB.compareTo(dateA);
+      });
       return allTransactions;
     } catch (e) {
       return [];
