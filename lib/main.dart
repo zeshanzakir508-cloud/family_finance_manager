@@ -42,10 +42,8 @@ import 'services/database_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  
   await Helpers.initCurrency();
   await _requestPermissions();
-  
   runApp(const MyApp());
 }
 
@@ -57,13 +55,9 @@ Future<void> _requestPermissions() async {
     if (permissionsAsked) {
       final storageStatus = await Permission.storage.status;
       final cameraStatus = await Permission.camera.status;
-      
-      if (storageStatus.isGranted && cameraStatus.isGranted) {
-        return;
-      }
+      if (storageStatus.isGranted && cameraStatus.isGranted) return;
     }
 
-    // ✅ FIXED: notification (singular)
     await [
       Permission.storage,
       Permission.camera,
@@ -71,8 +65,6 @@ Future<void> _requestPermissions() async {
     ].request();
 
     await prefs.setBool('permissions_asked', true);
-    
-    print('✅ Permissions requested');
   } catch (e) {
     print('❌ Permission error: $e');
   }
@@ -82,7 +74,6 @@ Future<bool> arePermissionsGranted() async {
   try {
     final storageStatus = await Permission.storage.status;
     final cameraStatus = await Permission.camera.status;
-    
     return storageStatus.isGranted && cameraStatus.isGranted;
   } catch (e) {
     return false;
@@ -99,39 +90,25 @@ Future<void> showPermissionDialog(BuildContext context) async {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'FinFam needs the following permissions:',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
+          Text('FinFam needs the following permissions:'),
           SizedBox(height: 12),
           Text('📁 Storage - To save backups and reports'),
           Text('📷 Camera - To scan receipts and documents'),
           Text('🔔 Notifications - To send reminders and alerts'),
           SizedBox(height: 12),
-          Text(
-            'Please allow these permissions to use the app.',
-            style: TextStyle(fontSize: 12),
-          ),
+          Text('Please allow these permissions to use the app.'),
         ],
       ),
       actions: [
         TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-            openAppSettings();
-          },
-          style: TextButton.styleFrom(
-            foregroundColor: Colors.blue,
-          ),
+          onPressed: () { Navigator.pop(context); openAppSettings(); },
           child: const Text('Open Settings'),
         ),
         ElevatedButton(
           onPressed: () async {
             Navigator.pop(context);
             await _requestPermissions();
-            if (await arePermissionsGranted()) {
-              // Proceed
-            } else {
+            if (!await arePermissionsGranted()) {
               showPermissionDialog(context);
             }
           },
@@ -203,9 +180,7 @@ class _MyAppState extends State<MyApp> {
           '/personal-dashboard': (context) => const PersonalDashboard(),
           '/family-dashboard': (context) => const FamilyDashboard(),
           '/settings': (context) => const SettingsScreen(),
-          '/theme-settings': (context) => ThemeSettingsScreen(
-              onThemeChanged: refreshTheme,
-            ),
+          '/theme-settings': (context) => ThemeSettingsScreen(onThemeChanged: refreshTheme),
           '/currency-settings': (context) => const CurrencySettingsScreen(),
           '/security-settings': (context) => const SecuritySettingsScreen(),
           '/notification-settings': (context) => const NotificationSettingsScreen(),
@@ -225,11 +200,9 @@ class _MyAppState extends State<MyApp> {
           '/owner-dashboard': (context) => const OwnerDashboard(),
           '/backup': (context) => const BackupScreen(),
         },
-        onGenerateRoute: (settings) {
-          return MaterialPageRoute(
-            builder: (context) => const SplashScreen(),
-          );
-        },
+        onGenerateRoute: (settings) => MaterialPageRoute(
+          builder: (context) => const SplashScreen(),
+        ),
       ),
     );
   }
