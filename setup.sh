@@ -19,7 +19,7 @@ rm -rf .dart_tool
 rm -rf build
 rm -rf ~/.pub-cache
 
-# Create fresh pubspec with ALL dependencies and forced google_fonts
+# Create minimal pubspec WITHOUT google_fonts
 cat > pubspec.yaml << 'EOF'
 name: family_finance_manager
 description: A Family Finance Manager app
@@ -33,7 +33,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  google_fonts: 8.1.0
   firebase_core: 2.27.0
   firebase_auth: 4.17.8
   cloud_firestore: 4.15.8
@@ -77,14 +76,13 @@ flutter:
   uses-material-design: true
   assets:
     - assets/
-
-dependency_overrides:
-  google_fonts: 8.1.0
-  analyzer: 14.0.0
 EOF
 
-# Get dependencies
+# Get dependencies WITHOUT google_fonts
 flutter pub get
+
+# Now add google_fonts with exact version
+flutter pub add google_fonts:8.1.0
 
 # Build
 flutter build web --release --no-source-maps
