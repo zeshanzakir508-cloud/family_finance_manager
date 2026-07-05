@@ -16,10 +16,7 @@ flutter config --enable-web
 flutter clean
 rm -f pubspec.lock
 
-# Force correct google_fonts version
-flutter pub add google_fonts:8.1.0
-
-# Get all dependencies
+# Get dependencies
 flutter pub get
 
 # Build
