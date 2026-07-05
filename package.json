@@ -1,0 +1,7 @@
+{
+  "name": "finfam-web",
+  "version": "1.0.0",
+  "scripts": {
+    "vercel-build": "bash setup.sh"
+  }
+}
