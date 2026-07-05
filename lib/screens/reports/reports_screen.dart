@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:path_provider/path_provider.dart';
-// ✅ FIXED: share → share_plus
 import 'package:share_plus/share_plus.dart';
 import '../../providers/mode_provider.dart';
 import '../../providers/family_provider.dart';
@@ -1002,7 +1001,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  // ✅ CSV Export with share_plus
+  // ✅ FIXED: SharePlus → Share
   Future<void> _exportCSV() async {
     if (_filteredTransactions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1031,8 +1030,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       final file = File('${directory.path}/report_${DateTime.now().millisecondsSinceEpoch}.csv');
       await file.writeAsString(csv);
 
-      // ✅ FIXED: Share.shareXFiles → SharePlus.shareXFiles
-      await SharePlus.shareXFiles(
+      await Share.shareXFiles(
         [XFile(file.path)],
         text: 'Financial Report Export',
       );
@@ -1056,7 +1054,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     setState(() => _isExporting = false);
   }
 
-  // ✅ PDF Export with share_plus
+  // ✅ FIXED: SharePlus → Share
   Future<void> _exportPDF() async {
     if (_filteredTransactions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1086,8 +1084,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       final file = File('${directory.path}/report_${DateTime.now().millisecondsSinceEpoch}.txt');
       await file.writeAsString(content);
 
-      // ✅ FIXED: Share.shareXFiles → SharePlus.shareXFiles
-      await SharePlus.shareXFiles(
+      await Share.shareXFiles(
         [XFile(file.path)],
         text: 'Financial Report Export',
       );
