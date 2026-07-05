@@ -26,18 +26,16 @@ dependencies:
   # State Management
   provider: ^6.1.1
 
-  # UI Components
+  # UI Components (NO google_fonts)
   fl_chart: ^0.66.0
   shimmer: ^3.0.0
   cached_network_image: ^3.3.1
 
-  # Utilities
+  # Utilities (NO device_info_plus, permission_handler, share_plus, connectivity_plus)
   intl: ^0.18.1
   image_picker: ^1.0.4
-  permission_handler: ^11.0.1
   local_auth: ^2.1.7
   url_launcher: ^6.2.1
-  share_plus: ^7.2.1
 
   # Charts & PDF
   csv: ^5.1.1
@@ -49,8 +47,6 @@ dependencies:
   google_mobile_ads: ^4.0.0
 
   # Other
-  connectivity_plus: ^5.0.1
-  device_info_plus: ^9.1.0
   package_info_plus: ^5.0.1
   
   flutter_local_notifications: ^17.0.0
