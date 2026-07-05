@@ -5,7 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:share/share.dart';
+// ✅ FIXED: share → share_plus
+import 'package:share_plus/share_plus.dart';
 import '../../providers/mode_provider.dart';
 import '../../providers/family_provider.dart';
 import '../../services/auth_service.dart';
@@ -76,7 +77,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
       } else {
         final family = Provider.of<FamilyProvider>(context, listen: false).currentFamily;
         if (family != null) {
-          // ✅ FIXED: Added userId parameter
           _allTransactions = await DatabaseService.getFamilyTransactions(family.id, userId);
         } else {
           _allTransactions = [];
@@ -145,7 +145,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
         ),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
-        // ✅ MODE TOGGLE REMOVED (FIXED for #4, #22)
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -928,7 +927,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  // ✅ Export Dialog (FIXED for #6)
   void _showExportDialog() {
     showDialog(
       context: context,
@@ -1004,7 +1002,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  // ✅ CSV Export with actual file (FIXED for #8, #36)
+  // ✅ CSV Export with share_plus
   Future<void> _exportCSV() async {
     if (_filteredTransactions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1019,7 +1017,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
     setState(() => _isExporting = true);
 
     try {
-      // Build CSV
       String csv = 'Date,Type,Category,Description,Amount,Member\n';
       for (var t in _filteredTransactions) {
         csv += '${_formatDate(t.date!)},';
@@ -1030,13 +1027,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
         csv += '${t.memberName ?? 'You'}\n';
       }
 
-      // Save to temp file
       final directory = await getTemporaryDirectory();
       final file = File('${directory.path}/report_${DateTime.now().millisecondsSinceEpoch}.csv');
       await file.writeAsString(csv);
 
-      // Share
-      await Share.shareXFiles(
+      // ✅ FIXED: Share.shareXFiles → SharePlus.shareXFiles
+      await SharePlus.shareXFiles(
         [XFile(file.path)],
         text: 'Financial Report Export',
       );
@@ -1060,7 +1056,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     setState(() => _isExporting = false);
   }
 
-  // ✅ PDF Export with actual file (FIXED for #8, #36)
+  // ✅ PDF Export with share_plus
   Future<void> _exportPDF() async {
     if (_filteredTransactions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1075,7 +1071,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
     setState(() => _isExporting = true);
 
     try {
-      // Simple text report as PDF (use pdf package for real PDF)
       String content = '=== FINANCIAL REPORT ===\n\n';
       content += 'Generated: ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}\n';
       content += 'Total Income: ${Helpers.formatCurrency(_totalIncome)}\n';
@@ -1087,12 +1082,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
         content += '${_formatDate(t.date!)} | ${t.type} | ${t.category ?? 'other'} | ${t.description ?? ''} | ${Helpers.formatCurrency(t.amount ?? 0)}\n';
       }
 
-      // Save to temp file
       final directory = await getTemporaryDirectory();
       final file = File('${directory.path}/report_${DateTime.now().millisecondsSinceEpoch}.txt');
       await file.writeAsString(content);
 
-      await Share.shareXFiles(
+      // ✅ FIXED: Share.shareXFiles → SharePlus.shareXFiles
+      await SharePlus.shareXFiles(
         [XFile(file.path)],
         text: 'Financial Report Export',
       );
