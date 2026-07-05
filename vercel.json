@@ -1,6 +1,11 @@
 {
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build"
+    }
+  ],
   "buildCommand": "bash setup.sh",
-  "outputDirectory": "build/web",
-  "framework": null,
+  "outputDirectory": ".vercel/output/static",
   "installCommand": "npm install"
 }
