@@ -1,6 +1,5 @@
 // lib/utils/app_theme.dart
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   static const Color primaryColor = Color(0xFF1A73E8);
@@ -25,36 +24,18 @@ class AppTheme {
       error: errorColor,
       surface: surfaceColor,
     ),
-    textTheme: GoogleFonts.interTextTheme().copyWith(
-      headlineLarge: GoogleFonts.inter(
-        fontSize: 32,
-        fontWeight: FontWeight.bold,
-        color: textPrimaryColor,
-      ),
-      headlineMedium: GoogleFonts.inter(
-        fontSize: 24,
-        fontWeight: FontWeight.w600,
-        color: textPrimaryColor,
-      ),
-      bodyLarge: GoogleFonts.inter(
-        fontSize: 16,
-        color: textPrimaryColor,
-      ),
-      bodyMedium: GoogleFonts.inter(
-        fontSize: 14,
-        color: textSecondaryColor,
-      ),
+    textTheme: const TextTheme(
+      headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: textPrimaryColor),
+      headlineMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: textPrimaryColor),
+      bodyLarge: TextStyle(fontSize: 16, color: textPrimaryColor),
+      bodyMedium: TextStyle(fontSize: 14, color: textSecondaryColor),
     ),
-    appBarTheme: AppBarTheme(
+    appBarTheme: const AppBarTheme(
       elevation: 0,
       backgroundColor: surfaceColor,
       foregroundColor: textPrimaryColor,
       centerTitle: true,
-      titleTextStyle: GoogleFonts.inter(
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
-        color: textPrimaryColor,
-      ),
+      titleTextStyle: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: textPrimaryColor),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -85,23 +66,16 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        textStyle: GoogleFonts.inter(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        ),
+        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         elevation: 0,
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: primaryColor,
-        textStyle: GoogleFonts.inter(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
       ),
     ),
-    // ✅ FIXED: CardTheme → CardThemeData
     cardTheme: CardThemeData(
       elevation: 2,
       shape: RoundedRectangleBorder(
@@ -138,36 +112,18 @@ class AppTheme {
       error: errorColor,
       surface: Color(0xFF303134),
     ),
-    textTheme: GoogleFonts.interTextTheme().copyWith(
-      headlineLarge: GoogleFonts.inter(
-        fontSize: 32,
-        fontWeight: FontWeight.bold,
-        color: Colors.white,
-      ),
-      headlineMedium: GoogleFonts.inter(
-        fontSize: 24,
-        fontWeight: FontWeight.w600,
-        color: Colors.white,
-      ),
-      bodyLarge: GoogleFonts.inter(
-        fontSize: 16,
-        color: Colors.white,
-      ),
-      bodyMedium: GoogleFonts.inter(
-        fontSize: 14,
-        color: Colors.grey[400],
-      ),
+    textTheme: const TextTheme(
+      headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+      headlineMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.white),
+      bodyLarge: TextStyle(fontSize: 16, color: Colors.white),
+      bodyMedium: TextStyle(fontSize: 14, color: Colors.white70),
     ),
     appBarTheme: AppBarTheme(
       elevation: 0,
       backgroundColor: Colors.grey[900],
       foregroundColor: Colors.white,
       centerTitle: true,
-      titleTextStyle: GoogleFonts.inter(
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
-        color: Colors.white,
-      ),
+      titleTextStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.white),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -198,23 +154,16 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        textStyle: GoogleFonts.inter(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        ),
+        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         elevation: 0,
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: primaryColor,
-        textStyle: GoogleFonts.inter(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
       ),
     ),
-    // ✅ FIXED: CardTheme → CardThemeData
     cardTheme: CardThemeData(
       elevation: 2,
       shape: RoundedRectangleBorder(
@@ -240,24 +189,24 @@ class AppTheme {
     ),
   );
 
-  static TextStyle get headingStyle => GoogleFonts.inter(
+  static TextStyle get headingStyle => const TextStyle(
     fontSize: 28,
     fontWeight: FontWeight.bold,
     color: textPrimaryColor,
   );
 
-  static TextStyle get subheadingStyle => GoogleFonts.inter(
+  static TextStyle get subheadingStyle => const TextStyle(
     fontSize: 20,
     fontWeight: FontWeight.w600,
     color: textPrimaryColor,
   );
 
-  static TextStyle get bodyStyle => GoogleFonts.inter(
+  static TextStyle get bodyStyle => const TextStyle(
     fontSize: 16,
     color: textPrimaryColor,
   );
 
-  static TextStyle get captionStyle => GoogleFonts.inter(
+  static TextStyle get captionStyle => const TextStyle(
     fontSize: 12,
     color: textSecondaryColor,
   );
