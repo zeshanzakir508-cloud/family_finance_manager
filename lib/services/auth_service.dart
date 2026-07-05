@@ -20,14 +20,13 @@ class AuthService extends ChangeNotifier {
     _auth.authStateChanges().listen((user) async {
       _user = user;
       if (user != null) {
-        // ✅ Auto-fetch profile when user logs in
         await fetchUserProfile(user.uid);
       } else {
         _userProfile = null;
       }
       notifyListeners();
     });
-    _loadFingerprintSetting();
+    // ✅ FIXED: Removed _loadFingerprintSetting call - handled by SharedPreferences directly
   }
 
   // ============================================================
@@ -42,10 +41,9 @@ class AuthService extends ChangeNotifier {
   bool get isFingerprintEnabled => _isFingerprintEnabled;
 
   // ============================================================
-  // ✅ PROFILE MANAGEMENT (FIXED)
+  // PROFILE MANAGEMENT
   // ============================================================
 
-  /// Fetch user profile from Firestore
   Future<Map<String, dynamic>?> fetchUserProfile(String uid) async {
     try {
       _isLoading = true;
@@ -60,7 +58,6 @@ class AuthService extends ChangeNotifier {
         print('   Name: ${_userProfile?['name'] ?? 'No name'}');
       } else {
         print('⚠️ No profile found for user: $uid');
-        // ✅ Auto-create profile if missing
         await _createDefaultProfile(uid);
       }
 
@@ -75,7 +72,6 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// ✅ Auto-create default profile if missing
   Future<void> _createDefaultProfile(String uid) async {
     try {
       print('🔄 Creating default profile for: $uid');
@@ -87,7 +83,7 @@ class AuthService extends ChangeNotifier {
         'uid': uid,
         'email': email,
         'name': name,
-        'role': 'member', // Default role
+        'role': 'member',
         'familyId': null,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
@@ -107,7 +103,6 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// ✅ Check if profile exists
   Future<bool> profileExists(String uid) async {
     try {
       final doc = await _firestore.collection('users').doc(uid).get();
@@ -117,7 +112,6 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// ✅ Get user role
   Future<String?> getUserRole(String uid) async {
     try {
       final doc = await _firestore.collection('users').doc(uid).get();
@@ -130,25 +124,21 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// ✅ Check if user is Owner
   Future<bool> isOwner(String uid) async {
     final role = await getUserRole(uid);
     return role == 'owner';
   }
 
-  /// ✅ Check if user is Moderator
   Future<bool> isModerator(String uid) async {
     final role = await getUserRole(uid);
     return role == 'moderator';
   }
 
-  /// ✅ Check if user is Member
   Future<bool> isMember(String uid) async {
     final role = await getUserRole(uid);
     return role == 'member';
   }
 
-  /// ✅ Update user profile
   Future<void> updateUserProfile(Map<String, dynamic> data) async {
     try {
       final uid = _user?.uid;
@@ -159,7 +149,6 @@ class AuthService extends ChangeNotifier {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // Refresh profile
       await fetchUserProfile(uid);
       print('✅ Profile updated successfully');
     } catch (e) {
@@ -182,7 +171,6 @@ class AuthService extends ChangeNotifier {
         password: password,
       );
       
-      // ✅ Profile will be auto-fetched via authStateChanges listener
       print('✅ User signed in: ${result.user?.uid}');
       
       _isLoading = false;
@@ -210,7 +198,6 @@ class AuthService extends ChangeNotifier {
       
       await result.user?.updateDisplayName(name);
       
-      // ✅ Auto-create profile after signup
       if (result.user != null) {
         await _createDefaultProfile(result.user!.uid);
       }
@@ -257,7 +244,6 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  // ✅ Change Password with re-authentication
   Future<bool> changePassword(String currentPassword, String newPassword) async {
     try {
       final user = _auth.currentUser;
@@ -265,14 +251,12 @@ class AuthService extends ChangeNotifier {
         throw Exception('User not logged in');
       }
 
-      // Re-authenticate user first
       final credential = EmailAuthProvider.credential(
         email: user.email!,
         password: currentPassword,
       );
       await user.reauthenticateWithCredential(credential);
       
-      // Update password
       await user.updatePassword(newPassword);
       
       print('✅ Password changed successfully');
@@ -364,18 +348,12 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  // ✅ Get user role synchronously from cached profile
   String? getCachedUserRole() {
     return _userProfile?['role'] as String?;
   }
 
-  // ✅ Check if cached user is Owner
   bool get isCachedOwner => _userProfile?['role'] == 'owner';
-  
-  // ✅ Check if cached user is Moderator
   bool get isCachedModerator => _userProfile?['role'] == 'moderator';
-  
-  // ✅ Check if cached user is Member
   bool get isCachedMember => _userProfile?['role'] == 'member';
 
   // ============================================================
