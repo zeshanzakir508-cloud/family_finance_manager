@@ -7,7 +7,7 @@ import '../../services/database_service.dart';
 import '../../models/family_model.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/helpers.dart';
-import '../dashboard/family_dashboard.dart';  // ✅ ADDED
+import '../dashboard/family_dashboard.dart';
 
 class FamilyManagementScreen extends StatefulWidget {
   const FamilyManagementScreen({super.key});
@@ -21,11 +21,21 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
   bool _isRefreshing = false;
   FamilyModel? _currentFamily;
   List<FamilyModel> _families = [];
+  DateTime? _lastBackPress;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // ✅ Auto-refresh when returning
+    if (!_isLoading) {
+      _loadData();
+    }
   }
 
   Future<void> _loadData() async {
@@ -175,14 +185,40 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     );
   }
 
+  // ✅ FIXED: Better family code generation
   String _generateFamilyCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     String code = '';
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final random = DateTime.now().millisecondsSinceEpoch;
     for (int i = 0; i < 6; i++) {
-      code += chars[now % chars.length];
+      final index = (random + i * 31) % chars.length;
+      code += chars[index];
     }
     return code;
+  }
+
+  // ✅ Back button handling (FIXED for #33)
+  Future<bool> _onWillPop() async {
+    // If there are multiple screens in stack, go back normally
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      return false;
+    }
+    
+    // Otherwise double tap to exit
+    final now = DateTime.now();
+    if (_lastBackPress == null || now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
+      _lastBackPress = now;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tap again to exit'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return false;
+    }
+    
+    return true;
   }
 
   @override
@@ -190,154 +226,157 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     final familyProvider = Provider.of<FamilyProvider>(context);
     _currentFamily = familyProvider.currentFamily;
 
-    return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
-      appBar: AppBar(
-        title: const Text('Family Management'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refreshData,
-          ),
-        ],
-      ),
-      body: _isLoading || _isRefreshing
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _refreshData,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildQuickAction(
-                          icon: Icons.add,
-                          label: 'Create',
-                          color: Colors.blue,
-                          onTap: _createFamily,
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        backgroundColor: AppTheme.backgroundColor,
+        appBar: AppBar(
+          title: const Text('Family Management'),
+          backgroundColor: AppTheme.primaryColor,
+          foregroundColor: Colors.white,
+          automaticallyImplyLeading: false,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: _refreshData,
+            ),
+          ],
+        ),
+        body: _isLoading || _isRefreshing
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _refreshData,
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildQuickAction(
+                            icon: Icons.add,
+                            label: 'Create',
+                            color: Colors.blue,
+                            onTap: _createFamily,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildQuickAction(
+                            icon: Icons.qr_code_scanner,
+                            label: 'Join',
+                            color: Colors.green,
+                            onTap: _joinFamily,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    if (_currentFamily != null) ...[
+                      const Text(
+                        'Current Family',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildQuickAction(
-                          icon: Icons.qr_code_scanner,
-                          label: 'Join',
-                          color: Colors.green,
-                          onTap: _joinFamily,
+                      const SizedBox(height: 8),
+                      _buildFamilyCard(_currentFamily!, isActive: true),
+                      const SizedBox(height: 16),
+                    ],
+
+                    if (_families.where((f) => f.id != _currentFamily?.id).isNotEmpty) ...[
+                      const Text(
+                        'Other Families',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ..._families
+                          .where((f) => f.id != _currentFamily?.id)
+                          .map((family) => _buildFamilyCard(family, isActive: false)),
+                      const SizedBox(height: 16),
+                    ],
+
+                    if (_families.isEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.all(32),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.family_restroom,
+                              size: 64,
+                              color: Colors.grey.shade400,
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'No Families Yet',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Create a new family or join an existing one',
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 16),
 
-                  if (_currentFamily != null) ...[
-                    const Text(
-                      'Current Family',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildFamilyCard(_currentFamily!, isActive: true),
                     const SizedBox(height: 16),
-                  ],
-
-                  if (_families.where((f) => f.id != _currentFamily?.id).isNotEmpty) ...[
-                    const Text(
-                      'Other Families',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ..._families
-                        .where((f) => f.id != _currentFamily?.id)
-                        .map((family) => _buildFamilyCard(family, isActive: false)),
-                    const SizedBox(height: 16),
-                  ],
-
-                  if (_families.isEmpty) ...[
                     Container(
-                      padding: const EdgeInsets.all(32),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Colors.blue.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blue.withOpacity(0.2)),
                       ),
-                      child: Column(
+                      child: Row(
                         children: [
-                          Icon(
-                            Icons.family_restroom,
-                            size: 64,
-                            color: Colors.grey.shade400,
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'No Families Yet',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Create a new family or join an existing one',
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
+                          const Icon(Icons.info_outline, color: Colors.blue),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Family Limits',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                Text(
+                                  '• Max 3 families created\n'
+                                  '• Max 3 families joined\n'
+                                  '• Max 10 members per family',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
+                    const SizedBox(height: 24),
                   ],
-
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.blue.withOpacity(0.2)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.info_outline, color: Colors.blue),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Family Limits',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              Text(
-                                '• Max 3 families created\n'
-                                '• Max 3 families joined\n'
-                                '• Max 10 members per family',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
+                ),
               ),
-            ),
+      ),
     );
   }
 
