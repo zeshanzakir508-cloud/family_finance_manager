@@ -3,10 +3,10 @@
 git clone https://github.com/flutter/flutter.git -b stable /tmp/flutter
 export PATH="$PATH:/tmp/flutter/bin"
 
-# ✅ Clear cache to force fresh dependency resolution
+# ✅ FORCE CLEAN CACHE - THIS IS THE KEY FIX
 rm -rf .dart_tool
 rm -rf build
-rm -rf pubspec.lock
+rm -f pubspec.lock
 
 # Enable web
 flutter config --enable-web
@@ -14,8 +14,8 @@ flutter config --enable-web
 # Get dependencies with fresh resolution
 flutter pub get
 
-# ✅ Force specific google_fonts version
-flutter pub upgrade google_fonts
+# ✅ FORCE google_fonts 6.1.0 (overrides pubspec.lock)
+flutter pub add google_fonts:6.1.0
 
 # Generate Hive adapters
 flutter pub run build_runner build --delete-conflicting-outputs
