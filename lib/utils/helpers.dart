@@ -3,31 +3,62 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Helpers {
-  // Get current currency from SharedPreferences
-  static Future<String> getCurrentCurrency() async {
+  static String? _cachedCurrency;
+  static bool _isInitialized = false;
+
+  // ✅ Initialize currency once
+  static Future<void> initCurrency() async {
+    if (_isInitialized) return;
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getString('currency') ?? 'USD';
+      _cachedCurrency = prefs.getString('currency') ?? 'USD';
+      _isInitialized = true;
+    } catch (e) {
+      _cachedCurrency = 'USD';
+      _isInitialized = true;
+    }
+  }
+
+  // ✅ Get current currency with caching
+  static Future<String> getCurrentCurrency() async {
+    if (_cachedCurrency != null) return _cachedCurrency!;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _cachedCurrency = prefs.getString('currency') ?? 'USD';
+      return _cachedCurrency!;
     } catch (e) {
       return 'USD';
     }
   }
 
-  // Format currency with dynamic symbol
-  static String formatCurrency(double amount, {String? currencyCode}) {
-    String symbol;
-    if (currencyCode != null) {
-      symbol = getCurrencySymbol(currencyCode);
-    } else {
-      // Try to get from SharedPreferences
-      try {
-        final prefs = SharedPreferences.getInstance();
-        final code = prefs as String? ?? 'USD';
-        symbol = getCurrencySymbol(code);
-      } catch (e) {
-        symbol = '\$';
-      }
+  // ✅ Get currency synchronously (after init)
+  static String getCurrencySync() {
+    return _cachedCurrency ?? 'USD';
+  }
+
+  // ✅ Set currency and update cache
+  static Future<void> setCurrency(String currencyCode) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('currency', currencyCode);
+      _cachedCurrency = currencyCode;
+    } catch (e) {
+      print('❌ Failed to save currency: $e');
     }
+  }
+
+  // ✅ FIXED: Format currency with proper async handling
+  static String formatCurrency(double amount, {String? currencyCode}) {
+    // Use provided code, cached, or default
+    final code = currencyCode ?? _cachedCurrency ?? 'USD';
+    final symbol = getCurrencySymbol(code);
+    return '$symbol${amount.toStringAsFixed(2)}';
+  }
+
+  // ✅ FIXED: Async version for before init
+  static Future<String> formatCurrencyAsync(double amount, {String? currencyCode}) async {
+    final code = currencyCode ?? await getCurrentCurrency();
+    final symbol = getCurrencySymbol(code);
     return '$symbol${amount.toStringAsFixed(2)}';
   }
 
@@ -121,7 +152,7 @@ class Helpers {
     return NumberFormat('#,##0.00').format(number);
   }
 
-  // Get currency symbol with more currencies
+  // Get currency symbol
   static String getCurrencySymbol(String currencyCode) {
     switch (currencyCode.toUpperCase()) {
       case 'USD': return '\$';
