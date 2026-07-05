@@ -43,41 +43,106 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   
-  // ✅ Initialize currency before app starts
   await Helpers.initCurrency();
-  
-  // ✅ Check and request permissions
   await _requestPermissions();
   
   runApp(const MyApp());
 }
 
-// ✅ Permission handling
 Future<void> _requestPermissions() async {
-  // Request storage permission (Android)
-  if (await Permission.storage.isDenied) {
-    final result = await Permission.storage.request();
-    if (result.isDenied) {
-      // User denied - show info
-      print('⚠️ Storage permission denied. Backup features will be limited.');
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final permissionsAsked = prefs.getBool('permissions_asked') ?? false;
+    
+    if (permissionsAsked) {
+      final storageStatus = await Permission.storage.status;
+      final cameraStatus = await Permission.camera.status;
+      
+      if (storageStatus.isGranted && cameraStatus.isGranted) {
+        return;
+      }
     }
-  }
 
-  // Request camera permission (for receipts)
-  if (await Permission.camera.isDenied) {
-    final result = await Permission.camera.request();
-    if (result.isDenied) {
-      print('⚠️ Camera permission denied. Receipt scanning disabled.');
-    }
-  }
+    await [
+      Permission.storage,
+      Permission.camera,
+      Permission.notifications,
+    ].request();
 
-  // Request notification permission (Android 13+)
-  if (await Permission.notification.isDenied) {
-    final result = await Permission.notification.request();
-    if (result.isDenied) {
-      print('⚠️ Notification permission denied.');
-    }
+    await prefs.setBool('permissions_asked', true);
+    
+    print('✅ Permissions requested');
+  } catch (e) {
+    print('❌ Permission error: $e');
   }
+}
+
+Future<bool> arePermissionsGranted() async {
+  try {
+    final storageStatus = await Permission.storage.status;
+    final cameraStatus = await Permission.camera.status;
+    
+    return storageStatus.isGranted && cameraStatus.isGranted;
+  } catch (e) {
+    return false;
+  }
+}
+
+Future<void> showPermissionDialog(BuildContext context) async {
+  return showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => AlertDialog(
+      title: const Text('Permissions Required'),
+      content: const Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'FinFam needs the following permissions:',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 12),
+          Text('📁 Storage - To save backups and reports'),
+          Text('📷 Camera - To scan receipts and documents'),
+          Text('🔔 Notifications - To send reminders and alerts'),
+          SizedBox(height: 12),
+          Text(
+            'Please allow these permissions to use the app.',
+            style: TextStyle(fontSize: 12),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+            openAppSettings();
+          },
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.blue,
+          ),
+          child: const Text('Open Settings'),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            Navigator.pop(context);
+            await _requestPermissions();
+            if (await arePermissionsGranted()) {
+              // Proceed
+            } else {
+              showPermissionDialog(context);
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.primaryColor,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('Retry'),
+        ),
+      ],
+    ),
+  );
 }
 
 class MyApp extends StatefulWidget {
@@ -108,7 +173,6 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
-  // ✅ Refresh theme from settings
   void refreshTheme() {
     _loadTheme();
   }
@@ -162,7 +226,7 @@ class _MyAppState extends State<MyApp> {
         },
         onGenerateRoute: (settings) {
           return MaterialPageRoute(
-            builder: (context) => const LoginScreen(),
+            builder: (context) => const SplashScreen(),
           );
         },
       ),
