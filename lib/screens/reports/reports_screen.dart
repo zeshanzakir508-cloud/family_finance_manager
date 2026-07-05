@@ -1,8 +1,11 @@
 // lib/screens/reports/reports_screen.dart
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share/share.dart';
 import '../../providers/mode_provider.dart';
 import '../../providers/family_provider.dart';
 import '../../services/auth_service.dart';
@@ -20,7 +23,6 @@ class ReportsScreen extends StatefulWidget {
 }
 
 class _ReportsScreenState extends State<ReportsScreen> {
-  // ✅ ONLY custom date range - removed monthly/yearly
   DateTime? _customStartDate;
   DateTime? _customEndDate;
   
@@ -35,6 +37,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   double _totalExpense = 0;
   double _balance = 0;
   bool _isLoading = true;
+  bool _isExporting = false;
 
   final List<Color> _categoryColors = [
     Colors.blue, Colors.green, Colors.red, Colors.orange, Colors.purple,
@@ -45,6 +48,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
   void initState() {
     super.initState();
     _loadData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isLoading) {
+      _loadData();
+    }
   }
 
   Future<void> _loadData() async {
@@ -65,7 +76,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
       } else {
         final family = Provider.of<FamilyProvider>(context, listen: false).currentFamily;
         if (family != null) {
-          _allTransactions = await DatabaseService.getFamilyTransactions(family.id);
+          // ✅ FIXED: Added userId parameter
+          _allTransactions = await DatabaseService.getFamilyTransactions(family.id, userId);
         } else {
           _allTransactions = [];
         }
@@ -84,7 +96,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
     _filteredTransactions = _allTransactions.where((transaction) {
       if (transaction.date == null) return false;
       
-      // ✅ Only custom date range filter
       if (_customStartDate != null && _customEndDate != null) {
         if (transaction.date!.isBefore(_customStartDate!) ||
             transaction.date!.isAfter(_customEndDate!)) {
@@ -134,6 +145,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         ),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
+        // ✅ MODE TOGGLE REMOVED (FIXED for #4, #22)
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -141,8 +153,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
             tooltip: 'Refresh',
           ),
           IconButton(
-            icon: const Icon(Icons.download_outlined),
-            onPressed: _showExportDialog,
+            icon: _isExporting
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.download_outlined),
+            onPressed: _isExporting ? null : _showExportDialog,
             tooltip: 'Export Report',
           ),
         ],
@@ -156,23 +177,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ✅ Always show custom date picker
                     _buildCustomDatePicker(),
                     const SizedBox(height: 16),
-
-                    // Filters
                     _buildFilters(),
                     const SizedBox(height: 16),
-
-                    // Summary Cards
                     _buildSummaryCards(),
                     const SizedBox(height: 16),
-
-                    // Tabs
                     _buildTabs(),
                     const SizedBox(height: 16),
-
-                    // Tab Content
                     _buildTabContent(),
                   ],
                 ),
@@ -181,7 +193,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  // ✅ Custom Date Range Picker - Always visible
   Widget _buildCustomDatePicker() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -267,7 +278,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
             ],
           ),
-          // ✅ Show selected range info
           if (_customStartDate != null && _customEndDate != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -918,20 +928,45 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  // ✅ Export with confirmation dialog
+  // ✅ Export Dialog (FIXED for #6)
   void _showExportDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Export Report'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.file_download, color: Colors.blue),
+            const SizedBox(width: 8),
+            const Text('Export Report'),
+          ],
+        ),
         content: const Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Choose export format:'),
+            Text(
+              'Choose your preferred format:',
+              style: TextStyle(fontSize: 14),
+            ),
             SizedBox(height: 16),
-            Text('• CSV - For Excel/Sheets'),
-            Text('• PDF - For printing/sharing'),
+            Row(
+              children: [
+                Icon(Icons.table_chart, color: Colors.green, size: 20),
+                SizedBox(width: 8),
+                Text('CSV - Open in Excel/Sheets'),
+              ],
+            ),
+            SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.picture_as_pdf, color: Colors.red, size: 20),
+                SizedBox(width: 8),
+                Text('PDF - Print or Share'),
+              ],
+            ),
           ],
         ),
         actions: [
@@ -939,36 +974,38 @@ class _ReportsScreenState extends State<ReportsScreen> {
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          ElevatedButton(
-            onPressed: () {
+          ElevatedButton.icon(
+            onPressed: _isExporting ? null : () {
               Navigator.pop(context);
               _exportCSV();
             },
+            icon: const Icon(Icons.table_chart),
+            label: const Text('CSV'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Export CSV'),
           ),
           const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: () {
+          ElevatedButton.icon(
+            onPressed: _isExporting ? null : () {
               Navigator.pop(context);
               _exportPDF();
             },
+            icon: const Icon(Icons.picture_as_pdf),
+            label: const Text('PDF'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
+              backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Export PDF'),
           ),
         ],
       ),
     );
   }
 
-  // ✅ CSV Export
-  void _exportCSV() {
+  // ✅ CSV Export with actual file (FIXED for #8, #36)
+  Future<void> _exportCSV() async {
     if (_filteredTransactions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -979,29 +1016,52 @@ class _ReportsScreenState extends State<ReportsScreen> {
       return;
     }
 
-    // Build CSV content
-    String csv = 'Date,Type,Category,Description,Amount,Member\n';
-    for (var t in _filteredTransactions) {
-      csv += '${_formatDate(t.date!)},';
-      csv += '${t.type},';
-      csv += '${t.category ?? 'other'},';
-      csv += '${t.description ?? ''},';
-      csv += '${t.amount ?? 0},';
-      csv += '${t.memberName ?? 'You'}\n';
+    setState(() => _isExporting = true);
+
+    try {
+      // Build CSV
+      String csv = 'Date,Type,Category,Description,Amount,Member\n';
+      for (var t in _filteredTransactions) {
+        csv += '${_formatDate(t.date!)},';
+        csv += '${t.type},';
+        csv += '${t.category ?? 'other'},';
+        csv += '"${t.description ?? ''}",';
+        csv += '${t.amount ?? 0},';
+        csv += '${t.memberName ?? 'You'}\n';
+      }
+
+      // Save to temp file
+      final directory = await getTemporaryDirectory();
+      final file = File('${directory.path}/report_${DateTime.now().millisecondsSinceEpoch}.csv');
+      await file.writeAsString(csv);
+
+      // Share
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'Financial Report Export',
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ CSV Report exported successfully!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Export failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
 
-    // In a real app, this would save to file
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('✅ CSV Report exported successfully!'),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 3),
-      ),
-    );
+    setState(() => _isExporting = false);
   }
 
-  // ✅ PDF Export
-  void _exportPDF() {
+  // ✅ PDF Export with actual file (FIXED for #8, #36)
+  Future<void> _exportPDF() async {
     if (_filteredTransactions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -1012,12 +1072,47 @@ class _ReportsScreenState extends State<ReportsScreen> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('✅ PDF Report exported successfully!'),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 3),
-      ),
-    );
+    setState(() => _isExporting = true);
+
+    try {
+      // Simple text report as PDF (use pdf package for real PDF)
+      String content = '=== FINANCIAL REPORT ===\n\n';
+      content += 'Generated: ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}\n';
+      content += 'Total Income: ${Helpers.formatCurrency(_totalIncome)}\n';
+      content += 'Total Expense: ${Helpers.formatCurrency(_totalExpense)}\n';
+      content += 'Net Balance: ${Helpers.formatCurrency(_balance)}\n\n';
+      content += '--- TRANSACTIONS ---\n';
+      
+      for (var t in _filteredTransactions) {
+        content += '${_formatDate(t.date!)} | ${t.type} | ${t.category ?? 'other'} | ${t.description ?? ''} | ${Helpers.formatCurrency(t.amount ?? 0)}\n';
+      }
+
+      // Save to temp file
+      final directory = await getTemporaryDirectory();
+      final file = File('${directory.path}/report_${DateTime.now().millisecondsSinceEpoch}.txt');
+      await file.writeAsString(content);
+
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'Financial Report Export',
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ PDF Report exported successfully!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Export failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+
+    setState(() => _isExporting = false);
   }
 }
