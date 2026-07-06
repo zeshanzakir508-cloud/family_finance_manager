@@ -32,7 +32,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // ✅ Auto-refresh when returning
     if (!_isLoading) {
       _loadData();
     }
@@ -46,6 +45,10 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     final userId = authService.userId;
     
     if (userId != null) {
+      // ✅ Ensure profile is loaded first
+      if (authService.userProfile == null) {
+        await authService.fetchUserProfile(userId);
+      }
       _families = await DatabaseService.getUserFamilies(userId);
       _currentFamily = familyProvider.currentFamily;
     }
@@ -185,7 +188,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     );
   }
 
-  // ✅ FIXED: Better family code generation
   String _generateFamilyCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     String code = '';
@@ -197,28 +199,13 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     return code;
   }
 
-  // ✅ Back button handling (FIXED for #33)
   Future<bool> _onWillPop() async {
-    // If there are multiple screens in stack, go back normally
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-      return false;
-    }
-    
-    // Otherwise double tap to exit
-    final now = DateTime.now();
-    if (_lastBackPress == null || now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
-      _lastBackPress = now;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tap again to exit'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return false;
-    }
-    
-    return true;
+    // ✅ FIXED: Go back to Family Dashboard instead of Splash
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const FamilyDashboard()),
+    );
+    return false;
   }
 
   @override
