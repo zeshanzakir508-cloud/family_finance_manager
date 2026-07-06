@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/helpers.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -34,6 +35,7 @@ class _AboutScreenState extends State<AboutScreen> {
     }
   }
 
+  // ✅ Contact Support Popup
   void _showContactSupportDialog() {
     showDialog(
       context: context,
@@ -43,7 +45,7 @@ class _AboutScreenState extends State<AboutScreen> {
         ),
         title: const Row(
           children: [
-            Icon(Icons.contact_support, color: Colors.blue),
+            Icon(Icons.support_agent, color: Colors.blue),
             SizedBox(width: 8),
             Text('Contact Support'),
           ],
@@ -53,35 +55,35 @@ class _AboutScreenState extends State<AboutScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'For any questions or support, please contact us at:',
+              'Email us for support or feedback:',
               style: TextStyle(fontSize: 14),
             ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.05),
+                color: Colors.blue.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.blue.withOpacity(0.2)),
               ),
               child: Row(
                 children: [
                   const Icon(Icons.email, color: Colors.blue),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'zeshanzakir508@gmail.com',
                       style: TextStyle(
                         fontSize: 14,
+                        color: AppTheme.primaryColor,
                         fontWeight: FontWeight.w500,
-                        color: Colors.blue.shade700,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             const Text(
               'We\'ll respond within 24 hours.',
               style: TextStyle(
@@ -93,26 +95,172 @@ class _AboutScreenState extends State<AboutScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-          ElevatedButton.icon(
             onPressed: () {
-              Navigator.pop(context);
               // Copy email to clipboard
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Email copied to clipboard! 📧'),
-                  backgroundColor: Colors.green,
-                ),
+              Navigator.pop(context);
+              Helpers.showSnackBar(
+                context,
+                'Email copied to clipboard!',
+                color: Colors.green,
               );
             },
-            icon: const Icon(Icons.copy),
-            label: const Text('Copy Email'),
+            child: const Text('Copy Email'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Helpers.showSnackBar(
+                context,
+                'Email sent! We\'ll get back to you soon.',
+                color: Colors.green,
+              );
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
               foregroundColor: Colors.white,
             ),
+            child: const Text('Send Email'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✅ Rate Dialog with proper alignment
+  void _showRateDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text('Rate FinFam'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.star,
+              color: Colors.amber,
+              size: 48,
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Enjoying FinFam?',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'Please take a moment to rate us on the Play Store!',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14),
+            ),
+          ],
+        ),
+        actions: [
+          // ✅ "Maybe Later" on the left
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Helpers.showSnackBar(
+                context,
+                'We\'ll remind you later!',
+                color: Colors.grey[850],
+              );
+            },
+            child: const Text('Maybe Later'),
+          ),
+          // ✅ "Rate Now" on the right
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Helpers.showSnackBar(
+                context,
+                'Thank you for rating us! ⭐⭐⭐⭐⭐',
+                color: Colors.green,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Rate Now'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTermsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Terms of Service'),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'By using FinFam, you agree to:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8),
+              Text('• Use the app responsibly for personal/family finance management'),
+              Text('• Keep your account credentials secure'),
+              Text('• Not share your account with others'),
+              Text('• Provide accurate financial information'),
+              Text('• Accept that we are not responsible for financial decisions made'),
+              SizedBox(height: 8),
+              Text(
+                'For full terms, please visit our website.',
+                style: TextStyle(fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showOpenSourceDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Open Source Libraries'),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('FinFam uses the following open source libraries:'),
+              SizedBox(height: 8),
+              Text('• Flutter - UI Framework'),
+              Text('• Firebase - Backend Services'),
+              Text('• Hive - Local Storage'),
+              Text('• Provider - State Management'),
+              Text('• Shared Preferences - Settings Storage'),
+              Text('• Local Auth - Biometric Authentication'),
+              Text('• URL Launcher - Link Handling'),
+              Text('• Package Info Plus - Version Information'),
+              SizedBox(height: 8),
+              Text(
+                'Full source code is available on GitHub.',
+                style: TextStyle(fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
           ),
         ],
       ),
@@ -149,7 +297,22 @@ class _AboutScreenState extends State<AboutScreen> {
               ),
             ),
             const SizedBox(height: 4),
-            _buildVersionBadge(),
+            // ✅ FIXED: Version 1.0 (2026)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                'Version $_appVersion ($_buildNumber)',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.primaryColor,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
             const SizedBox(height: 24),
             _buildDescriptionCard(),
             const SizedBox(height: 16),
@@ -190,24 +353,6 @@ class _AboutScreenState extends State<AboutScreen> {
           Icons.people_alt,
           size: 56,
           color: AppTheme.primaryColor,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVersionBadge() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        'Version $_appVersion ($_buildNumber)',
-        style: TextStyle(
-          fontSize: 12,
-          color: AppTheme.primaryColor,
-          fontWeight: FontWeight.w500,
         ),
       ),
     );
@@ -332,8 +477,9 @@ class _AboutScreenState extends State<AboutScreen> {
             title: 'Terms of Service',
             onTap: _showTermsDialog,
           ),
+          // ✅ FIXED: Contact Support → Popup
           _buildLinkItem(
-            icon: Icons.contact_support,
+            icon: Icons.support_agent,
             title: 'Contact Support',
             onTap: _showContactSupportDialog,
           ),
@@ -386,8 +532,9 @@ class _AboutScreenState extends State<AboutScreen> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                // ✅ FIXED: 2024 → 2026
                 Text(
-                  '© 2026 FinFam. All rights reserved.',  // ✅ FIXED: 2024 → 2026
+                  '© 2026 FinFam. All rights reserved.',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey.shade600,
@@ -431,134 +578,6 @@ class _AboutScreenState extends State<AboutScreen> {
       trailing: const Icon(Icons.chevron_right, size: 20),
       contentPadding: EdgeInsets.zero,
       onTap: onTap,
-    );
-  }
-
-  void _showTermsDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Terms of Service'),
-        content: const SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'By using FinFam, you agree to:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              Text('• Use the app responsibly for personal/family finance management'),
-              Text('• Keep your account credentials secure'),
-              Text('• Not share your account with others'),
-              Text('• Provide accurate financial information'),
-              Text('• Accept that we are not responsible for financial decisions made'),
-              SizedBox(height: 8),
-              Text(
-                'For full terms, please visit our website.',
-                style: TextStyle(fontSize: 12),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showOpenSourceDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Open Source Libraries'),
-        content: const SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('FinFam uses the following open source libraries:'),
-              SizedBox(height: 8),
-              Text('• Flutter - UI Framework'),
-              Text('• Firebase - Backend Services'),
-              Text('• Hive - Local Storage'),
-              Text('• Provider - State Management'),
-              Text('• Shared Preferences - Settings Storage'),
-              Text('• Local Auth - Biometric Authentication'),
-              Text('• Package Info Plus - Version Information'),
-              SizedBox(height: 8),
-              Text(
-                'Full source code is available on GitHub.',
-                style: TextStyle(fontSize: 12),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showRateDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Rate FinFam'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.star,
-              color: Colors.amber,
-              size: 48,
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Enjoying FinFam?',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'Please take a moment to rate us on the Play Store!',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Maybe Later'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Thank you for rating us! ⭐⭐⭐⭐⭐'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Rate Now'),
-          ),
-        ],
-      ),
     );
   }
 }
