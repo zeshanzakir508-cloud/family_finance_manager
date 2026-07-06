@@ -58,7 +58,6 @@ class _LoginScreenState extends State<LoginScreen> {
       if (authService.isFingerprintEnabled) {
         final authenticated = await authService.authenticateWithFingerprint();
         if (authenticated) {
-          // Fingerprint successful, proceed with saved credentials
           final prefs = await SharedPreferences.getInstance();
           final savedEmail = prefs.getString('saved_email') ?? '';
           final savedPassword = prefs.getString('saved_password') ?? '';
@@ -70,13 +69,11 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
 
-      // Normal login
       await authService.signInWithEmail(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
 
-      // Save credentials if remember me is checked
       if (_rememberMe) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('saved_email', _emailController.text.trim());
@@ -165,40 +162,45 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: AppTheme.backgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Logo
-              _buildLogo(),
-              const SizedBox(height: 32),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.of(context).size.height - MediaQuery.of(context).padding.top - MediaQuery.of(context).padding.bottom - 32,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Logo
+                _buildLogo(),
+                const SizedBox(height: 24),
 
-              // Welcome Text
-              _buildWelcomeText(),
-              const SizedBox(height: 32),
+                // Welcome Text
+                _buildWelcomeText(),
+                const SizedBox(height: 24),
 
-              // Login Form
-              Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    _buildEmailField(),
-                    const SizedBox(height: 16),
-                    _buildPasswordField(),
-                    const SizedBox(height: 8),
-                    _buildRememberMeRow(),
-                    const SizedBox(height: 24),
-                    _buildLoginButton(),
-                    const SizedBox(height: 12),
-                    _buildFingerprintButton(),
-                    const SizedBox(height: 16),
-                    // ✅ REMOVED: Duplicate Forgot Password Link
-                    const SizedBox(height: 16),
-                    _buildSignupLink(),
-                  ],
+                // Login Form
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      _buildEmailField(),
+                      const SizedBox(height: 16),
+                      _buildPasswordField(),
+                      const SizedBox(height: 8),
+                      _buildRememberMeRow(),
+                      const SizedBox(height: 24),
+                      _buildLoginButton(),
+                      const SizedBox(height: 12),
+                      _buildFingerprintButton(),
+                      const SizedBox(height: 16),
+                      _buildSignupLink(),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -207,7 +209,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildLogo() {
     return Container(
-      height: 120,
       alignment: Alignment.center,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -340,7 +341,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
         ),
-        // ✅ Only ONE Forgot Password link
         TextButton(
           onPressed: () {
             Navigator.pushNamed(context, '/forgot-password');
