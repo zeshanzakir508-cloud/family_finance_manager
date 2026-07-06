@@ -81,10 +81,19 @@ class _FamilyDashboardState extends State<FamilyDashboard>
         return;
       }
 
+      // ✅ Ensure profile is loaded
+      if (authService.userProfile == null) {
+        await authService.fetchUserProfile(_userId!);
+      }
+
+      // ✅ Fetch families for this user
+      final families = await DatabaseService.getUserFamilies(_userId!);
+      familyProvider.setFamilies(families);
+
       _currentFamily = familyProvider.currentFamily;
       
-      if (_currentFamily == null && familyProvider.families.isNotEmpty) {
-        _currentFamily = familyProvider.families.first;
+      if (_currentFamily == null && families.isNotEmpty) {
+        _currentFamily = families.first;
         familyProvider.setCurrentFamily(_currentFamily!);
       }
 
@@ -97,25 +106,20 @@ class _FamilyDashboardState extends State<FamilyDashboard>
         return;
       }
 
-      try {
-        _transactions = await DatabaseService.getFamilyTransactions(
-          _currentFamily!.id,
-          _userId!,
-        );
-        _transactions.sort((a, b) => b.date?.compareTo(a.date ?? DateTime.now()) ?? 0);
-        _applyFilters();
-        setState(() {
-          _hasError = false;
-          _isLoading = false;
-        });
-      } catch (e) {
-        setState(() {
-          _hasError = true;
-          _errorMessage = 'Failed to load transactions: $e';
-          _isLoading = false;
-        });
-      }
+      // ✅ Get family transactions with userId
+      _transactions = await DatabaseService.getFamilyTransactions(
+        _currentFamily!.id,
+        _userId!,
+      );
+      _transactions.sort((a, b) => b.date?.compareTo(a.date ?? DateTime.now()) ?? 0);
+      _applyFilters();
+      
+      setState(() {
+        _hasError = false;
+        _isLoading = false;
+      });
     } catch (e) {
+      print('❌ Error loading family data: $e');
       setState(() {
         _hasError = true;
         _errorMessage = 'Failed to load data: $e';
@@ -244,7 +248,6 @@ class _FamilyDashboardState extends State<FamilyDashboard>
     );
   }
 
-  // ✅ FIXED: Icons.crown → Icons.star
   Widget _buildRoleBadge() {
     final authService = Provider.of<AuthService>(context);
     final role = authService.getCachedUserRole() ?? 'member';
