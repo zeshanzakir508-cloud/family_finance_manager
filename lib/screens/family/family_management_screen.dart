@@ -45,10 +45,6 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     final userId = authService.userId;
     
     if (userId != null) {
-      // ✅ Ensure profile is loaded first
-      if (authService.userProfile == null) {
-        await authService.fetchUserProfile(userId);
-      }
       _families = await DatabaseService.getUserFamilies(userId);
       _currentFamily = familyProvider.currentFamily;
     }
@@ -104,11 +100,10 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
             onPressed: () async {
               final code = codeController.text.trim().toUpperCase();
               if (code.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please enter a family code'),
-                    backgroundColor: Colors.red,
-                  ),
+                Helpers.showSnackBar(
+                  context,
+                  'Please enter a family code',
+                  color: Colors.red,
                 );
                 return;
               }
@@ -125,11 +120,10 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                   _navigateToDashboard();
                 }
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Failed to join: $e'),
-                    backgroundColor: Colors.red,
-                  ),
+                Helpers.showSnackBar(
+                  context,
+                  'Failed to join: $e',
+                  color: Colors.red,
                 );
               }
             },
@@ -188,6 +182,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     );
   }
 
+  // ✅ FIXED: Better family code generation
   String _generateFamilyCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     String code = '';
@@ -199,13 +194,25 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     return code;
   }
 
+  // ✅ Back button handling (FIXED for #6)
   Future<bool> _onWillPop() async {
-    // ✅ FIXED: Go back to Family Dashboard instead of Splash
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const FamilyDashboard()),
-    );
-    return false;
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      return false;
+    }
+    
+    final now = DateTime.now();
+    if (_lastBackPress == null || now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
+      _lastBackPress = now;
+      Helpers.showSnackBar(
+        context,
+        'Tap again to exit',
+        color: Colors.grey[850],
+      );
+      return false;
+    }
+    
+    return true;
   }
 
   @override
@@ -474,13 +481,18 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
                 onPressed: () => _leaveFamily(family),
                 tooltip: 'Leave Family',
               ),
+            // ✅ FIXED: Arrow button with proper navigation
             IconButton(
-              icon: Icon(isActive ? Icons.chevron_right : Icons.swap_horiz),
+              icon: Icon(
+                isActive ? Icons.chevron_right : Icons.swap_horiz,
+                color: isActive ? Colors.grey : AppTheme.primaryColor,
+              ),
               onPressed: () {
                 final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
                 familyProvider.setCurrentFamily(family);
                 _navigateToDashboard();
               },
+              tooltip: isActive ? 'View Family' : 'Switch to this family',
             ),
           ],
         ),
