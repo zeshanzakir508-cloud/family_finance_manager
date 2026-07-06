@@ -42,8 +42,13 @@ import 'services/database_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  
+  // ✅ Initialize currency
   await Helpers.initCurrency();
+  
+  // ✅ Request permissions
   await _requestPermissions();
+  
   runApp(const MyApp());
 }
 
@@ -151,6 +156,7 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
+  // ✅ Refresh theme from settings
   void refreshTheme() {
     _loadTheme();
   }
@@ -168,7 +174,7 @@ class _MyAppState extends State<MyApp> {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
-        themeMode: _themeMode,
+        themeMode: _themeMode,  // ✅ Dynamic theme
         initialRoute: '/splash',
         routes: {
           '/login': (context) => const LoginScreen(),
