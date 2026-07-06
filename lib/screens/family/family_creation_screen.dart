@@ -46,6 +46,11 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
         throw Exception('User not logged in');
       }
 
+      // ✅ Ensure profile is loaded
+      if (authService.userProfile == null) {
+        await authService.fetchUserProfile(userId);
+      }
+
       final newFamily = FamilyModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         name: _nameController.text.trim(),
@@ -59,14 +64,15 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
           FamilyMember(
             id: userId,
             userId: userId,
-            displayName: 'You',
+            displayName: authService.userProfile?['displayName'] ?? 'You',
             email: authService.currentUser?.email ?? '',
             role: 'admin',
             joinedAt: DateTime.now(),
             isActive: true,
           ),
         ],
-        settings: FamilySettings(  // ✅ FIXED: Removed 'const'
+        memberIds: [userId],
+        settings: FamilySettings(
           currency: _selectedCurrency,
           allowMembersToAdd: _allowMembersToAdd,
           requireApproval: _requireApproval,
