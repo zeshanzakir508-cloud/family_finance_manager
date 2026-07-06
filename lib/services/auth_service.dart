@@ -20,10 +20,12 @@ class AuthService extends ChangeNotifier {
     _auth.authStateChanges().listen((user) async {
       _user = user;
       if (user != null) {
-        // ✅ Auto-fetch profile on login
+        print('✅ User logged in: ${user.uid}');
+        // ✅ CRITICAL: Auto-fetch profile on login
         await fetchUserProfile(user.uid);
       } else {
         _userProfile = null;
+        print('⚠️ User logged out');
       }
       notifyListeners();
     });
@@ -40,25 +42,30 @@ class AuthService extends ChangeNotifier {
   Map<String, dynamic>? get userProfile => _userProfile;
   bool get isLoading => _isLoading;
   bool get isFingerprintEnabled => _isFingerprintEnabled;
+  bool get isLoggedIn => _user != null;
+  bool get hasProfile => _userProfile != null;
 
   // ============================================================
   // ✅ PROFILE MANAGEMENT (FIXED)
   // ============================================================
 
-  /// Fetch user profile from Firestore
+  /// ✅ Fetch user profile from Firestore
   Future<Map<String, dynamic>?> fetchUserProfile(String uid) async {
     try {
       _isLoading = true;
       notifyListeners();
 
+      print('🔄 Fetching profile for user: $uid');
+      
       final doc = await _firestore.collection('users').doc(uid).get();
       
       if (doc.exists) {
         _userProfile = doc.data();
-        print('✅ Profile loaded for user: $uid');
-        print('   Role: ${_userProfile?['role'] ?? 'No role'}');
-        print('   Name: ${_userProfile?['displayName'] ?? 'No name'}');
-        print('   Username: ${_userProfile?['username'] ?? 'No username'}');
+        print('✅ Profile loaded successfully!');
+        print('   👤 Name: ${_userProfile?['displayName'] ?? 'No name'}');
+        print('   📧 Email: ${_userProfile?['email'] ?? 'No email'}');
+        print('   👑 Role: ${_userProfile?['role'] ?? 'No role'}');
+        print('   🔑 Username: ${_userProfile?['username'] ?? 'No username'}');
       } else {
         print('⚠️ No profile found for user: $uid');
         // ✅ Auto-create profile if missing
@@ -109,36 +116,28 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// ✅ Get user role
-  Future<String?> getUserRole(String uid) async {
-    try {
-      final doc = await _firestore.collection('users').doc(uid).get();
-      if (doc.exists) {
-        return doc.data()?['role'] as String?;
-      }
-      return null;
-    } catch (e) {
-      return null;
+  /// ✅ Refresh profile (call after updates)
+  Future<void> refreshProfile() async {
+    if (_user != null) {
+      await fetchUserProfile(_user!.uid);
     }
   }
 
-  /// ✅ Check if user is Owner
-  Future<bool> isOwner(String uid) async {
-    final role = await getUserRole(uid);
-    return role == 'owner';
+  /// ✅ Get user role from cache
+  String? getCachedUserRole() {
+    return _userProfile?['role'] as String?;
   }
 
-  /// ✅ Check if user is Moderator
-  Future<bool> isModerator(String uid) async {
-    final role = await getUserRole(uid);
-    return role == 'moderator';
+  /// ✅ Get username from cache
+  String? getCachedUsername() {
+    return _userProfile?['username'] as String?;
   }
 
-  /// ✅ Check if user is Member
-  Future<bool> isMember(String uid) async {
-    final role = await getUserRole(uid);
-    return role == 'member';
-  }
+  /// ✅ Check if cached user is Owner
+  bool get isCachedOwner => _userProfile?['role'] == 'owner';
+  
+  /// ✅ Check if cached user is Moderator
+  bool get isCachedModerator => _userProfile?['role'] == 'moderator';
 
   // ============================================================
   // AUTHENTICATION METHODS
@@ -211,7 +210,6 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// ✅ Create profile with username
   Future<void> _createProfileWithUsername(String uid, String email, String name, String username) async {
     try {
       final profileData = {
@@ -344,17 +342,6 @@ class AuthService extends ChangeNotifier {
   // ============================================================
   // HELPERS
   // ============================================================
-
-  String? getCachedUserRole() {
-    return _userProfile?['role'] as String?;
-  }
-
-  String? getCachedUsername() {
-    return _userProfile?['username'] as String?;
-  }
-
-  bool get isCachedOwner => _userProfile?['role'] == 'owner';
-  bool get isCachedModerator => _userProfile?['role'] == 'moderator';
 
   String _getErrorMessage(FirebaseAuthException e) {
     switch (e.code) {
