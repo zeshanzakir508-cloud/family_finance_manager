@@ -27,6 +27,38 @@ class DatabaseService {
     }
   }
 
+  /// ✅ Get user by username
+  static Future<UserModel?> getUserByUsername(String username) async {
+    try {
+      final query = await _firestore
+          .collection('users')
+          .where('username', isEqualTo: username)
+          .limit(1)
+          .get();
+      
+      if (query.docs.isNotEmpty) {
+        return UserModel.fromJson(query.docs.first.data());
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// ✅ Check if username exists
+  static Future<bool> usernameExists(String username) async {
+    try {
+      final query = await _firestore
+          .collection('users')
+          .where('username', isEqualTo: username)
+          .limit(1)
+          .get();
+      return query.docs.isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
+
   static Future<void> saveUser(UserModel user) async {
     await _firestore.collection('users').doc(user.id).set(user.toJson());
   }
@@ -192,7 +224,6 @@ class DatabaseService {
       final updatedMembers = List<FamilyMember>.from(family.members ?? []);
       updatedMembers.add(newMember);
       
-      // ✅ FIXED: memberIds added to FamilyModel
       final updatedMemberIds = List<String>.from(family.memberIds ?? []);
       if (!updatedMemberIds.contains(userId)) {
         updatedMemberIds.add(userId);
@@ -217,7 +248,6 @@ class DatabaseService {
       final family = FamilyModel.fromJson(doc.data()!);
       final updatedMembers = family.members?.where((m) => m.id != userId).toList() ?? [];
       
-      // ✅ FIXED: memberIds added to FamilyModel
       final updatedMemberIds = List<String>.from(family.memberIds ?? []);
       updatedMemberIds.remove(userId);
       
@@ -241,7 +271,6 @@ class DatabaseService {
       final updatedMembers = List<FamilyMember>.from(family.members ?? []);
       updatedMembers.add(member);
       
-      // ✅ FIXED: memberIds added to FamilyModel
       final updatedMemberIds = List<String>.from(family.memberIds ?? []);
       if (!updatedMemberIds.contains(member.userId)) {
         updatedMemberIds.add(member.userId);
@@ -360,7 +389,6 @@ class DatabaseService {
         allTransactions.addAll(familyTxn);
       }
       
-      // ✅ FIXED: Null-safe date sorting
       allTransactions.sort((a, b) {
         final dateA = a.date ?? DateTime(1970);
         final dateB = b.date ?? DateTime(1970);
