@@ -260,11 +260,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   if (_customStartDate != null && _customEndDate != null) {
                     _applyFilters();
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please select both start and end dates'),
-                        backgroundColor: Colors.orange,
-                      ),
+                    Helpers.showSnackBar(
+                      context,
+                      'Please select both start and end dates',
+                      color: Colors.orange,
                     );
                   }
                 },
@@ -1001,14 +1000,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  // ✅ FIXED: SharePlus → Share
   Future<void> _exportCSV() async {
     if (_filteredTransactions.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No data to export'),
-          backgroundColor: Colors.orange,
-        ),
+      Helpers.showSnackBar(
+        context,
+        'No data to export',
+        color: Colors.orange,
       );
       return;
     }
@@ -1035,33 +1032,28 @@ class _ReportsScreenState extends State<ReportsScreen> {
         text: 'Financial Report Export',
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ CSV Report exported successfully!'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
-        ),
+      Helpers.showSnackBar(
+        context,
+        '✅ CSV Report exported successfully!',
+        color: Colors.green,
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Export failed: $e'),
-          backgroundColor: Colors.red,
-        ),
+      Helpers.showSnackBar(
+        context,
+        '❌ Export failed: $e',
+        color: Colors.red,
       );
     }
 
     setState(() => _isExporting = false);
   }
 
-  // ✅ FIXED: SharePlus → Share
   Future<void> _exportPDF() async {
     if (_filteredTransactions.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No data to export'),
-          backgroundColor: Colors.orange,
-        ),
+      Helpers.showSnackBar(
+        context,
+        'No data to export',
+        color: Colors.orange,
       );
       return;
     }
@@ -1089,19 +1081,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
         text: 'Financial Report Export',
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ PDF Report exported successfully!'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
-        ),
+      Helpers.showSnackBar(
+        context,
+        '✅ PDF Report exported successfully!',
+        color: Colors.green,
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Export failed: $e'),
-          backgroundColor: Colors.red,
-        ),
+      Helpers.showSnackBar(
+        context,
+        '❌ Export failed: $e',
+        color: Colors.red,
       );
     }
 
