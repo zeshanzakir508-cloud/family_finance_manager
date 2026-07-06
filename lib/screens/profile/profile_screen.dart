@@ -25,6 +25,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _role;
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _hasError = false;
+  String _errorMessage = '';
 
   @override
   void initState() {
@@ -35,7 +37,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_isLoading) {
+    if (!_isLoading && _user == null) {
       _loadUser();
     }
   }
@@ -49,30 +51,75 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadUser() async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final userId = authService.userId;
-    
-    if (userId != null) {
-      final cachedProfile = authService.userProfile;
-      if (cachedProfile != null) {
-        _user = UserModel.fromJson(cachedProfile);
-        _role = cachedProfile['role'] ?? 'member';
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = '';
+    });
+
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final userId = authService.userId;
+
+      if (userId == null) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = 'User not logged in';
+          _isLoading = false;
+        });
+        return;
       }
-      
+
+      // ✅ First try to get from AuthService cache
+      if (authService.userProfile != null) {
+        _user = UserModel.fromJson(authService.userProfile!);
+        _role = authService.userProfile!['role'] ?? 'member';
+        _populateControllers();
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // ✅ If cache miss, fetch directly from Firestore
       final user = await DatabaseService.getUser(userId);
       if (user != null) {
         _user = user;
         _role = await DatabaseService.getUserRole(userId) ?? 'member';
+        _populateControllers();
+        setState(() => _isLoading = false);
+        return;
       }
-      
-      if (_user != null) {
-        _displayNameController.text = _user!.displayName ?? '';
-        _usernameController.text = _user!.username ?? '';
-        _phoneController.text = _user!.phoneNumber ?? '';
+
+      // ✅ If no profile exists, try to fetch fresh profile from AuthService
+      final freshProfile = await authService.fetchUserProfile(userId);
+      if (freshProfile != null) {
+        _user = UserModel.fromJson(freshProfile);
+        _role = freshProfile['role'] ?? 'member';
+        _populateControllers();
+        setState(() => _isLoading = false);
+        return;
       }
+
+      setState(() {
+        _hasError = true;
+        _errorMessage = 'Profile not found. Please contact support.';
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('❌ Error loading profile: $e');
+      setState(() {
+        _hasError = true;
+        _errorMessage = 'Failed to load profile: $e';
+        _isLoading = false;
+      });
     }
-    
-    setState(() => _isLoading = false);
+  }
+
+  void _populateControllers() {
+    if (_user != null) {
+      _displayNameController.text = _user!.displayName ?? '';
+      _usernameController.text = _user!.username ?? '';
+      _phoneController.text = _user!.phoneNumber ?? '';
+    }
   }
 
   Future<void> _saveProfile() async {
@@ -86,14 +133,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         username: _usernameController.text.trim(),
         phoneNumber: _phoneController.text.trim(),
       );
-      
+
       await DatabaseService.saveUser(updatedUser);
-      
+
       final authService = Provider.of<AuthService>(context, listen: false);
       if (authService.userId != null) {
         await authService.fetchUserProfile(authService.userId!);
       }
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('✅ Profile updated successfully'),
@@ -129,6 +176,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_hasError) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Profile'),
+          backgroundColor: AppTheme.primaryColor,
+          foregroundColor: Colors.white,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: Colors.red.shade300,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _errorMessage,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade700,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: _loadUser,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 
@@ -202,6 +293,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 12),
 
+              // ✅ ROLE BADGE
               _buildRoleBadge(),
               const SizedBox(height: 24),
 
@@ -317,7 +409,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // ✅ FIXED: Icons.crown → Icons.star
+  // ✅ Build Role Badge
   Widget _buildRoleBadge() {
     final role = _role ?? 'member';
     
