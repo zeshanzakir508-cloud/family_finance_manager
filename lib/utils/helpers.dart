@@ -6,7 +6,7 @@ class Helpers {
   static String? _cachedCurrency;
   static bool _isInitialized = false;
 
-  // ✅ Initialize currency once
+  /// ✅ Initialize currency once
   static Future<void> initCurrency() async {
     if (_isInitialized) return;
     try {
@@ -19,7 +19,7 @@ class Helpers {
     }
   }
 
-  // ✅ Get current currency with caching
+  /// ✅ Get current currency with caching
   static Future<String> getCurrentCurrency() async {
     if (_cachedCurrency != null) return _cachedCurrency!;
     try {
@@ -31,12 +31,12 @@ class Helpers {
     }
   }
 
-  // ✅ Get currency synchronously (after init)
+  /// ✅ Get currency synchronously (after init)
   static String getCurrencySync() {
     return _cachedCurrency ?? 'USD';
   }
 
-  // ✅ Set currency and update cache
+  /// ✅ Set currency and update cache
   static Future<void> setCurrency(String currencyCode) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -47,38 +47,41 @@ class Helpers {
     }
   }
 
-  // ✅ FIXED: Format currency with proper async handling
+  /// ✅ Format currency with dynamic symbol (FIXED)
   static String formatCurrency(double amount, {String? currencyCode}) {
-    // Use provided code, cached, or default
     final code = currencyCode ?? _cachedCurrency ?? 'USD';
     final symbol = getCurrencySymbol(code);
-    return '$symbol${amount.toStringAsFixed(2)}';
+    final formatted = NumberFormat('#,##0.00').format(amount);
+    return '$symbol$formatted';
   }
 
-  // ✅ FIXED: Async version for before init
+  /// ✅ Async version
   static Future<String> formatCurrencyAsync(double amount, {String? currencyCode}) async {
     final code = currencyCode ?? await getCurrentCurrency();
     final symbol = getCurrencySymbol(code);
-    return '$symbol${amount.toStringAsFixed(2)}';
+    final formatted = NumberFormat('#,##0.00').format(amount);
+    return '$symbol$formatted';
   }
 
-  // Format with currency code
+  /// ✅ Format with currency code
   static String formatCurrencyWithCode(double amount, String currencyCode) {
     final symbol = getCurrencySymbol(currencyCode);
-    return '$symbol${amount.toStringAsFixed(2)} $currencyCode';
+    final formatted = NumberFormat('#,##0.00').format(amount);
+    return '$symbol$formatted $currencyCode';
   }
 
-  // Format date
+  // ============================================================
+  // DATE FORMATTERS
+  // ============================================================
+
   static String formatDate(DateTime date) {
     return DateFormat('dd MMM yyyy').format(date);
   }
 
-  // Format date time
   static String formatDateTime(DateTime date) {
     return DateFormat('dd MMM yyyy, hh:mm a').format(date);
   }
 
-  // Format time ago
   static String timeAgo(DateTime date) {
     final difference = DateTime.now().difference(date);
     if (difference.inDays > 365) {
@@ -98,40 +101,50 @@ class Helpers {
     }
   }
 
-  // Generate unique ID
+  // ============================================================
+  // ID GENERATORS
+  // ============================================================
+
   static String generateId() {
     return DateTime.now().millisecondsSinceEpoch.toString();
   }
 
-  // Generate family code
   static String generateFamilyCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     final random = DateTime.now().millisecondsSinceEpoch;
     return String.fromCharCodes(
-      List.generate(8, (index) {
+      List.generate(6, (index) {
         final charIndex = (random + index * 7) % chars.length;
         return chars.codeUnitAt(charIndex);
       }),
     );
   }
 
-  // Validate email
+  // ============================================================
+  // VALIDATORS
+  // ============================================================
+
   static bool isValidEmail(String email) {
     return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
   }
 
-  // Validate phone
   static bool isValidPhone(String phone) {
     return RegExp(r'^[0-9]{10,15}$').hasMatch(phone);
   }
 
-  // Truncate text
+  static bool isValidUsername(String username) {
+    return RegExp(r'^[a-zA-Z0-9_]{3,20}$').hasMatch(username);
+  }
+
+  // ============================================================
+  // STRING HELPERS
+  // ============================================================
+
   static String truncateText(String text, int maxLength) {
     if (text.length <= maxLength) return text;
     return '${text.substring(0, maxLength)}...';
   }
 
-  // Get initials
   static String getInitials(String name) {
     if (name.isEmpty) return 'U';
     final parts = name.split(' ');
@@ -141,18 +154,23 @@ class Helpers {
     return parts[0][0].toUpperCase();
   }
 
-  // Calculate percentage
+  // ============================================================
+  // MATH HELPERS
+  // ============================================================
+
   static double calculatePercentage(double value, double total) {
     if (total == 0) return 0;
     return (value / total) * 100;
   }
 
-  // Format with commas
   static String formatWithCommas(double number) {
     return NumberFormat('#,##0.00').format(number);
   }
 
-  // Get currency symbol
+  // ============================================================
+  // CURRENCY SYMBOLS
+  // ============================================================
+
   static String getCurrencySymbol(String currencyCode) {
     switch (currencyCode.toUpperCase()) {
       case 'USD': return '\$';
@@ -186,7 +204,6 @@ class Helpers {
     }
   }
 
-  // Get currency name
   static String getCurrencyName(String currencyCode) {
     switch (currencyCode.toUpperCase()) {
       case 'USD': return 'US Dollar';
