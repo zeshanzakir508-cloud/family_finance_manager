@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/family_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
-import '../../models/family_model.dart';  // <-- ADD THIS IMPORT
+import '../../models/family_model.dart';
 import '../../utils/app_theme.dart';
 
 class AddMemberScreen extends StatefulWidget {
@@ -49,6 +49,11 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
       
       if (userId == null || currentFamily == null) {
         throw Exception('No family found');
+      }
+
+      // ✅ Ensure profile is loaded
+      if (authService.userProfile == null) {
+        await authService.fetchUserProfile(userId);
       }
 
       // Create new member
