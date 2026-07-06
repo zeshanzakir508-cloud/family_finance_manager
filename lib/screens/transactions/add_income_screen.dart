@@ -20,20 +20,19 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
   final _amountController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _notesController = TextEditingController();
-
+  
   String? _selectedCategory;
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
 
   final List<String> _categories = [
-    'salary',
-    'freelance',
-    'business',
-    'investment',
-    'gift',
-    'allowance',
-    'refund',
-    'other',
+    'Salary',
+    'Freelance',
+    'Investment',
+    'Gift',
+    'Allowance',
+    'Pocket Money',
+    'Other',
   ];
 
   @override
@@ -42,6 +41,55 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
     _descriptionController.dispose();
     _notesController.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveIncome() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final userId = authService.userId;
+      
+      if (userId == null) {
+        throw Exception('User not logged in');
+      }
+
+      // ✅ Get profile for member info
+      final profile = authService.userProfile;
+      final memberName = profile?['displayName'] ?? 'User';
+
+      final transaction = TransactionModel(
+        userId: userId,  // ✅ CRITICAL: Always include userId
+        amount: double.parse(_amountController.text),
+        category: _selectedCategory?.toLowerCase() ?? 'other',
+        description: _descriptionController.text.trim(),
+        type: 'income',
+        date: _selectedDate,
+        notes: _notesController.text.trim(),
+        createdAt: DateTime.now(),
+        memberName: memberName,
+      );
+
+      await DatabaseService.addPersonalTransaction(transaction);
+
+      Helpers.showSnackBar(
+        context,
+        '✅ Income added successfully!',
+        color: Colors.green,
+      );
+
+      Navigator.pop(context, true);
+    } catch (e) {
+      Helpers.showSnackBar(
+        context,
+        '❌ Failed to add income: $e',
+        color: Colors.red,
+      );
+    }
+
+    setState(() => _isLoading = false);
   }
 
   Future<void> _selectDate() async {
@@ -54,63 +102,6 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
     if (date != null) {
       setState(() => _selectedDate = date);
     }
-  }
-
-  Future<void> _saveIncome() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final userId = authService.userId;
-
-      if (userId == null) {
-        throw Exception('User not logged in');
-      }
-
-      // ✅ Get currency from Helpers
-      final currency = Helpers.getCurrencySync();
-
-      final transaction = TransactionModel(
-        id: Helpers.generateId(),
-        userId: userId, // ✅ CRITICAL: userId must be set
-        amount: double.parse(_amountController.text),
-        category: _selectedCategory ?? 'other',
-        description: _descriptionController.text.trim(),
-        type: 'income',
-        date: _selectedDate,
-        notes: _notesController.text.trim(),
-        createdAt: DateTime.now(),
-        isFamilyTransaction: false,
-        baseCurrency: currency,
-        originalCurrency: currency,
-        originalAmount: double.parse(_amountController.text),
-        amountInBaseCurrency: double.parse(_amountController.text),
-        exchangeRateUsed: 1.0,
-      );
-
-      await DatabaseService.addPersonalTransaction(transaction);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Income added successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context, true);
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Error: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-
-    setState(() => _isLoading = false);
   }
 
   @override
@@ -132,12 +123,13 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
               TextFormField(
                 controller: _amountController,
                 keyboardType: TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: 'Amount (${Helpers.getCurrencySync()})',
-                  prefixIcon: const Icon(Icons.attach_money),
-                  border: const OutlineInputBorder(),
+                decoration: const InputDecoration(
+                  labelText: 'Amount *',
+                  prefixIcon: Icon(Icons.attach_money),
+                  border: OutlineInputBorder(),
                   filled: true,
                   fillColor: Colors.white,
+                  hintText: '0.00',
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -145,9 +137,6 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
                   }
                   if (double.tryParse(value) == null) {
                     return 'Please enter a valid number';
-                  }
-                  if (double.parse(value) <= 0) {
-                    return 'Amount must be greater than 0';
                   }
                   return null;
                 },
@@ -158,7 +147,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
               DropdownButtonFormField<String>(
                 value: _selectedCategory,
                 decoration: const InputDecoration(
-                  labelText: 'Category',
+                  labelText: 'Category *',
                   prefixIcon: Icon(Icons.category),
                   border: OutlineInputBorder(),
                   filled: true,
@@ -167,7 +156,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
                 items: _categories.map((category) {
                   return DropdownMenuItem(
                     value: category,
-                    child: Text(category[0].toUpperCase() + category.substring(1)),
+                    child: Text(category),
                   );
                 }).toList(),
                 onChanged: (value) {
@@ -192,12 +181,6 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
                   filled: true,
                   fillColor: Colors.white,
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a description';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(height: 16),
 
@@ -205,7 +188,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
               GestureDetector(
                 onTap: _selectDate,
                 child: Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
@@ -215,13 +198,12 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
                     children: [
                       const Icon(Icons.calendar_today, color: Colors.blue),
                       const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Date: ${DateFormat('dd MMM yyyy').format(_selectedDate)}',
-                          style: const TextStyle(fontSize: 16),
-                        ),
+                      Text(
+                        DateFormat('dd MMM yyyy').format(_selectedDate),
+                        style: const TextStyle(fontSize: 16),
                       ),
-                      const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                      const Spacer(),
+                      const Icon(Icons.arrow_drop_down),
                     ],
                   ),
                 ),
@@ -249,7 +231,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _saveIncome,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
+                    backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -257,7 +239,10 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Add Income'),
+                      : const Text(
+                          'Add Income',
+                          style: TextStyle(fontSize: 16),
+                        ),
                 ),
               ),
             ],
