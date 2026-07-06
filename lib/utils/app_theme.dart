@@ -13,6 +13,9 @@ class AppTheme {
   static const Color dividerColor = Color(0xFFE8EAED);
   static const Color shadowColor = Color(0x1A000000);
 
+  // ============================================================
+  // LIGHT THEME
+  // ============================================================
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
@@ -25,10 +28,13 @@ class AppTheme {
       surface: surfaceColor,
     ),
     textTheme: const TextTheme(
-      headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: textPrimaryColor),
-      headlineMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: textPrimaryColor),
+      displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: textPrimaryColor),
+      displayMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: textPrimaryColor),
+      headlineLarge: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: textPrimaryColor),
+      headlineMedium: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: textPrimaryColor),
       bodyLarge: TextStyle(fontSize: 16, color: textPrimaryColor),
       bodyMedium: TextStyle(fontSize: 14, color: textSecondaryColor),
+      labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: textPrimaryColor),
     ),
     appBarTheme: const AppBarTheme(
       elevation: 0,
@@ -74,7 +80,6 @@ class AppTheme {
         textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
       ),
     ),
-    // ✅ FIXED: CardThemeData → CardTheme
     cardTheme: CardTheme(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -95,33 +100,39 @@ class AppTheme {
     ),
   );
 
+  // ============================================================
+  // DARK THEME (FIXED)
+  // ============================================================
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
-    brightness: Brightness.dark,
+    brightness: Brightness.dark,  // ✅ Critical
     primaryColor: primaryColor,
-    scaffoldBackgroundColor: Colors.grey[900],
+    scaffoldBackgroundColor: const Color(0xFF121212),  // ✅ Dark background
     colorScheme: const ColorScheme.dark(
       primary: primaryColor,
       secondary: secondaryColor,
       error: errorColor,
-      surface: Color(0xFF303134),
+      surface: Color(0xFF1E1E1E),
     ),
     textTheme: const TextTheme(
-      headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
-      headlineMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.white),
+      displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+      displayMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+      headlineLarge: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.white),
+      headlineMedium: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.white),
       bodyLarge: TextStyle(fontSize: 16, color: Colors.white),
-      bodyMedium: TextStyle(fontSize: 14, color: Colors.white70),
+      bodyMedium: TextStyle(fontSize: 14, color: Colors.white70),  // ✅ White text
+      labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white),
     ),
     appBarTheme: AppBarTheme(
       elevation: 0,
-      backgroundColor: Colors.grey[900],
+      backgroundColor: const Color(0xFF1E1E1E),  // ✅ Dark app bar
       foregroundColor: Colors.white,
       centerTitle: true,
       titleTextStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.white),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: Colors.grey[800],
+      fillColor: const Color(0xFF2C2C2C),  // ✅ Dark input
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: Colors.grey),
@@ -156,16 +167,15 @@ class AppTheme {
         textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
       ),
     ),
-    // ✅ FIXED: CardThemeData → CardTheme
     cardTheme: CardTheme(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: Colors.grey[800],
+      color: const Color(0xFF1E1E1E),  // ✅ Dark card
       shadowColor: Colors.black26,
     ),
     dividerTheme: const DividerThemeData(color: Colors.grey, thickness: 1),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
-      backgroundColor: Colors.grey[900],
+      backgroundColor: const Color(0xFF1E1E1E),  // ✅ Dark bottom nav
       selectedItemColor: primaryColor,
       unselectedItemColor: Colors.grey[500],
       type: BottomNavigationBarType.fixed,
@@ -177,6 +187,9 @@ class AppTheme {
     ),
   );
 
+  // ============================================================
+  // TEXT STYLES
+  // ============================================================
   static TextStyle get headingStyle => const TextStyle(
     fontSize: 28,
     fontWeight: FontWeight.bold,
