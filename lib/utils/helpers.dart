@@ -1,4 +1,5 @@
 // lib/utils/helpers.dart
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -203,7 +204,7 @@ class Helpers {
     }
   }
 
-  // ✅ SnackBar helper
+  // ✅ SnackBar helper (FIXED)
   static void showSnackBar(BuildContext context, String message, {Color? color}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
