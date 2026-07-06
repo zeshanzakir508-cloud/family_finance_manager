@@ -81,19 +81,10 @@ class _FamilyDashboardState extends State<FamilyDashboard>
         return;
       }
 
-      // ✅ Ensure profile is loaded
-      if (authService.userProfile == null) {
-        await authService.fetchUserProfile(_userId!);
-      }
-
-      // ✅ Fetch families for this user
-      final families = await DatabaseService.getUserFamilies(_userId!);
-      familyProvider.setFamilies(families);
-
       _currentFamily = familyProvider.currentFamily;
       
-      if (_currentFamily == null && families.isNotEmpty) {
-        _currentFamily = families.first;
+      if (_currentFamily == null && familyProvider.families.isNotEmpty) {
+        _currentFamily = familyProvider.families.first;
         familyProvider.setCurrentFamily(_currentFamily!);
       }
 
@@ -106,20 +97,25 @@ class _FamilyDashboardState extends State<FamilyDashboard>
         return;
       }
 
-      // ✅ Get family transactions with userId
-      _transactions = await DatabaseService.getFamilyTransactions(
-        _currentFamily!.id,
-        _userId!,
-      );
-      _transactions.sort((a, b) => b.date?.compareTo(a.date ?? DateTime.now()) ?? 0);
-      _applyFilters();
-      
-      setState(() {
-        _hasError = false;
-        _isLoading = false;
-      });
+      try {
+        _transactions = await DatabaseService.getFamilyTransactions(
+          _currentFamily!.id,
+          _userId!,
+        );
+        _transactions.sort((a, b) => b.date?.compareTo(a.date ?? DateTime.now()) ?? 0);
+        _applyFilters();
+        setState(() {
+          _hasError = false;
+          _isLoading = false;
+        });
+      } catch (e) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = 'Failed to load transactions: $e';
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      print('❌ Error loading family data: $e');
       setState(() {
         _hasError = true;
         _errorMessage = 'Failed to load data: $e';
@@ -159,11 +155,10 @@ class _FamilyDashboardState extends State<FamilyDashboard>
     final now = DateTime.now();
     if (_lastBackPress == null || now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
       _lastBackPress = now;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tap again to exit'),
-          duration: Duration(seconds: 2),
-        ),
+      Helpers.showSnackBar(
+        context,
+        'Tap again to exit',
+        color: Colors.grey[850],
       );
       return false;
     }
@@ -1088,7 +1083,7 @@ class _FamilyDashboardState extends State<FamilyDashboard>
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        Helpers.formatCurrency(transfer['amount'] as double),
+                        Helpers.formatCurrency((transfer['amount'] as num).toDouble()),
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                         ),
