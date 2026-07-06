@@ -25,8 +25,6 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
   double _totalExpense = 0;
   double _balance = 0;
   bool _isLoading = true;
-  bool _hasError = false;
-  String _errorMessage = '';
   DateTime? _lastBackPress;
 
   final List<Color> _categoryColors = [
@@ -49,46 +47,28 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
   }
 
   Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-      _hasError = false;
-      _errorMessage = '';
-    });
+    setState(() => _isLoading = true);
     
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       final userId = authService.userId;
       
-      if (userId == null) {
-        setState(() {
-          _hasError = true;
-          _errorMessage = 'Please login again';
-          _isLoading = false;
-        });
-        return;
+      if (userId != null) {
+        // ✅ Fetch personal transactions
+        _transactions = await DatabaseService.getUserTransactions(userId);
+        _transactions.sort((a, b) => b.date!.compareTo(a.date!));
+        _applyFilters();
       }
-
-      // ✅ Check if profile is loaded
-      if (authService.userProfile == null) {
-        await authService.fetchUserProfile(userId);
-      }
-
-      _transactions = await DatabaseService.getUserTransactions(userId);
-      _transactions.sort((a, b) => b.date!.compareTo(a.date!));
-      _applyFilters();
-      
-      setState(() {
-        _hasError = false;
-        _isLoading = false;
-      });
     } catch (e) {
       print('❌ Error loading transactions: $e');
-      setState(() {
-        _hasError = true;
-        _errorMessage = 'Failed to load data: $e';
-        _isLoading = false;
-      });
+      Helpers.showSnackBar(
+        context,
+        '❌ Failed to load transactions',
+        color: Colors.red,
+      );
     }
+    
+    setState(() => _isLoading = false);
   }
 
   void _applyFilters() {
@@ -122,11 +102,10 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
     final now = DateTime.now();
     if (_lastBackPress == null || now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
       _lastBackPress = now;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tap again to exit'),
-          duration: Duration(seconds: 2),
-        ),
+      Helpers.showSnackBar(
+        context,
+        'Tap again to exit',
+        color: Colors.grey[850],
       );
       return false;
     }
@@ -183,74 +162,31 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
             ),
           ],
         ),
-        body: _buildBody(),
-      ),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_hasError) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.error_outline,
-                size: 64,
-                color: Colors.red.shade300,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _errorMessage,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey.shade700,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: _loadData,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: _loadData,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildRoleBadge(),
+                      const SizedBox(height: 12),
+                      _buildBalanceCards(),
+                      const SizedBox(height: 16),
+                      _buildChartsSection(),
+                      const SizedBox(height: 16),
+                      _buildCategoryBreakdown(),
+                      const SizedBox(height: 16),
+                      _buildRecentTransactions(),
+                      const SizedBox(height: 16),
+                      _buildQuickActions(),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: _loadData,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildRoleBadge(),
-            const SizedBox(height: 12),
-            _buildBalanceCards(),
-            const SizedBox(height: 16),
-            _buildChartsSection(),
-            const SizedBox(height: 16),
-            _buildCategoryBreakdown(),
-            const SizedBox(height: 16),
-            _buildRecentTransactions(),
-            const SizedBox(height: 16),
-            _buildQuickActions(),
-            const SizedBox(height: 16),
-          ],
-        ),
       ),
     );
   }
@@ -273,6 +209,11 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
         icon = Icons.shield;
         color = Colors.blue;
         label = '🛡️ Moderator';
+        break;
+      case 'admin':
+        icon = Icons.admin_panel_settings;
+        color = Colors.purple;
+        label = '⚙️ Admin';
         break;
       default:
         icon = Icons.person;
