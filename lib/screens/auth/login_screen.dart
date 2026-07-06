@@ -104,7 +104,6 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       
-      // ✅ Check if fingerprint is enabled
       if (!authService.isFingerprintEnabled) {
         setState(() {
           _errorMessage = 'Fingerprint login is not enabled. Please enable it in Settings.';
@@ -113,12 +112,9 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // ✅ Authenticate with biometrics
       final authenticated = await authService.authenticateWithFingerprint();
       
       if (authenticated) {
-        // ✅ If biometric success, auto-login with saved credentials
-        // Note: You need to store email/password securely or use Firebase Auth persistence
         if (mounted) {
           Navigator.pushReplacementNamed(context, '/mode-selection');
         }
@@ -165,7 +161,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0), // ✅ Fixed overflow
             child: Form(
               key: _formKey,
               child: Column(
@@ -233,7 +229,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   const SizedBox(height: 16),
 
-                  // ✅ Username/Email Field
+                  // Username/Email Field
                   TextFormField(
                     controller: _emailController,
                     decoration: const InputDecoration(
@@ -330,18 +326,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // ✅ Fingerprint / Face ID Button
+                  // Fingerprint / Face ID Button
                   if (isFingerprintAvailable)
                     SizedBox(
                       height: 50,
                       child: OutlinedButton.icon(
                         onPressed: _isLoading ? null : _loginWithFingerprint,
                         icon: Icon(
-                          authService.isFingerprintAvailable ? Icons.fingerprint : Icons.face,
+                          Icons.fingerprint,
                           size: 28,
                         ),
                         label: Text(
-                          'Login with ${authService.isFingerprintAvailable ? 'Fingerprint' : 'Face ID'}',
+                          'Login with Fingerprint',
                           style: const TextStyle(fontSize: 14),
                         ),
                         style: OutlinedButton.styleFrom(
