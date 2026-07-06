@@ -4,29 +4,34 @@ import '../models/family_model.dart';
 import '../models/transaction_model.dart';
 
 class FamilyProvider extends ChangeNotifier {
-  List<FamilyModel> _families = []; // ✅ Changed: Family → FamilyModel
+  List<FamilyModel> _families = [];
   List<TransactionModel> _personalTransactions = [];
   List<TransactionModel> _familyTransactions = [];
-  FamilyModel? _currentFamily; // ✅ Changed: Family → FamilyModel
+  FamilyModel? _currentFamily;
 
-  List<FamilyModel> get families => _families; // ✅ Changed: Family → FamilyModel
+  List<FamilyModel> get families => _families;
   List<TransactionModel> get personalTransactions => _personalTransactions;
   List<TransactionModel> get familyTransactions => _familyTransactions;
-  FamilyModel? get currentFamily => _currentFamily; // ✅ Changed: Family → FamilyModel
+  FamilyModel? get currentFamily => _currentFamily;
 
-  // Method to refresh data
-  Future<void> refreshData() async {
-    // TODO: Implement actual data refresh from Firebase
+  // ✅ ADDED: setFamilies method
+  void setFamilies(List<FamilyModel> families) {
+    _families = families;
+    if (_currentFamily == null && families.isNotEmpty) {
+      _currentFamily = families.first;
+    }
     notifyListeners();
   }
 
-  // Get family members
+  Future<void> refreshData() async {
+    notifyListeners();
+  }
+
   List<FamilyMember> getFamilyMembers() {
     if (_currentFamily == null) return [];
     return _currentFamily!.members ?? [];
   }
 
-  // Add transaction methods
   void addPersonalTransaction(TransactionModel transaction) {
     _personalTransactions.add(transaction);
     notifyListeners();
@@ -37,19 +42,17 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Family management methods
-  void createFamily(FamilyModel family) { // ✅ Changed: Family → FamilyModel
+  void createFamily(FamilyModel family) {
     _families.add(family);
     _currentFamily = family;
     notifyListeners();
   }
 
-  void setCurrentFamily(FamilyModel family) { // ✅ Changed: Family → FamilyModel
+  void setCurrentFamily(FamilyModel family) {
     _currentFamily = family;
     notifyListeners();
   }
 
-  // Remove family
   void removeFamily(String familyId) {
     _families.removeWhere((f) => f.id == familyId);
     if (_currentFamily?.id == familyId) {
@@ -58,8 +61,7 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Update family
-  void updateFamily(FamilyModel family) { // ✅ Changed: Family → FamilyModel
+  void updateFamily(FamilyModel family) {
     final index = _families.indexWhere((f) => f.id == family.id);
     if (index != -1) {
       _families[index] = family;
@@ -70,7 +72,6 @@ class FamilyProvider extends ChangeNotifier {
     }
   }
 
-  // Clear all data (on logout)
   void clearData() {
     _families.clear();
     _personalTransactions.clear();
