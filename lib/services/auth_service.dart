@@ -20,13 +20,14 @@ class AuthService extends ChangeNotifier {
     _auth.authStateChanges().listen((user) async {
       _user = user;
       if (user != null) {
+        // ✅ Auto-fetch profile on login
         await fetchUserProfile(user.uid);
       } else {
         _userProfile = null;
       }
       notifyListeners();
     });
-    // ✅ FIXED: Removed _loadFingerprintSetting call - handled by SharedPreferences directly
+    _loadFingerprintSetting();
   }
 
   // ============================================================
@@ -41,9 +42,10 @@ class AuthService extends ChangeNotifier {
   bool get isFingerprintEnabled => _isFingerprintEnabled;
 
   // ============================================================
-  // PROFILE MANAGEMENT
+  // ✅ PROFILE MANAGEMENT (FIXED)
   // ============================================================
 
+  /// Fetch user profile from Firestore
   Future<Map<String, dynamic>?> fetchUserProfile(String uid) async {
     try {
       _isLoading = true;
@@ -55,9 +57,11 @@ class AuthService extends ChangeNotifier {
         _userProfile = doc.data();
         print('✅ Profile loaded for user: $uid');
         print('   Role: ${_userProfile?['role'] ?? 'No role'}');
-        print('   Name: ${_userProfile?['name'] ?? 'No name'}');
+        print('   Name: ${_userProfile?['displayName'] ?? 'No name'}');
+        print('   Username: ${_userProfile?['username'] ?? 'No username'}');
       } else {
         print('⚠️ No profile found for user: $uid');
+        // ✅ Auto-create profile if missing
         await _createDefaultProfile(uid);
       }
 
@@ -72,6 +76,7 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// ✅ Auto-create default profile if missing
   Future<void> _createDefaultProfile(String uid) async {
     try {
       print('🔄 Creating default profile for: $uid');
@@ -82,7 +87,8 @@ class AuthService extends ChangeNotifier {
       final profileData = {
         'uid': uid,
         'email': email,
-        'name': name,
+        'displayName': name,
+        'username': email.split('@').first,
         'role': 'member',
         'familyId': null,
         'createdAt': FieldValue.serverTimestamp(),
@@ -103,15 +109,7 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  Future<bool> profileExists(String uid) async {
-    try {
-      final doc = await _firestore.collection('users').doc(uid).get();
-      return doc.exists;
-    } catch (e) {
-      return false;
-    }
-  }
-
+  /// ✅ Get user role
   Future<String?> getUserRole(String uid) async {
     try {
       final doc = await _firestore.collection('users').doc(uid).get();
@@ -124,37 +122,22 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// ✅ Check if user is Owner
   Future<bool> isOwner(String uid) async {
     final role = await getUserRole(uid);
     return role == 'owner';
   }
 
+  /// ✅ Check if user is Moderator
   Future<bool> isModerator(String uid) async {
     final role = await getUserRole(uid);
     return role == 'moderator';
   }
 
+  /// ✅ Check if user is Member
   Future<bool> isMember(String uid) async {
     final role = await getUserRole(uid);
     return role == 'member';
-  }
-
-  Future<void> updateUserProfile(Map<String, dynamic> data) async {
-    try {
-      final uid = _user?.uid;
-      if (uid == null) throw Exception('User not logged in');
-
-      await _firestore.collection('users').doc(uid).update({
-        ...data,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
-      await fetchUserProfile(uid);
-      print('✅ Profile updated successfully');
-    } catch (e) {
-      print('❌ Error updating profile: $e');
-      throw Exception('Failed to update profile');
-    }
   }
 
   // ============================================================
@@ -171,6 +154,7 @@ class AuthService extends ChangeNotifier {
         password: password,
       );
       
+      // ✅ Profile auto-fetched via authStateChanges listener
       print('✅ User signed in: ${result.user?.uid}');
       
       _isLoading = false;
@@ -186,10 +170,20 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  Future<void> signUpWithEmail(String email, String password, String name) async {
+  Future<void> signUpWithEmail(String email, String password, String name, String username) async {
     try {
       _isLoading = true;
       notifyListeners();
+
+      // ✅ Check if username already exists
+      final usernameQuery = await _firestore
+          .collection('users')
+          .where('username', isEqualTo: username)
+          .get();
+      
+      if (usernameQuery.docs.isNotEmpty) {
+        throw Exception('Username already taken. Please choose another.');
+      }
 
       final result = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -199,7 +193,7 @@ class AuthService extends ChangeNotifier {
       await result.user?.updateDisplayName(name);
       
       if (result.user != null) {
-        await _createDefaultProfile(result.user!.uid);
+        await _createProfileWithUsername(result.user!.uid, email, name, username);
       }
       
       print('✅ User signed up: ${result.user?.uid}');
@@ -214,6 +208,34 @@ class AuthService extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       throw Exception('An error occurred. Please try again.');
+    }
+  }
+
+  /// ✅ Create profile with username
+  Future<void> _createProfileWithUsername(String uid, String email, String name, String username) async {
+    try {
+      final profileData = {
+        'uid': uid,
+        'email': email,
+        'displayName': name,
+        'username': username,
+        'role': 'member',
+        'familyId': null,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'photoUrl': '',
+        'settings': {
+          'currency': 'USD',
+          'theme': 'system',
+          'notifications': true,
+        },
+      };
+
+      await _firestore.collection('users').doc(uid).set(profileData);
+      _userProfile = profileData;
+      print('✅ Profile created with username: $username');
+    } catch (e) {
+      print('❌ Error creating profile: $e');
     }
   }
 
@@ -320,45 +342,19 @@ class AuthService extends ChangeNotifier {
   }
 
   // ============================================================
-  // HELPER METHODS
+  // HELPERS
   // ============================================================
-
-  String? getCurrentUserEmail() {
-    return _user?.email;
-  }
-
-  bool isLoggedIn() {
-    return _user != null;
-  }
-
-  Future<bool> reauthenticateUser(String password) async {
-    try {
-      final user = _auth.currentUser;
-      if (user == null) return false;
-      
-      final credential = EmailAuthProvider.credential(
-        email: user.email!,
-        password: password,
-      );
-      await user.reauthenticateWithCredential(credential);
-      return true;
-    } catch (e) {
-      print('❌ Re-authentication failed: $e');
-      return false;
-    }
-  }
 
   String? getCachedUserRole() {
     return _userProfile?['role'] as String?;
   }
 
+  String? getCachedUsername() {
+    return _userProfile?['username'] as String?;
+  }
+
   bool get isCachedOwner => _userProfile?['role'] == 'owner';
   bool get isCachedModerator => _userProfile?['role'] == 'moderator';
-  bool get isCachedMember => _userProfile?['role'] == 'member';
-
-  // ============================================================
-  // ERROR HANDLING
-  // ============================================================
 
   String _getErrorMessage(FirebaseAuthException e) {
     switch (e.code) {
@@ -380,10 +376,13 @@ class AuthService extends ChangeNotifier {
         return 'Network error. Please check your connection.';
       case 'requires-recent-login':
         return 'Please login again before changing password.';
-      case 'operation-not-allowed':
-        return 'This operation is not allowed. Please contact support.';
       default:
         return 'An error occurred. Please try again.';
     }
+  }
+
+  Future<void> _loadFingerprintSetting() async {
+    final prefs = await SharedPreferences.getInstance();
+    _isFingerprintEnabled = prefs.getBool('fingerprint_enabled') ?? false;
   }
 }
