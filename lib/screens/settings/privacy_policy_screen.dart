@@ -1,6 +1,5 @@
 // lib/screens/settings/privacy_policy_screen.dart
 import 'package:flutter/material.dart';
-// ✅ REMOVED: url_launcher (not needed)
 import '../../utils/app_theme.dart';
 
 class PrivacyPolicyScreen extends StatefulWidget {
@@ -61,8 +60,9 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                        // ✅ FIXED: 2024 → 2026
                         Text(
-                          'Last updated: July 2024',
+                          'Last updated: July 2026',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade600,
@@ -163,7 +163,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Contact Us - Email only (FIXED for #18, #37)
+            // Contact Us - Email only
             _buildSection(
               title: '8. Contact Us',
               content: 'If you have questions about this Privacy Policy, please contact us at:',
