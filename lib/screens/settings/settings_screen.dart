@@ -9,6 +9,7 @@ import '../../services/auth_service.dart';
 import '../../services/database_service.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
+import '../../utils/helpers.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -45,9 +46,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final authService = Provider.of<AuthService>(context, listen: false);
     final userId = authService.userId;
     if (userId != null) {
-      if (authService.userProfile == null) {
-        await authService.fetchUserProfile(userId);
-      }
       _user = await DatabaseService.getUser(userId);
     }
     setState(() => _isLoading = false);
@@ -189,12 +187,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() => _hasChanges = false);
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Settings saved successfully!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
+        Helpers.showSnackBar(
+          context,
+          'Settings saved successfully!',
+          color: Colors.green,
         );
         Navigator.pop(context, true);
       }
@@ -219,11 +215,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Navigator.pop(context);
                   _loadSettings();
                   setState(() => _hasChanges = false);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Changes discarded'),
-                      backgroundColor: Colors.grey,
-                    ),
+                  Helpers.showSnackBar(
+                    context,
+                    'Changes discarded',
+                    color: Colors.grey,
                   );
                 },
                 style: TextButton.styleFrom(
@@ -481,26 +476,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (value) {
                   final available = await authService.isFingerprintAvailable();
                   if (!available) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Fingerprint not available on this device'),
-                        backgroundColor: Colors.red,
-                      ),
+                    Helpers.showSnackBar(
+                      context,
+                      'Fingerprint not available on this device',
+                      color: Colors.red,
                     );
                     return;
                   }
                 }
                 await authService.setFingerprintEnabled(value);
                 setState(() {});
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      value 
-                          ? 'Fingerprint login enabled!' 
-                          : 'Fingerprint login disabled!',
-                    ),
-                    backgroundColor: Colors.green,
-                  ),
+                Helpers.showSnackBar(
+                  context,
+                  value 
+                      ? 'Fingerprint login enabled!' 
+                      : 'Fingerprint login disabled!',
+                  color: Colors.green,
                 );
               });
             },
@@ -531,7 +522,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ✅ FIXED: Cancel button below Change Password button
+  // ✅ FIXED: Cancel button position
   void _showChangePasswordDialog() {
     final currentPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
@@ -577,104 +568,98 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 16),
-              // ✅ FIXED: Cancel button below Change Password
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.grey,
-                      ),
-                      child: const Text('Cancel'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: isLoading
-                          ? null
-                          : () async {
-                              if (currentPasswordController.text.isEmpty) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Please enter current password'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                                return;
-                              }
-                              if (newPasswordController.text.length < 6) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('New password must be at least 6 characters'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                                return;
-                              }
-                              if (newPasswordController.text != confirmPasswordController.text) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Passwords do not match'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                                return;
-                              }
-
-                              setState(() => isLoading = true);
-
-                              try {
-                                final authService = Provider.of<AuthService>(context, listen: false);
-                                final success = await authService.changePassword(
-                                  currentPasswordController.text,
-                                  newPasswordController.text,
-                                );
-
-                                if (success) {
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Password changed successfully! 🔐'),
-                                        backgroundColor: Colors.green,
-                                      ),
-                                    );
-                                    Navigator.pop(context);
-                                  }
-                                }
-                              } catch (e) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Error: ${e.toString().replaceAll('Exception: ', '')}'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              } finally {
-                                setState(() => isLoading = false);
-                              }
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text('Change Password'),
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
+          actions: [
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          if (currentPasswordController.text.isEmpty) {
+                            Helpers.showSnackBar(
+                              context,
+                              'Please enter current password',
+                              color: Colors.red,
+                            );
+                            return;
+                          }
+                          if (newPasswordController.text.length < 6) {
+                            Helpers.showSnackBar(
+                              context,
+                              'New password must be at least 6 characters',
+                              color: Colors.red,
+                            );
+                            return;
+                          }
+                          if (newPasswordController.text != confirmPasswordController.text) {
+                            Helpers.showSnackBar(
+                              context,
+                              'Passwords do not match',
+                              color: Colors.red,
+                            );
+                            return;
+                          }
+
+                          setState(() => isLoading = true);
+
+                          try {
+                            final authService = Provider.of<AuthService>(context, listen: false);
+                            final success = await authService.changePassword(
+                              currentPasswordController.text,
+                              newPasswordController.text,
+                            );
+
+                            if (success) {
+                              if (mounted) {
+                                Helpers.showSnackBar(
+                                  context,
+                                  'Password changed successfully! 🔐',
+                                  color: Colors.green,
+                                );
+                                Navigator.pop(context);
+                              }
+                            }
+                          } catch (e) {
+                            Helpers.showSnackBar(
+                              context,
+                              'Error: ${e.toString().replaceAll('Exception: ', '')}',
+                              color: Colors.red,
+                            );
+                          } finally {
+                            setState(() => isLoading = false);
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 45),
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Change Password'),
+                ),
+                const SizedBox(height: 8),
+                // ✅ Cancel button below Change Password
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.grey,
+                  ),
+                  child: const Text('Cancel'),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
