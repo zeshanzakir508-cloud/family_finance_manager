@@ -67,12 +67,10 @@ class _BackupScreenState extends State<BackupScreen> {
         throw Exception('User not logged in');
       }
 
-      // Get all user data
       final transactions = await DatabaseService.getUserTransactions(userId);
       final families = await DatabaseService.getUserFamilies(userId);
       final userProfile = await DatabaseService.getUserProfile(userId);
       
-      // Create backup data
       final backupData = {
         'userId': userId,
         'date': DateTime.now().toIso8601String(),
@@ -83,19 +81,15 @@ class _BackupScreenState extends State<BackupScreen> {
         'families': families.map((f) => f.toJson()).toList(),
       };
 
-      // Save to local file
       final backupDir = await _getBackupDirectory();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final file = File('$backupDir/backup_$timestamp.json');
       await file.writeAsString(jsonEncode(backupData));
 
-      // Save metadata
       final prefs = await SharedPreferences.getInstance();
       
-      // Rotate backups
       await _rotateBackups(backupDir, prefs);
       
-      // Update metadata
       await prefs.setString('last_backup_date', DateTime.now().toIso8601String());
       await prefs.setInt('backup_count', _backupCount + 1);
       
@@ -103,7 +97,6 @@ class _BackupScreenState extends State<BackupScreen> {
       backupList.add(timestamp.toString());
       await prefs.setStringList('backup_list', backupList);
       
-      // Calculate storage used
       final backupSize = await file.length() / (1024 * 1024);
       
       setState(() {
@@ -113,19 +106,17 @@ class _BackupScreenState extends State<BackupScreen> {
         _isLoading = false;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Backup created successfully! ✅'),
-          backgroundColor: Colors.green,
-        ),
+      Helpers.showSnackBar(
+        context,
+        'Backup created successfully! ✅',
+        color: Colors.green,
       );
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Backup failed: $e'),
-          backgroundColor: Colors.red,
-        ),
+      Helpers.showSnackBar(
+        context,
+        'Backup failed: $e',
+        color: Colors.red,
       );
     }
   }
@@ -215,24 +206,20 @@ class _BackupScreenState extends State<BackupScreen> {
         setState(() => _isLoading = false);
         return;
       }
-
-      // Restore logic would go here
       
       setState(() => _isLoading = false);
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Backup restored successfully! 🔄'),
-          backgroundColor: Colors.green,
-        ),
+      Helpers.showSnackBar(
+        context,
+        'Backup restored successfully! 🔄',
+        color: Colors.green,
       );
     } catch (e) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Restore failed: $e'),
-          backgroundColor: Colors.red,
-        ),
+      Helpers.showSnackBar(
+        context,
+        'Restore failed: $e',
+        color: Colors.red,
       );
     }
   }
@@ -274,11 +261,10 @@ class _BackupScreenState extends State<BackupScreen> {
                 _backupCount = 0;
                 _storageUsed = 0;
               });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('All backups deleted successfully'),
-                  backgroundColor: Colors.orange,
-                ),
+              Helpers.showSnackBar(
+                context,
+                'All backups deleted successfully',
+                color: Colors.orange,
               );
             },
             style: TextButton.styleFrom(
@@ -420,15 +406,12 @@ class _BackupScreenState extends State<BackupScreen> {
                                 await prefs.setBool('auto_backup', value);
                                 setState(() => _autoBackup = value);
                                 
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      value 
-                                          ? 'Auto backup enabled ✅' 
-                                          : 'Auto backup disabled ❌',
-                                    ),
-                                    backgroundColor: value ? Colors.green : Colors.grey,
-                                  ),
+                                Helpers.showSnackBar(
+                                  context,
+                                  value 
+                                      ? 'Auto backup enabled ✅' 
+                                      : 'Auto backup disabled ❌',
+                                  color: value ? Colors.green : Colors.grey,
                                 );
                               },
                               activeColor: AppTheme.primaryColor,
