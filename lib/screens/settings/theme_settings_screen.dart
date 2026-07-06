@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/helpers.dart';
 
 class ThemeSettingsScreen extends StatefulWidget {
   final VoidCallback? onThemeChanged;
@@ -66,28 +67,39 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
     _debounceAction(() async {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('theme_mode', _selectedTheme);
-      
       setState(() {
         _initialTheme = _selectedTheme;
         _hasChanges = false;
       });
       
-      // ✅ Apply theme immediately
+      await _applyTheme();
+      
       if (widget.onThemeChanged != null) {
         widget.onThemeChanged!();
       }
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Theme updated to ${_getThemeLabel(_selectedTheme)}'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
+        Helpers.showSnackBar(
+          context,
+          'Theme updated to ${_getThemeLabel(_selectedTheme)}',
+          color: Colors.green,
         );
         Navigator.pop(context, _selectedTheme);
       }
     });
+  }
+
+  Future<void> _applyTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('theme_mode', _selectedTheme);
+    
+    if (widget.onThemeChanged != null) {
+      widget.onThemeChanged!();
+    }
+    
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _cancelChanges() {
@@ -110,11 +122,10 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
                     _selectedTheme = _initialTheme;
                     _hasChanges = false;
                   });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Theme changes discarded'),
-                      backgroundColor: Colors.grey,
-                    ),
+                  Helpers.showSnackBar(
+                    context,
+                    'Theme changes discarded',
+                    color: Colors.grey,
                   );
                 },
                 style: TextButton.styleFrom(
