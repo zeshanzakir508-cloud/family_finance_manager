@@ -66,13 +66,13 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
     _debounceAction(() async {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('theme_mode', _selectedTheme);
+      
       setState(() {
         _initialTheme = _selectedTheme;
         _hasChanges = false;
       });
       
-      await _applyTheme();
-      
+      // ✅ Apply theme immediately
       if (widget.onThemeChanged != null) {
         widget.onThemeChanged!();
       }
@@ -88,19 +88,6 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
         Navigator.pop(context, _selectedTheme);
       }
     });
-  }
-
-  Future<void> _applyTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('theme_mode', _selectedTheme);
-    
-    if (widget.onThemeChanged != null) {
-      widget.onThemeChanged!();
-    }
-    
-    if (mounted) {
-      setState(() {});
-    }
   }
 
   void _cancelChanges() {
