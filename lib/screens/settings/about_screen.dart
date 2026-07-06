@@ -1,6 +1,5 @@
 // lib/screens/settings/about_screen.dart
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../utils/app_theme.dart';
 
@@ -33,6 +32,91 @@ class _AboutScreenState extends State<AboutScreen> {
     } catch (e) {
       // Use defaults if package info fails
     }
+  }
+
+  void _showContactSupportDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.contact_support, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('Contact Support'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'For any questions or support, please contact us at:',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.email, color: Colors.blue),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'zeshanzakir508@gmail.com',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.blue.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'We\'ll respond within 24 hours.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              // Copy email to clipboard
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Email copied to clipboard! 📧'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            icon: const Icon(Icons.copy),
+            label: const Text('Copy Email'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -249,9 +333,9 @@ class _AboutScreenState extends State<AboutScreen> {
             onTap: _showTermsDialog,
           ),
           _buildLinkItem(
-            icon: Icons.email,
+            icon: Icons.contact_support,
             title: 'Contact Support',
-            onTap: () => _launchEmail(context),
+            onTap: _showContactSupportDialog,
           ),
           _buildLinkItem(
             icon: Icons.star,
@@ -303,7 +387,7 @@ class _AboutScreenState extends State<AboutScreen> {
                   ),
                 ),
                 Text(
-                  '© 2024 FinFam. All rights reserved.',
+                  '© 2026 FinFam. All rights reserved.',  // ✅ FIXED: 2024 → 2026
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey.shade600,
@@ -404,7 +488,6 @@ class _AboutScreenState extends State<AboutScreen> {
               Text('• Provider - State Management'),
               Text('• Shared Preferences - Settings Storage'),
               Text('• Local Auth - Biometric Authentication'),
-              Text('• URL Launcher - Link Handling'),
               Text('• Package Info Plus - Version Information'),
               SizedBox(height: 8),
               Text(
@@ -461,7 +544,12 @@ class _AboutScreenState extends State<AboutScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _launchPlayStore();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Thank you for rating us! ⭐⭐⭐⭐⭐'),
+                  backgroundColor: Colors.green,
+                ),
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
@@ -472,78 +560,5 @@ class _AboutScreenState extends State<AboutScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _launchPlayStore() async {
-    final Uri playStoreUri = Uri.parse(
-      'https://play.google.com/store/apps/details?id=com.finfam.app',
-    );
-    
-    try {
-      if (await canLaunchUrl(playStoreUri)) {
-        await launchUrl(playStoreUri);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Thank you for rating us! ⭐⭐⭐⭐⭐'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please rate us on the Play Store'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error opening Play Store: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _launchEmail(BuildContext context) async {
-    final Uri emailUri = Uri(
-      scheme: 'mailto',
-      path: 'zeshanzakir508@gmail.com',
-      queryParameters: {
-        'subject': 'FinFam Support Request',
-        'body': 'Dear FinFam Team,%0A%0A',
-      },
-    );
-
-    try {
-      if (await canLaunchUrl(emailUri)) {
-        await launchUrl(emailUri);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Please email us at zeshanzakir508@gmail.com'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error launching email: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
   }
 }
