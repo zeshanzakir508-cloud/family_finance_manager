@@ -20,23 +20,23 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   final _amountController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _notesController = TextEditingController();
-
+  
   String? _selectedCategory;
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
 
   final List<String> _categories = [
-    'food',
-    'transport',
-    'shopping',
-    'entertainment',
-    'utilities',
-    'rent',
-    'healthcare',
-    'education',
-    'insurance',
-    'pocket_money',
-    'other',
+    'Food',
+    'Transport',
+    'Shopping',
+    'Entertainment',
+    'Utilities',
+    'Rent',
+    'Healthcare',
+    'Education',
+    'Insurance',
+    'Travel',
+    'Other',
   ];
 
   @override
@@ -45,6 +45,55 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     _descriptionController.dispose();
     _notesController.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveExpense() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final userId = authService.userId;
+      
+      if (userId == null) {
+        throw Exception('User not logged in');
+      }
+
+      // ✅ Get profile for member info
+      final profile = authService.userProfile;
+      final memberName = profile?['displayName'] ?? 'User';
+
+      final transaction = TransactionModel(
+        userId: userId,  // ✅ CRITICAL: Always include userId
+        amount: double.parse(_amountController.text),
+        category: _selectedCategory?.toLowerCase() ?? 'other',
+        description: _descriptionController.text.trim(),
+        type: 'expense',
+        date: _selectedDate,
+        notes: _notesController.text.trim(),
+        createdAt: DateTime.now(),
+        memberName: memberName,
+      );
+
+      await DatabaseService.addPersonalTransaction(transaction);
+
+      Helpers.showSnackBar(
+        context,
+        '✅ Expense added successfully!',
+        color: Colors.green,
+      );
+
+      Navigator.pop(context, true);
+    } catch (e) {
+      Helpers.showSnackBar(
+        context,
+        '❌ Failed to add expense: $e',
+        color: Colors.red,
+      );
+    }
+
+    setState(() => _isLoading = false);
   }
 
   Future<void> _selectDate() async {
@@ -57,63 +106,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     if (date != null) {
       setState(() => _selectedDate = date);
     }
-  }
-
-  Future<void> _saveExpense() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final userId = authService.userId;
-
-      if (userId == null) {
-        throw Exception('User not logged in');
-      }
-
-      // ✅ Get currency from Helpers
-      final currency = Helpers.getCurrencySync();
-
-      final transaction = TransactionModel(
-        id: Helpers.generateId(),
-        userId: userId, // ✅ CRITICAL: userId must be set
-        amount: double.parse(_amountController.text),
-        category: _selectedCategory ?? 'other',
-        description: _descriptionController.text.trim(),
-        type: 'expense',
-        date: _selectedDate,
-        notes: _notesController.text.trim(),
-        createdAt: DateTime.now(),
-        isFamilyTransaction: false,
-        baseCurrency: currency,
-        originalCurrency: currency,
-        originalAmount: double.parse(_amountController.text),
-        amountInBaseCurrency: double.parse(_amountController.text),
-        exchangeRateUsed: 1.0,
-      );
-
-      await DatabaseService.addPersonalTransaction(transaction);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Expense added successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pop(context, true);
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Error: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-
-    setState(() => _isLoading = false);
   }
 
   @override
@@ -135,12 +127,13 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               TextFormField(
                 controller: _amountController,
                 keyboardType: TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: 'Amount (${Helpers.getCurrencySync()})',
-                  prefixIcon: const Icon(Icons.attach_money),
-                  border: const OutlineInputBorder(),
+                decoration: const InputDecoration(
+                  labelText: 'Amount *',
+                  prefixIcon: Icon(Icons.attach_money),
+                  border: OutlineInputBorder(),
                   filled: true,
                   fillColor: Colors.white,
+                  hintText: '0.00',
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -148,9 +141,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   }
                   if (double.tryParse(value) == null) {
                     return 'Please enter a valid number';
-                  }
-                  if (double.parse(value) <= 0) {
-                    return 'Amount must be greater than 0';
                   }
                   return null;
                 },
@@ -161,7 +151,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               DropdownButtonFormField<String>(
                 value: _selectedCategory,
                 decoration: const InputDecoration(
-                  labelText: 'Category',
+                  labelText: 'Category *',
                   prefixIcon: Icon(Icons.category),
                   border: OutlineInputBorder(),
                   filled: true,
@@ -170,7 +160,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 items: _categories.map((category) {
                   return DropdownMenuItem(
                     value: category,
-                    child: Text(category[0].toUpperCase() + category.substring(1).replaceAll('_', ' ')),
+                    child: Text(category),
                   );
                 }).toList(),
                 onChanged: (value) {
@@ -195,12 +185,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   filled: true,
                   fillColor: Colors.white,
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a description';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(height: 16),
 
@@ -208,7 +192,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               GestureDetector(
                 onTap: _selectDate,
                 child: Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
@@ -218,13 +202,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                     children: [
                       const Icon(Icons.calendar_today, color: Colors.blue),
                       const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Date: ${DateFormat('dd MMM yyyy').format(_selectedDate)}',
-                          style: const TextStyle(fontSize: 16),
-                        ),
+                      Text(
+                        DateFormat('dd MMM yyyy').format(_selectedDate),
+                        style: const TextStyle(fontSize: 16),
                       ),
-                      const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                      const Spacer(),
+                      const Icon(Icons.arrow_drop_down),
                     ],
                   ),
                 ),
@@ -252,7 +235,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _saveExpense,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
+                    backgroundColor: Colors.red,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -260,7 +243,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Add Expense'),
+                      : const Text(
+                          'Add Expense',
+                          style: TextStyle(fontSize: 16),
+                        ),
                 ),
               ),
             ],
