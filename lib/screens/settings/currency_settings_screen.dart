@@ -1,11 +1,8 @@
 // lib/screens/settings/currency_settings_screen.dart
-import 'dart:async';  // <-- ADD THIS IMPORT
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../services/exchange_rate_service.dart';
-import '../../data/currency_data.dart';
-import '../../models/currency_model.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/helpers.dart';
 
 class CurrencySettingsScreen extends StatefulWidget {
   const CurrencySettingsScreen({super.key});
@@ -17,168 +14,138 @@ class CurrencySettingsScreen extends StatefulWidget {
 class _CurrencySettingsScreenState extends State<CurrencySettingsScreen> {
   String _selectedCurrency = 'USD';
   String _initialCurrency = 'USD';
-  List<String> _favorites = [];
-  List<String> _recentlyUsed = [];
-  String _searchQuery = '';
-  bool _isLoading = false;
   bool _hasChanges = false;
+  String _searchQuery = '';
 
-  // Debounce
-  Timer? _debounceTimer;
-  bool _isProcessing = false;
+  final List<Map<String, String>> _allCurrencies = [
+    {'code': 'USD', 'name': 'US Dollar', 'symbol': '\$', 'flag': '🇺🇸'},
+    {'code': 'EUR', 'name': 'Euro', 'symbol': '€', 'flag': '🇪🇺'},
+    {'code': 'GBP', 'name': 'British Pound', 'symbol': '£', 'flag': '🇬🇧'},
+    {'code': 'PKR', 'name': 'Pakistani Rupee', 'symbol': 'Rs', 'flag': '🇵🇰'},
+    {'code': 'INR', 'name': 'Indian Rupee', 'symbol': '₹', 'flag': '🇮🇳'},
+    {'code': 'AED', 'name': 'UAE Dirham', 'symbol': 'د.إ', 'flag': '🇦🇪'},
+    {'code': 'SAR', 'name': 'Saudi Riyal', 'symbol': '﷼', 'flag': '🇸🇦'},
+    {'code': 'CAD', 'name': 'Canadian Dollar', 'symbol': 'C\$', 'flag': '🇨🇦'},
+    {'code': 'AUD', 'name': 'Australian Dollar', 'symbol': 'A\$', 'flag': '🇦🇺'},
+    {'code': 'JPY', 'name': 'Japanese Yen', 'symbol': '¥', 'flag': '🇯🇵'},
+    {'code': 'CNY', 'name': 'Chinese Yuan', 'symbol': '¥', 'flag': '🇨🇳'},
+    {'code': 'KRW', 'name': 'South Korean Won', 'symbol': '₩', 'flag': '🇰🇷'},
+    {'code': 'BHD', 'name': 'Bahraini Dinar', 'symbol': 'BD', 'flag': '🇧🇭'},
+    {'code': 'KWD', 'name': 'Kuwaiti Dinar', 'symbol': 'KD', 'flag': '🇰🇼'},
+    {'code': 'OMR', 'name': 'Omani Rial', 'symbol': 'RO', 'flag': '🇴🇲'},
+    {'code': 'QAR', 'name': 'Qatari Riyal', 'symbol': '﷼', 'flag': '🇶🇦'},
+    {'code': 'EGP', 'name': 'Egyptian Pound', 'symbol': 'E£', 'flag': '🇪🇬'},
+    {'code': 'TRY', 'name': 'Turkish Lira', 'symbol': '₺', 'flag': '🇹🇷'},
+    {'code': 'RUB', 'name': 'Russian Ruble', 'symbol': '₽', 'flag': '🇷🇺'},
+    {'code': 'BRL', 'name': 'Brazilian Real', 'symbol': 'R\$', 'flag': '🇧🇷'},
+    {'code': 'ZAR', 'name': 'South African Rand', 'symbol': 'R', 'flag': '🇿🇦'},
+    {'code': 'SGD', 'name': 'Singapore Dollar', 'symbol': 'S\$', 'flag': '🇸🇬'},
+    {'code': 'MYR', 'name': 'Malaysian Ringgit', 'symbol': 'RM', 'flag': '🇲🇾'},
+    {'code': 'PHP', 'name': 'Philippine Peso', 'symbol': '₱', 'flag': '🇵🇭'},
+    {'code': 'IDR', 'name': 'Indonesian Rupiah', 'symbol': 'Rp', 'flag': '🇮🇩'},
+    {'code': 'THB', 'name': 'Thai Baht', 'symbol': '฿', 'flag': '🇹🇭'},
+    {'code': 'VND', 'name': 'Vietnamese Dong', 'symbol': '₫', 'flag': '🇻🇳'},
+  ];
+
+  List<Map<String, String>> get _favoriteCurrencies {
+    return _allCurrencies.where((c) => 
+      c['code'] == 'USD' || c['code'] == 'PKR' || c['code'] == 'EUR' || 
+      c['code'] == 'GBP' || c['code'] == 'AED' || c['code'] == 'SAR'
+    ).toList();
+  }
+
+  List<Map<String, String>> get _filteredCurrencies {
+    if (_searchQuery.isEmpty) return _allCurrencies;
+    return _allCurrencies.where((c) =>
+      c['code']!.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+      c['name']!.toLowerCase().contains(_searchQuery.toLowerCase())
+    ).toList();
+  }
 
   @override
   void initState() {
     super.initState();
-    _loadSettings();
+    _loadCurrency();
   }
 
-  @override
-  void dispose() {
-    _debounceTimer?.cancel();
-    super.dispose();
-  }
-
-  void _debounceAction(VoidCallback action) {
-    if (_isProcessing) return;
-    _debounceTimer?.cancel();
-    _isProcessing = true;
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      action();
-      _isProcessing = false;
-    });
-  }
-
-  Future<void> _loadSettings() async {
+  Future<void> _loadCurrency() async {
     final prefs = await SharedPreferences.getInstance();
+    final currency = prefs.getString('currency') ?? 'USD';
     setState(() {
-      _selectedCurrency = prefs.getString('display_currency') ?? 'USD';
-      _initialCurrency = _selectedCurrency;
-      _favorites = prefs.getStringList('currency_favorites') ?? ['PKR', 'SAR', 'BHD'];
-      _recentlyUsed = prefs.getStringList('recently_used_currencies') ?? [];
+      _selectedCurrency = currency;
+      _initialCurrency = currency;
       _hasChanges = false;
     });
   }
 
   void _selectCurrency(String code) {
-    _debounceAction(() {
-      setState(() {
-        _selectedCurrency = code;
-        _hasChanges = _selectedCurrency != _initialCurrency;
-      });
+    setState(() {
+      _selectedCurrency = code;
+      _hasChanges = _selectedCurrency != _initialCurrency;
     });
   }
 
   Future<void> _saveCurrency() async {
-    _debounceAction(() async {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('display_currency', _selectedCurrency);
-      
-      // Update recently used
-      List<String> recent = List.from(_recentlyUsed);
-      recent.remove(_selectedCurrency);
-      recent.insert(0, _selectedCurrency);
-      if (recent.length > 5) recent = recent.sublist(0, 5);
-      await prefs.setStringList('recently_used_currencies', recent);
-      
-      setState(() {
-        _initialCurrency = _selectedCurrency;
-        _recentlyUsed = recent;
-        _hasChanges = false;
-      });
+    if (!_hasChanges) {
+      Navigator.pop(context);
+      return;
+    }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Currency updated to ${_selectedCurrency}'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-      
-      Navigator.pop(context, _selectedCurrency);
-    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('currency', _selectedCurrency);
+    await Helpers.setCurrency(_selectedCurrency);
+    
+    setState(() => _hasChanges = false);
+    
+    Helpers.showSnackBar(
+      context,
+      'Currency updated to $_selectedCurrency',
+      color: Colors.green,
+    );
+    
+    Navigator.pop(context, _selectedCurrency);
   }
 
   void _cancelChanges() {
-    _debounceAction(() {
-      if (_hasChanges) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Discard Changes?'),
-            content: const Text('You have unsaved currency changes. Are you sure you want to discard them?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Keep Editing'),
+    if (_hasChanges) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Discard Changes?'),
+          content: const Text('You have unsaved currency changes. Are you sure you want to discard them?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Keep Editing'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                setState(() {
+                  _selectedCurrency = _initialCurrency;
+                  _hasChanges = false;
+                });
+                Helpers.showSnackBar(
+                  context,
+                  'Currency changes discarded',
+                  color: Colors.grey,
+                );
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
               ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _selectedCurrency = _initialCurrency;
-                    _hasChanges = false;
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Currency changes discarded'),
-                      backgroundColor: Colors.grey,
-                    ),
-                  );
-                },
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.red,
-                ),
-                child: const Text('Discard'),
-              ),
-            ],
-          ),
-        );
-      } else {
-        Navigator.pop(context);
-      }
-    });
-  }
-
-  Future<void> _toggleFavorite(String code) async {
-    _debounceAction(() async {
-      final prefs = await SharedPreferences.getInstance();
-      List<String> favorites = List.from(_favorites);
-      
-      if (favorites.contains(code)) {
-        favorites.remove(code);
-      } else {
-        favorites.add(code);
-      }
-      
-      await prefs.setStringList('currency_favorites', favorites);
-      
-      setState(() {
-        _favorites = favorites;
-      });
-    });
+              child: const Text('Discard'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      Navigator.pop(context);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final filteredCurrencies = CurrencyData.allCurrencies
-        .where((c) => c.code.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            c.name.toLowerCase().contains(_searchQuery.toLowerCase()))
-        .toList();
-
-    final favoriteCurrencies = filteredCurrencies
-        .where((c) => _favorites.contains(c.code))
-        .toList();
-
-    final recentCurrencies = filteredCurrencies
-        .where((c) => _recentlyUsed.contains(c.code) && !_favorites.contains(c.code))
-        .toList();
-
-    final otherCurrencies = filteredCurrencies
-        .where((c) => !_favorites.contains(c.code) && !_recentlyUsed.contains(c.code))
-        .toList()
-      ..sort((a, b) => a.code.compareTo(b.code));
-
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
@@ -194,18 +161,6 @@ class _CurrencySettingsScreenState extends State<CurrencySettingsScreen> {
               ),
               child: const Text('Save'),
             ),
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              ),
-            ),
         ],
       ),
       body: Column(
@@ -219,73 +174,55 @@ class _CurrencySettingsScreenState extends State<CurrencySettingsScreen> {
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
                 ),
                 filled: true,
                 fillColor: Colors.white,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               ),
               onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
+                setState(() => _searchQuery = value);
               },
             ),
           ),
-          
-          // Currency List
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
-                // Current Selected
+                // Current Currency
                 _buildSectionHeader('Current Currency'),
                 _buildCurrencyTile(
-                  CurrencyData.getByCode(_selectedCurrency)!,
+                  currency: _allCurrencies.firstWhere(
+                    (c) => c['code'] == _selectedCurrency,
+                    orElse: () => {'code': 'USD', 'name': 'US Dollar', 'symbol': '\$', 'flag': '🇺🇸'},
+                  ),
                   isSelected: true,
-                  onTap: () {},
+                  showCheck: true,
                 ),
                 const SizedBox(height: 8),
-                
+
                 // Favorites
-                if (favoriteCurrencies.isNotEmpty) ...[
-                  _buildSectionHeader('⭐ Favorites'),
-                  ...favoriteCurrencies.map((c) => _buildCurrencyTile(
-                    c,
-                    isFavorite: true,
-                    isSelected: c.code == _selectedCurrency,
-                    onTap: () => _selectCurrency(c.code),
-                    onFavoriteTap: () => _toggleFavorite(c.code),
-                  )),
-                  const SizedBox(height: 8),
-                ],
-                
-                // Recently Used
-                if (recentCurrencies.isNotEmpty) ...[
-                  _buildSectionHeader('📌 Recently Used'),
-                  ...recentCurrencies.map((c) => _buildCurrencyTile(
-                    c,
-                    isSelected: c.code == _selectedCurrency,
-                    onTap: () => _selectCurrency(c.code),
-                    onFavoriteTap: () => _toggleFavorite(c.code),
-                  )),
-                  const SizedBox(height: 8),
-                ],
-                
+                _buildSectionHeader('Favorites'),
+                ..._favoriteCurrencies.map((currency) =>
+                  _buildCurrencyTile(
+                    currency: currency,
+                    isSelected: _selectedCurrency == currency['code'],
+                    onTap: () => _selectCurrency(currency['code']!),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
                 // All Currencies
-                _buildSectionHeader('🌍 All Currencies'),
-                ...otherCurrencies.map((c) => _buildCurrencyTile(
-                  c,
-                  isSelected: c.code == _selectedCurrency,
-                  onTap: () => _selectCurrency(c.code),
-                  onFavoriteTap: () => _toggleFavorite(c.code),
-                )),
-                
+                _buildSectionHeader('All Currencies'),
+                ..._filteredCurrencies.map((currency) =>
+                  _buildCurrencyTile(
+                    currency: currency,
+                    isSelected: _selectedCurrency == currency['code'],
+                    onTap: () => _selectCurrency(currency['code']!),
+                  ),
+                ),
                 const SizedBox(height: 24),
               ],
             ),
           ),
-          // Bottom Buttons
           _buildBottomButtons(),
         ],
       ),
@@ -294,11 +231,11 @@ class _CurrencySettingsScreenState extends State<CurrencySettingsScreen> {
 
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Text(
         title,
         style: TextStyle(
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: FontWeight.w600,
           color: Colors.grey.shade600,
         ),
@@ -306,86 +243,57 @@ class _CurrencySettingsScreenState extends State<CurrencySettingsScreen> {
     );
   }
 
-  Widget _buildCurrencyTile(
-    CurrencyModel currency, {
+  Widget _buildCurrencyTile({
+    required Map<String, String> currency,
     bool isSelected = false,
-    bool isFavorite = false,
-    required VoidCallback onTap,
-    VoidCallback? onFavoriteTap,
+    VoidCallback? onTap,
+    bool showCheck = false,
   }) {
-    final isInitial = _initialCurrency == currency.code;
-    
     return Card(
-      margin: const EdgeInsets.only(bottom: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       elevation: isSelected ? 2 : 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: isSelected 
-              ? AppTheme.primaryColor 
-              : Colors.transparent,
-          width: 2,
+          color: isSelected ? AppTheme.primaryColor : Colors.grey.shade200,
+          width: isSelected ? 2 : 1,
         ),
       ),
-      color: isSelected 
-          ? AppTheme.primaryColor.withOpacity(0.05) 
-          : Colors.white,
       child: ListTile(
         leading: Text(
-          currency.flag,
+          currency['flag'] ?? '🌍',
           style: const TextStyle(fontSize: 24),
         ),
         title: Text(
-          '${currency.code} - ${currency.name}',
+          '${currency['code']} - ${currency['name']}',
           style: TextStyle(
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             color: isSelected ? AppTheme.primaryColor : null,
           ),
         ),
-        subtitle: Text(currency.symbol),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: Icon(
-                isFavorite ? Icons.star : Icons.star_border,
-                color: isFavorite ? Colors.amber : Colors.grey,
-                size: 20,
-              ),
-              onPressed: onFavoriteTap,
-            ),
-            if (isSelected)
-              Container(
+        subtitle: Text(
+          currency['symbol'] ?? '',
+          style: TextStyle(
+            color: isSelected ? AppTheme.primaryColor : Colors.grey.shade600,
+          ),
+        ),
+        trailing: showCheck || isSelected
+            ? Container(
                 padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: Colors.green,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.check,
                   color: Colors.white,
-                  size: 14,
+                  size: 16,
                 ),
-              ),
-            if (!isSelected && isInitial && !_hasChanges)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'Current',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-          ],
-        ),
+              )
+            : null,
         onTap: onTap,
+        selected: isSelected,
+        selectedTileColor: AppTheme.primaryColor.withOpacity(0.05),
       ),
     );
   }
