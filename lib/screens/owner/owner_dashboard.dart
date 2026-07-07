@@ -1,633 +1,550 @@
 // lib/screens/owner/owner_dashboard.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
-import '../../providers/mode_provider.dart';
-import '../../services/auth_service.dart';
-import '../../services/database_service.dart';
-import '../../models/user_model.dart';
-import '../../utils/app_theme.dart';
-import '../../utils/helpers.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
+import '../../services/remote_config_service.dart';
+import '../../widgets/common/custom_button.dart';
+import '../../widgets/common/custom_snackbar.dart';
 
 class OwnerDashboard extends StatefulWidget {
-  const OwnerDashboard({super.key});
+  const OwnerDashboard({Key? key}) : super(key: key);
 
   @override
   State<OwnerDashboard> createState() => _OwnerDashboardState();
 }
 
-class _OwnerDashboardState extends State<OwnerDashboard>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  UserModel? _currentUser;
+class _OwnerDashboardState extends State<OwnerDashboard> {
+  int _userCount = 0;
+  int _familyCount = 0;
+  int _transactionCount = 0;
   bool _isLoading = true;
-  
-  // Stats
-  int _totalUsers = 0;
-  int _totalFamilies = 0;
-  int _premiumUsers = 0;
-  double _monthlyRevenue = 0;
-  List<UserModel> _allUsers = [];
-  List<Map<String, dynamic>> _allFamilies = [];
+  bool _showMessage = false;
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _bodyController = TextEditingController();
+  final TextEditingController _buttonTextController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _loadData();
+    _loadStats();
+    _loadMessageStatus();
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _titleController.dispose();
+    _bodyController.dispose();
+    _buttonTextController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadStats() async {
     setState(() => _isLoading = true);
-    
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final userId = authService.userId;
-    
-    if (userId != null) {
-      _currentUser = await DatabaseService.getUser(userId);
-      // Load stats from database
-      _loadStats();
+
+    try {
+      final firestore = FirebaseFirestore.instance;
+      
+      // Count users
+      final userSnap = await firestore.collection('users').get();
+      _userCount = userSnap.docs.length;
+      
+      // Count families
+      final familySnap = await firestore.collection('families').get();
+      _familyCount = familySnap.docs.length;
+      
+      // Count transactions
+      final transactionSnap = await firestore.collection('transactions').get();
+      _transactionCount = transactionSnap.docs.length;
+      
+    } catch (e) {
+      print('Error loading stats: $e');
+    } finally {
+      setState(() => _isLoading = false);
     }
-    
-    setState(() => _isLoading = false);
   }
 
-  void _loadStats() {
-    // Mock data - replace with real database calls
-    _totalUsers = 1234;
-    _totalFamilies = 456;
-    _premiumUsers = 89;
-    _monthlyRevenue = 499.00;
-    _allUsers = [];
-    _allFamilies = [];
+  void _loadMessageStatus() {
+    _showMessage = RemoteConfigService.showMessage;
+    if (_showMessage) {
+      _titleController.text = RemoteConfigService.messageTitle;
+      _bodyController.text = RemoteConfigService.messageBody;
+      _buttonTextController.text = RemoteConfigService.messageButtonText;
+    }
+  }
+
+  Future<void> _sendCustomMessage() async {
+    if (_titleController.text.isEmpty || _bodyController.text.isEmpty) {
+      CustomSnackBar.show(
+        context,
+        'Please fill in title and body',
+        isError: true,
+      );
+      return;
+    }
+
+    try {
+      // TODO: Implement sending custom message via Remote Config
+      // await RemoteConfigService.sendMessage(
+      //   title: _titleController.text,
+      //   body: _bodyController.text,
+      //   buttonText: _buttonTextController.text,
+      // );
+      
+      CustomSnackBar.show(
+        context,
+        'Message sent to all users! 📢',
+      );
+      setState(() => _showMessage = true);
+    } catch (e) {
+      CustomSnackBar.show(
+        context,
+        'Failed to send message: ${e.toString()}',
+        isError: true,
+      );
+    }
+  }
+
+  Future<void> _hideMessage() async {
+    try {
+      // TODO: Hide message via Remote Config
+      setState(() => _showMessage = false);
+      CustomSnackBar.show(
+        context,
+        'Message hidden',
+      );
+    } catch (e) {
+      CustomSnackBar.show(
+        context,
+        'Failed to hide message: ${e.toString()}',
+        isError: true,
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isOwner = _currentUser?.role == 'owner';
-    final isModerator = _currentUser?.role == 'moderator';
+    final authProvider = context.watch<AuthProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isOwner = authProvider.isOwner;
+    final isModerator = authProvider.isModerator;
 
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+    if (!isOwner && !isModerator) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Admin Dashboard')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.lock,
+                size: 64,
+                color: Colors.red[300],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Access Denied',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'You do not have admin access.',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: Text(
-          isOwner ? 'Owner Dashboard' : 'Moderator Dashboard',
-        ),
-        backgroundColor: isOwner ? const Color(0xFFD4AF37) : Colors.blue,  // FIXED: Colors.gold replaced
-        foregroundColor: Colors.white,
+        title: Text(isOwner ? 'Owner Dashboard' : 'Moderator Dashboard'),
         actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              isOwner ? '👑 Owner' : '🛡️ Moderator',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadStats,
           ),
         ],
-        bottom: isOwner
-            ? TabBar(
-                controller: _tabController,
-                tabs: const [
-                  Tab(text: 'Owner Panel'),
-                  Tab(text: 'Moderator Panel'),
-                ],
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white70,
-                indicatorColor: Colors.white,
-              )
-            : null,
       ),
-      body: isOwner
-          ? TabBarView(
-              controller: _tabController,
-              children: [
-                _buildOwnerPanel(),
-                _buildModeratorPanel(),
-              ],
-            )
-          : _buildModeratorPanel(),
-    );
-  }
-
-  // ==================== OWNER PANEL ====================
-
-  Widget _buildOwnerPanel() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Stats Cards
-          Row(
-            children: [
-              _buildStatCard('Total Users', _totalUsers, Icons.people, Colors.blue),
-              const SizedBox(width: 12),
-              _buildStatCard('Families', _totalFamilies, Icons.family_restroom, Colors.green),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _buildStatCard('Premium Users', _premiumUsers, Icons.star, const Color(0xFFD4AF37)),  // FIXED: Colors.gold replaced
-              const SizedBox(width: 12),
-              _buildStatCard('Revenue', _monthlyRevenue, Icons.attach_money, Colors.green),
-            ],
-          ),
-          const SizedBox(height: 16),
-          
-          // Owner Actions
-          const Text(
-            'Owner Actions',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          
-          _buildActionCard(
-            icon: Icons.announcement,
-            title: 'Send Announcement',
-            subtitle: 'Send notifications to all users',
-            color: Colors.blue,
-            onTap: () {
-              _showAnnouncementDialog();
-            },
-          ),
-          
-          _buildActionCard(
-            icon: Icons.update,
-            title: 'Feature Updates',
-            subtitle: 'Push "What\'s New" popup to users',
-            color: Colors.purple,
-            onTap: () {
-              _showFeatureUpdateDialog();
-            },
-          ),
-          
-          _buildActionCard(
-            icon: Icons.settings_remote,
-            title: 'Remote Config',
-            subtitle: 'Update app settings remotely',
-            color: Colors.orange,
-            onTap: () {
-              _showRemoteConfigDialog();
-            },
-          ),
-          
-          _buildActionCard(
-            icon: Icons.download,
-            title: 'Export Data',
-            subtitle: 'Export all user data as CSV',
-            color: Colors.green,
-            onTap: () {
-              _exportData();
-            },
-          ),
-          
-          _buildActionCard(
-            icon: Icons.trending_up,
-            title: 'App Health',
-            subtitle: 'View app growth and trends',
-            color: Colors.teal,
-            onTap: () {
-              _showAppHealth();
-            },
-          ),
-          
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(String title, dynamic value, IconData icon, Color color) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 2,
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: color, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey.shade600,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Admin info
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[800] : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: isOwner
+                              ? Colors.amber.withOpacity(0.2)
+                              : Colors.blue.withOpacity(0.2),
+                          child: Text(
+                            isOwner ? '👑' : '👩‍💼',
+                            style: const TextStyle(fontSize: 24),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isOwner ? 'Owner' : 'Moderator',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: isOwner ? Colors.amber : Colors.blue,
+                                ),
+                              ),
+                              Text(
+                                authProvider.user?.email ?? 'No email',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              value is double ? '\$${value.toStringAsFixed(2)}' : value.toString(),
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+                  const SizedBox(height: 24),
 
-  Widget _buildActionCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: color),
-        ),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade600,
-          ),
-        ),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: onTap,
-      ),
-    );
-  }
+                  // Stats
+                  const Text(
+                    'Statistics',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatCard(
+                          'Users',
+                          _userCount.toString(),
+                          Icons.people,
+                          Colors.blue,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatCard(
+                          'Families',
+                          _familyCount.toString(),
+                          Icons.family_restroom,
+                          Colors.green,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatCard(
+                          'Transactions',
+                          _transactionCount.toString(),
+                          Icons.attach_money,
+                          Colors.orange,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatCard(
+                          'Total Income',
+                          '\$${_transactionCount * 10}', // Placeholder
+                          Icons.trending_up,
+                          Colors.green,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
 
-  // ==================== MODERATOR PANEL ====================
+                  // Custom Message Section (Owner & Moderator)
+                  const Text(
+                    'Send Custom Message',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Send a custom message to all users (Eid, New Year, etc.)',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
 
-  Widget _buildModeratorPanel() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Moderator Info
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.blue.withOpacity(0.2)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.shield, color: Colors.blue),
-                    SizedBox(width: 8),
-                    Text(
-                      'Moderator Access',
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[800] : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        TextField(
+                          controller: _titleController,
+                          decoration: const InputDecoration(
+                            labelText: 'Message Title',
+                            hintText: 'e.g., 🎉 Eid Mubarak!',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _bodyController,
+                          decoration: const InputDecoration(
+                            labelText: 'Message Body',
+                            hintText: 'Enter your custom message here...',
+                            border: OutlineInputBorder(),
+                          ),
+                          maxLines: 3,
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _buttonTextController,
+                          decoration: const InputDecoration(
+                            labelText: 'Button Text (Optional)',
+                            hintText: 'e.g., Learn More, OK',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: CustomButton(
+                                onPressed: _sendCustomMessage,
+                                text: 'Send to All Users',
+                                type: ButtonType.primary,
+                                size: ButtonSize.medium,
+                                icon: Icons.send,
+                              ),
+                            ),
+                            if (_showMessage) ...[
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: CustomButton(
+                                  onPressed: _hideMessage,
+                                  text: 'Hide Message',
+                                  type: ButtonType.danger,
+                                  size: ButtonSize.medium,
+                                  icon: Icons.visibility_off,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Message preview
+                  if (_showMessage) ...[
+                    const Text(
+                      'Current Message Preview',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.blue.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                RemoteConfigService.messageIcon,
+                                style: const TextStyle(fontSize: 24),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  RemoteConfigService.messageTitle,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: RemoteConfigService.getMessageColor(
+                                    RemoteConfigService.messageType,
+                                  ).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  RemoteConfigService.messageType,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: RemoteConfigService.getMessageColor(
+                                      RemoteConfigService.messageType,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(RemoteConfigService.messageBody),
+                          if (RemoteConfigService.messageButtonText.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            OutlinedButton(
+                              onPressed: () {},
+                              child: Text(RemoteConfigService.messageButtonText),
+                            ),
+                          ],
+                          if (RemoteConfigService.messageExpiry.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              'Expires: ${RemoteConfigService.messageExpiry.split('T')[0]}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 24),
+
+                  // System Actions (Owner only)
+                  if (isOwner) ...[
+                    const Text(
+                      'System Actions',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    CustomButton(
+                      onPressed: () {
+                        // TODO: Refresh Remote Config
+                        CustomSnackBar.show(
+                          context,
+                          'Remote config refreshed',
+                        );
+                      },
+                      text: 'Refresh Remote Config',
+                      type: ButtonType.outline,
+                      size: ButtonSize.medium,
+                      icon: Icons.refresh,
+                    ),
+                    const SizedBox(height: 8),
+                    CustomButton(
+                      onPressed: () {
+                        // TODO: View all users
+                        CustomSnackBar.show(
+                          context,
+                          'Users list coming soon',
+                        );
+                      },
+                      text: 'View All Users',
+                      type: ButtonType.outline,
+                      size: ButtonSize.medium,
+                      icon: Icons.people,
+                    ),
+                    const SizedBox(height: 8),
+                    CustomButton(
+                      onPressed: () {
+                        // TODO: System logs
+                        CustomSnackBar.show(
+                          context,
+                          'System logs coming soon',
+                        );
+                      },
+                      text: 'System Logs',
+                      type: ButtonType.outline,
+                      size: ButtonSize.medium,
+                      icon: Icons.history,
+                    ),
                   ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'You have limited access to manage content and users.',
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            icon,
+            color: color,
+            size: 20,
           ),
-          const SizedBox(height: 16),
-          
-          // Moderator Actions
-          const Text(
-            'Moderator Actions',
+          const SizedBox(height: 4),
+          Text(
+            value,
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
+              color: color,
             ),
           ),
-          const SizedBox(height: 8),
-          
-          _buildActionCard(
-            icon: Icons.people,
-            title: 'View Users',
-            subtitle: 'See all registered users',
-            color: Colors.blue,
-            onTap: () {
-              _viewUsers();
-            },
-          ),
-          
-          _buildActionCard(
-            icon: Icons.family_restroom,
-            title: 'View Families',
-            subtitle: 'See all families',
-            color: Colors.green,
-            onTap: () {
-              _viewFamilies();
-            },
-          ),
-          
-          _buildActionCard(
-            icon: Icons.report_problem,
-            title: 'Reports',
-            subtitle: 'View user reports',
-            color: Colors.red,
-            onTap: () {
-              _viewReports();
-            },
-          ),
-          
-          _buildActionCard(
-            icon: Icons.announcement,
-            title: 'Announcements',
-            subtitle: 'View announcements',
-            color: Colors.orange,
-            onTap: () {
-              _viewAnnouncements();
-            },
-          ),
-          
-          const SizedBox(height: 16),
-        ],
-      ),
-    );
-  }
-
-  // ==================== DIALOGS ====================
-
-  void _showAnnouncementDialog() {
-    String announcement = '';
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Send Announcement'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Send notification to all users:'),
-            const SizedBox(height: 16),
-            TextField(
-              maxLines: 4,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'Type your announcement here...',
-              ),
-              onChanged: (value) => announcement = value,
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Announcement sent to all users!'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Send'),
           ),
         ],
-      ),
-    );
-  }
-
-  void _showFeatureUpdateDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Feature Update'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Push "What\'s New" popup:'),
-            const SizedBox(height: 16),
-            const TextField(
-              maxLines: 5,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'v2.0.0\n- New features\n- Bug fixes',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Feature update sent to users!'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Push Update'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showRemoteConfigDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Remote Config'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Update remote configuration:'),
-            SizedBox(height: 16),
-            TextField(
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'maintenance_mode: false',
-              ),
-            ),
-            SizedBox(height: 8),
-            TextField(
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'max_transactions: 50',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Remote config updated!'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Update'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _exportData() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Export Data'),
-        content: const Text('Export all user data as CSV? This may take a few minutes.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Data export started! Check downloads.'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Export'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAppHealth() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('App health: 📈 Growing at 12% month-over-month'),
-        backgroundColor: Colors.teal,
-      ),
-    );
-  }
-
-  void _viewUsers() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Total users: 1,234'),
-        backgroundColor: Colors.blue,
-      ),
-    );
-  }
-
-  void _viewFamilies() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Total families: 456'),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
-
-  void _viewReports() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('No reported issues'),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
-
-  void _viewAnnouncements() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('3 announcements pending'),
-        backgroundColor: Colors.orange,
       ),
     );
   }
