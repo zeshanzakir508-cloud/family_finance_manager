@@ -48,6 +48,8 @@ dependencies:
   flutter_local_notifications: ^17.2.4
   timezone: ^0.9.4
   csv: ^5.1.1
+  pdf: ^3.10.7
+  printing: ^5.11.1
 
   # Optional
   google_mobile_ads: ^4.0.0
