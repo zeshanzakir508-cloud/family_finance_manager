@@ -307,39 +307,123 @@ class BudgetModel extends HiveObject {
     }
   }
 
-  // Update category spent
+  // ✅ FIXED: Update category spent with proper null safety
   BudgetModel updateCategorySpent(String categoryId, double amount) {
     final updatedCategories = categories.map((category) {
       if (category.id == categoryId) {
-        final newSpent = category.spent + amount;
+        // Handle null safety with proper checks
+        final currentSpent = category.spent;
+        final currentAllocated = category.allocated;
+        
+        // Use null-aware operators or ensure values are non-null
+        final newSpent = (currentSpent ?? 0.0) + (amount ?? 0.0);
+        final newRemaining = (currentAllocated ?? 0.0) - newSpent;
+        
         return category.copyWith(
           spent: newSpent,
-          remaining: category.allocated - newSpent,
+          remaining: newRemaining,
         );
       }
       return category;
     }).toList();
 
+    // Calculate totals with null safety
+    final totalSpent = updatedCategories.fold<double>(
+      0.0, 
+      (sum, c) => sum + (c.spent ?? 0.0)
+    );
+    
+    final totalRemaining = updatedCategories.fold<double>(
+      0.0, 
+      (sum, c) => sum + (c.remaining ?? 0.0)
+    );
+
     return copyWith(
       categories: updatedCategories,
-      totalSpent: updatedCategories.fold(0.0, (sum, c) => sum + c.spent),
-      totalRemaining: updatedCategories.fold(0.0, (sum, c) => sum + c.remaining),
+      totalSpent: totalSpent,
+      totalRemaining: totalRemaining,
     );
   }
 
-  // Reset budget for new month
+  // ✅ FIXED: Reset budget for new month with proper null safety
   BudgetModel resetForNewMonth() {
     final resetCategories = categories.map((category) {
+      final currentRemaining = category.remaining ?? 0.0;
+      final currentAllocated = category.allocated ?? 0.0;
+      
       return category.copyWith(
         spent: 0.0,
-        remaining: isRollover ? category.remaining + category.allocated : category.allocated,
+        remaining: isRollover 
+            ? currentRemaining + currentAllocated 
+            : currentAllocated,
       );
     }).toList();
+
+    final totalRemaining = resetCategories.fold<double>(
+      0.0, 
+      (sum, c) => sum + (c.remaining ?? 0.0)
+    );
 
     return copyWith(
       categories: resetCategories,
       totalSpent: 0.0,
-      totalRemaining: resetCategories.fold(0.0, (sum, c) => sum + c.remaining),
+      totalRemaining: totalRemaining,
+      updatedAt: DateTime.now(),
+    );
+  }
+
+  // ✅ ADDED: Helper to add a new category with null safety
+  BudgetModel addCategory(BudgetCategory category) {
+    final updatedCategories = List<BudgetCategory>.from(categories)..add(category);
+    
+    final newTotalAllocated = updatedCategories.fold<double>(
+      0.0, 
+      (sum, c) => sum + (c.allocated ?? 0.0)
+    );
+    
+    final newTotalSpent = updatedCategories.fold<double>(
+      0.0, 
+      (sum, c) => sum + (c.spent ?? 0.0)
+    );
+    
+    final newTotalRemaining = updatedCategories.fold<double>(
+      0.0, 
+      (sum, c) => sum + (c.remaining ?? 0.0)
+    );
+
+    return copyWith(
+      categories: updatedCategories,
+      totalAllocated: newTotalAllocated,
+      totalSpent: newTotalSpent,
+      totalRemaining: newTotalRemaining,
+      updatedAt: DateTime.now(),
+    );
+  }
+
+  // ✅ ADDED: Helper to remove a category with null safety
+  BudgetModel removeCategory(String categoryId) {
+    final updatedCategories = categories.where((c) => c.id != categoryId).toList();
+    
+    final newTotalAllocated = updatedCategories.fold<double>(
+      0.0, 
+      (sum, c) => sum + (c.allocated ?? 0.0)
+    );
+    
+    final newTotalSpent = updatedCategories.fold<double>(
+      0.0, 
+      (sum, c) => sum + (c.spent ?? 0.0)
+    );
+    
+    final newTotalRemaining = updatedCategories.fold<double>(
+      0.0, 
+      (sum, c) => sum + (c.remaining ?? 0.0)
+    );
+
+    return copyWith(
+      categories: updatedCategories,
+      totalAllocated: newTotalAllocated,
+      totalSpent: newTotalSpent,
+      totalRemaining: newTotalRemaining,
       updatedAt: DateTime.now(),
     );
   }
