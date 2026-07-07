@@ -50,7 +50,8 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
+    // ✅ FIXED: Removed unused auth variable or kept commented
+    // final auth = context.watch<AuthProvider>();
     final familyProvider = context.watch<FamilyProvider>();
     final transactionProvider = context.watch<TransactionProvider>();
     final currencyProvider = context.watch<CurrencyProvider>();
