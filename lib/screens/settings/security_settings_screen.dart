@@ -1,14 +1,14 @@
 // lib/screens/settings/security_settings_screen.dart
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
 import '../../services/biometric_service.dart';
-import '../../services/auth_service.dart';
-import '../../utils/app_theme.dart';
+import '../../widgets/common/custom_button.dart';
+import '../../widgets/common/custom_snackbar.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
-  const SecuritySettingsScreen({super.key});
+  const SecuritySettingsScreen({Key? key}) : super(key: key);
 
   @override
   State<SecuritySettingsScreen> createState() => _SecuritySettingsScreenState();
@@ -16,17 +16,12 @@ class SecuritySettingsScreen extends StatefulWidget {
 
 class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   bool _fingerprintEnabled = false;
-  bool _initialFingerprintEnabled = false;
+  bool _faceIdEnabled = false;
+  bool _pinEnabled = false;
   bool _autoLogout = false;
-  bool _initialAutoLogout = false;
-  int _autoLogoutTime = 5;
-  int _initialAutoLogoutTime = 5;
-  bool _hasChanges = false;
-  bool _isLoading = false;
-  bool _isProcessing = false;
-
-  Timer? _debounceTimer;
-  final List<int> _logoutTimes = [1, 5, 10, 15, 30, 60];
+  bool _isBiometricAvailable = false;
+  bool _isLoading = true;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -34,460 +29,335 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     _loadSettings();
   }
 
-  @override
-  void dispose() {
-    _debounceTimer?.cancel();
-    super.dispose();
-  }
-
-  void _debounceAction(VoidCallback action) {
-    if (_isProcessing) return;
-    _debounceTimer?.cancel();
-    _isProcessing = true;
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      action();
-      _isProcessing = false;
-    });
-  }
-
   Future<void> _loadSettings() async {
     setState(() => _isLoading = true);
-    final prefs = await SharedPreferences.getInstance();
-    final authService = Provider.of<AuthService>(context, listen: false);
-    
-    setState(() {
-      _fingerprintEnabled = authService.isFingerprintEnabled;
-      _initialFingerprintEnabled = _fingerprintEnabled;
-      _autoLogout = prefs.getBool('auto_logout') ?? false;
-      _initialAutoLogout = _autoLogout;
-      _autoLogoutTime = prefs.getInt('auto_logout_time') ?? 5;
-      _initialAutoLogoutTime = _autoLogoutTime;
-      _hasChanges = false;
-      _isLoading = false;
-    });
-  }
 
-  void _markChanged() {
-    setState(() {
-      _hasChanges = _fingerprintEnabled != _initialFingerprintEnabled ||
-          _autoLogout != _initialAutoLogout ||
-          _autoLogoutTime != _initialAutoLogoutTime;
-    });
+    try {
+      final biometricService = BiometricService();
+      _isBiometricAvailable = await biometricService.checkAvailability();
+      _fingerprintEnabled = await biometricService.isFingerprintEnabled();
+      
+      // TODO: Load PIN and auto-logout settings from SharedPreferences
+      _pinEnabled = false;
+      _autoLogout = false;
+      
+      // Check face ID support
+      final types = await biometricService.getAvailableBiometrics();
+      _faceIdEnabled = types.contains(BiometricType.face);
+      
+    } catch (e) {
+      print('Error loading security settings: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _saveSettings() async {
-    _debounceAction(() async {
-      setState(() => _isLoading = true);
-      
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('auto_logout', _autoLogout);
-      await prefs.setInt('auto_logout_time', _autoLogoutTime);
-      
-      setState(() {
-        _initialFingerprintEnabled = _fingerprintEnabled;
-        _initialAutoLogout = _autoLogout;
-        _initialAutoLogoutTime = _autoLogoutTime;
-        _hasChanges = false;
-        _isLoading = false;
-      });
+    setState(() => _isSaving = true);
 
+    try {
+      final biometricService = BiometricService();
+      
+      // Save fingerprint setting
+      await biometricService.setFingerprintEnabled(_fingerprintEnabled);
+      
+      // TODO: Save PIN and auto-logout settings
+      
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Security settings saved successfully'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
+        CustomSnackBar.show(
+          context,
+          'Security settings saved!',
         );
         Navigator.pop(context, true);
       }
-    });
-  }
-
-  void _cancelChanges() {
-    _debounceAction(() {
-      if (_hasChanges) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Discard Changes?'),
-            content: const Text('You have unsaved security changes. Are you sure you want to discard them?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Keep Editing'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _fingerprintEnabled = _initialFingerprintEnabled;
-                    _autoLogout = _initialAutoLogout;
-                    _autoLogoutTime = _initialAutoLogoutTime;
-                    _hasChanges = false;
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Security changes discarded'),
-                      backgroundColor: Colors.grey,
-                    ),
-                  );
-                },
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.red,
-                ),
-                child: const Text('Discard'),
-              ),
-            ],
-          ),
-        );
-      } else {
-        Navigator.pop(context);
-      }
-    });
-  }
-
-  Future<void> _testFingerprint() async {
-    _debounceAction(() async {
-      final available = await BiometricService.isAvailable();
-      if (!available) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Fingerprint not available on this device'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-        return;
-      }
-
-      final authenticated = await BiometricService.authenticate(
-        reason: 'Authenticate to test fingerprint',
-      );
-      
+    } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              authenticated 
-                  ? 'Fingerprint authentication successful! ✅' 
-                  : 'Fingerprint authentication failed ❌',
-            ),
-            backgroundColor: authenticated ? Colors.green : Colors.red,
-          ),
+        CustomSnackBar.show(
+          context,
+          'Failed to save settings: ${e.toString()}',
+          isError: true,
         );
       }
-    });
-  }
-
-  Future<void> _enableFingerprintForLogin() async {
-    final available = await BiometricService.isAvailable();
-    if (!available) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Fingerprint not available on this device'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-      return;
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
+  }
 
-    final authenticated = await BiometricService.authenticate(
-      reason: 'Enable fingerprint login',
+  Future<void> _setupPin() async {
+    // TODO: Navigate to PIN setup screen
+    CustomSnackBar.show(
+      context,
+      'PIN setup coming soon',
     );
-    
-    if (authenticated) {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      await authService.setFingerprintEnabled(true);
-      
-      setState(() {
-        _fingerprintEnabled = true;
-        _markChanged();
-      });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Fingerprint login enabled! 🔐'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Fingerprint authentication failed. Please try again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _disableFingerprintForLogin() async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    await authService.setFingerprintEnabled(false);
-    
-    setState(() {
-      _fingerprintEnabled = false;
-      _markChanged();
-    });
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Fingerprint login disabled'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Security Settings')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('Security Settings'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
         actions: [
-          if (_hasChanges)
-            TextButton(
-              onPressed: _saveSettings,
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
+          TextButton(
+            onPressed: _isSaving ? null : _saveSettings,
+            child: Text(
+              'Save',
+              style: TextStyle(
+                color: _isSaving ? Colors.grey : Colors.white,
               ),
-              child: const Text('Save'),
             ),
+          ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    children: [
-                      FutureBuilder<bool>(
-                        future: BiometricService.isAvailable(),
-                        builder: (context, snapshot) {
-                          final available = snapshot.data ?? false;
-                          return _buildSwitchTile(
-                            icon: Icons.fingerprint,
-                            title: 'Fingerprint Login',
-                            subtitle: available
-                                ? _fingerprintEnabled
-                                    ? 'Fingerprint login enabled ✓'
-                                    : 'Enable fingerprint to unlock'
-                                : 'Fingerprint not available on this device',
-                            value: _fingerprintEnabled && available,
-                            onChanged: available ? (value) {
-                              _debounceAction(() {
-                                if (value) {
-                                  _enableFingerprintForLogin();
-                                } else {
-                                  _disableFingerprintForLogin();
-                                }
-                              });
-                            } : null,
-                          );
-                        },
-                      ),
-                      
-                      const Divider(height: 24),
-                      
-                      _buildSwitchTile(
-                        icon: Icons.timer,
-                        title: 'Auto Logout',
-                        subtitle: _autoLogout
-                            ? 'Logout after $_autoLogoutTime minutes of inactivity'
-                            : 'Auto logout after inactivity',
-                        value: _autoLogout,
-                        onChanged: (value) {
-                          _debounceAction(() {
-                            setState(() {
-                              _autoLogout = value;
-                              _markChanged();
-                            });
-                          });
-                        },
-                      ),
-                      
-                      if (_autoLogout)
-                        Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            side: BorderSide(color: Colors.grey.shade200),
-                          ),
-                          child: ListTile(
-                            leading: const Icon(Icons.timer_outlined, color: Colors.blue),
-                            title: const Text('Logout Time'),
-                            subtitle: Text('$_autoLogoutTime minutes'),
-                            trailing: DropdownButton<int>(
-                              value: _autoLogoutTime,
-                              items: _logoutTimes.map((time) {
-                                return DropdownMenuItem(
-                                  value: time,
-                                  child: Text('$time min'),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                _debounceAction(() {
-                                  if (value != null) {
-                                    setState(() {
-                                      _autoLogoutTime = value;
-                                      _markChanged();
-                                    });
-                                  }
-                                });
-                              },
-                            ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[800] : Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.security,
+                    color: Colors.grey[600],
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Secure your account',
+                          style: TextStyle(
+                            fontSize: 14,
                           ),
                         ),
-                      
-                      const SizedBox(height: 16),
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                        Text(
+                          'Enable additional security features',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
                         ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.security, color: Colors.blue),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'Enable fingerprint for quick and secure login.',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Biometric section
+            const Text(
+              'Biometric Authentication',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            if (_isBiometricAvailable) ...[
+              // Fingerprint
+              _buildToggleTile(
+                title: 'Fingerprint Login',
+                subtitle: 'Use your fingerprint to login',
+                value: _fingerprintEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    _fingerprintEnabled = value;
+                  });
+                },
+                icon: Icons.fingerprint,
+              ),
+              const SizedBox(height: 4),
+
+              // Face ID
+              if (_faceIdEnabled)
+                _buildToggleTile(
+                  title: 'Face ID',
+                  subtitle: 'Use Face ID to login',
+                  value: _faceIdEnabled,
+                  onChanged: (value) {
+                    setState(() {
+                      _faceIdEnabled = value;
+                    });
+                  },
+                  icon: Icons.face,
+                ),
+            ] else ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.orange.withOpacity(0.3),
                   ),
                 ),
-                _buildBottomButtons(),
-              ],
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.warning_amber,
+                      color: Colors.orange[700],
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Biometric authentication is not available on this device',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.orange[700],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+
+            // PIN section
+            const Text(
+              'PIN Security',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
+            const SizedBox(height: 8),
+
+            _buildToggleTile(
+              title: 'PIN Lock',
+              subtitle: 'Set a PIN to secure your app',
+              value: _pinEnabled,
+              onChanged: (value) {
+                if (value) {
+                  _setupPin();
+                } else {
+                  setState(() {
+                    _pinEnabled = false;
+                  });
+                }
+              },
+              icon: Icons.lock_outline,
+            ),
+            const SizedBox(height: 16),
+
+            // Session section
+            const Text(
+              'Session Management',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            _buildToggleTile(
+              title: 'Auto Logout',
+              subtitle: 'Automatically logout after 30 minutes of inactivity',
+              value: _autoLogout,
+              onChanged: (value) {
+                setState(() {
+                  _autoLogout = value;
+                });
+              },
+              icon: Icons.timer,
+            ),
+            const SizedBox(height: 24),
+
+            // Save Button
+            CustomButton(
+              onPressed: _isSaving ? null : _saveSettings,
+              text: 'Save Settings',
+              isLoading: _isSaving,
+              type: ButtonType.primary,
+              size: ButtonSize.large,
+              icon: Icons.save,
+            ),
+
+            const SizedBox(height: 12),
+
+            // Change password
+            CustomButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/change_password');
+              },
+              text: 'Change Password',
+              type: ButtonType.outline,
+              size: ButtonSize.medium,
+              icon: Icons.lock,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildSwitchTile({
-    required IconData icon,
+  Widget _buildToggleTile({
     required String title,
     required String subtitle,
     required bool value,
-    required Function(bool)? onChanged,
+    required ValueChanged<bool> onChanged,
+    required IconData icon,
   }) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: value ? AppTheme.primaryColor.withOpacity(0.3) : Colors.grey.shade200,
-          width: value ? 2 : 1,
-        ),
-      ),
-      child: SwitchListTile(
-        secondary: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: value ? AppTheme.primaryColor.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            icon,
-            color: value ? AppTheme.primaryColor : Colors.grey,
-            size: 22,
-          ),
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontWeight: value ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade600,
-          ),
-        ),
-        value: value,
-        onChanged: onChanged,
-        activeColor: AppTheme.primaryColor,
-        activeTrackColor: AppTheme.primaryColor.withOpacity(0.3),
-        inactiveThumbColor: Colors.grey.shade400,
-        inactiveTrackColor: Colors.grey.shade200,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-      ),
-    );
-  }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-  Widget _buildBottomButtons() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 2,
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        color: isDark ? Colors.grey[800] : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
+        ),
       ),
       child: Row(
         children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: _cancelChanges,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.grey,
-                side: BorderSide(color: Colors.grey.shade300),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text('Cancel'),
-            ),
+          Icon(
+            icon,
+            color: Colors.grey[600],
+            size: 20,
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: ElevatedButton(
-              onPressed: _hasChanges ? _saveSettings : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _hasChanges 
-                    ? AppTheme.primaryColor 
-                    : Colors.grey.shade300,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-              child: Text(_hasChanges ? 'Save Changes' : 'No Changes'),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
             ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: Theme.of(context).primaryColor,
           ),
         ],
       ),
