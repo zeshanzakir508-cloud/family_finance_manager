@@ -224,11 +224,14 @@ class BudgetProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ✅ FIXED: Removed redundant null check
   void setCurrentBudgetById(String id) {
-    final budget = _budgets.firstWhere((b) => b.id == id);
-    if (budget != null) {
+    try {
+      final budget = _budgets.firstWhere((b) => b.id == id);
       _currentBudget = budget;
       notifyListeners();
+    } catch (_) {
+      // Budget not found, do nothing
     }
   }
 
