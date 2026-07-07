@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/budget_provider.dart';
 import '../../providers/currency_provider.dart';
-import '../../providers/auth_provider.dart'; // ✅ ADDED: Missing import
+import '../../providers/auth_provider.dart';
 import '../../models/budget_model.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_snackbar.dart';
