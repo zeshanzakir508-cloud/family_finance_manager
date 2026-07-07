@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
+import '../../services/biometric_service.dart';
 import '../../utils/app_theme.dart';
-import '../../utils/helpers.dart';
+// ✅ FIXED: Removed unused import
+// import '../../utils/helpers.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -95,6 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // ✅ FIXED: Use BiometricService instead of AuthService
   Future<void> _loginWithFingerprint() async {
     setState(() {
       _isLoading = true;
@@ -102,9 +105,9 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final authService = Provider.of<AuthService>(context, listen: false);
+      final biometricService = BiometricService();
       
-      if (!authService.isFingerprintEnabled) {
+      if (!biometricService.isFingerprintEnabled) {
         setState(() {
           _errorMessage = 'Fingerprint login is not enabled. Please enable it in Settings.';
           _isLoading = false;
@@ -112,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      final authenticated = await authService.authenticateWithFingerprint();
+      final authenticated = await biometricService.authenticateWithFingerprint();
       
       if (authenticated) {
         if (mounted) {
@@ -153,15 +156,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authService = Provider.of<AuthService>(context);
-    final isFingerprintAvailable = authService.isFingerprintEnabled;
+    // ✅ FIXED: Use BiometricService instead of AuthService
+    final biometricService = BiometricService();
+    final isFingerprintAvailable = biometricService.isFingerprintEnabled;
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0), // ✅ Fixed overflow
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
             child: Form(
               key: _formKey,
               child: Column(
