@@ -73,7 +73,8 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    // ✅ FIXED: Removed unused theme variable or kept commented
+    // final theme = Theme.of(context);
     final isDark = context.watch<ThemeProvider>().isDarkMode;
 
     return Scaffold(
