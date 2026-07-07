@@ -120,7 +120,6 @@ class _BudgetTemplatesScreenState extends State<BudgetTemplatesScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _templates.isEmpty
               ? EmptyStateWidget(
-                  // ✅ FIXED: Changed Icons.template to Icons.copy (template doesn't exist)
                   icon: Icons.copy,
                   title: 'No Templates',
                   description: 'Save your budget as a template for quick reuse.',
