@@ -45,8 +45,9 @@ class TransactionService {
           .orderBy('date', descending: true)
           .get();
 
+      // ✅ FIXED: Cast to Map<String, dynamic>
       return snapshot.docs
-          .map((doc) => TransactionModel.fromJson(doc.data()))
+          .map((doc) => TransactionModel.fromJson(doc.data() as Map<String, dynamic>))
           .toList();
     } catch (e) {
       throw Exception('Failed to get transactions: $e');
@@ -62,8 +63,9 @@ class TransactionService {
           .orderBy('date', descending: true)
           .get();
 
+      // ✅ FIXED: Cast to Map<String, dynamic>
       return snapshot.docs
-          .map((doc) => TransactionModel.fromJson(doc.data()))
+          .map((doc) => TransactionModel.fromJson(doc.data() as Map<String, dynamic>))
           .toList();
     } catch (e) {
       throw Exception('Failed to get family transactions: $e');
@@ -74,7 +76,8 @@ class TransactionService {
     try {
       final doc = await _firestore.collection('transactions').doc(id).get();
       if (!doc.exists) return null;
-      return TransactionModel.fromJson(doc.data()!);
+      // ✅ FIXED: Cast to Map<String, dynamic>
+      return TransactionModel.fromJson(doc.data() as Map<String, dynamic>);
     } catch (e) {
       throw Exception('Failed to get transaction: $e');
     }
@@ -88,7 +91,7 @@ class TransactionService {
         .orderBy('date', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map((doc) => TransactionModel.fromJson(doc.data()))
+            .map((doc) => TransactionModel.fromJson(doc.data() as Map<String, dynamic>))
             .toList());
   }
 
@@ -100,7 +103,7 @@ class TransactionService {
         .orderBy('date', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map((doc) => TransactionModel.fromJson(doc.data()))
+            .map((doc) => TransactionModel.fromJson(doc.data() as Map<String, dynamic>))
             .toList());
   }
 
@@ -117,7 +120,7 @@ class TransactionService {
       final oldDoc = await _firestore.collection('transactions').doc(id).get();
       if (!oldDoc.exists) throw Exception('Transaction not found');
       
-      final oldData = oldDoc.data()!;
+      final oldData = oldDoc.data() as Map<String, dynamic>;
       if (oldData['userId'] != user.uid) {
         throw Exception('You can only update your own transactions');
       }
@@ -160,7 +163,7 @@ class TransactionService {
       final doc = await _firestore.collection('transactions').doc(id).get();
       if (!doc.exists) throw Exception('Transaction not found');
       
-      final data = doc.data()!;
+      final data = doc.data() as Map<String, dynamic>;
       if (data['userId'] != user.uid) {
         throw Exception('You can only delete your own transactions');
       }
@@ -247,7 +250,7 @@ class TransactionService {
 
       final snapshot = await query.get();
       return snapshot.docs
-          .map((doc) => TransactionModel.fromJson(doc.data()))
+          .map((doc) => TransactionModel.fromJson(doc.data() as Map<String, dynamic>))
           .toList();
     } catch (e) {
       throw Exception('Failed to filter transactions: $e');
@@ -268,7 +271,7 @@ class TransactionService {
           .get();
 
       final results = snapshot.docs
-          .map((doc) => TransactionModel.fromJson(doc.data()))
+          .map((doc) => TransactionModel.fromJson(doc.data() as Map<String, dynamic>))
           .where((t) =>
               t.description?.toLowerCase().contains(query.toLowerCase()) == true ||
               t.category?.toLowerCase().contains(query.toLowerCase()) == true ||
