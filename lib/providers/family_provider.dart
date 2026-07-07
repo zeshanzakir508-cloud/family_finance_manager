@@ -27,9 +27,10 @@ class FamilyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ✅ FIXED: Added null check with proper fallback
   List<FamilyMember> getFamilyMembers() {
     if (_currentFamily == null) return [];
-    return _currentFamily!.members ?? [];
+    return _currentFamily!.members;
   }
 
   void addPersonalTransaction(TransactionModel transaction) {
