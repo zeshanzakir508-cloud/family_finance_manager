@@ -20,9 +20,13 @@ class ThemeProvider extends ChangeNotifier {
 
   ThemeMode get themeMode => _themeMode;
   bool get useSystemTheme => _useSystemTheme;
+  
+  // ✅ FIXED: Use MediaQuery instead of deprecated window
   bool get isDarkMode {
     if (_themeMode == ThemeMode.system) {
-      return WidgetsBinding.instance.window.platformBrightness == Brightness.dark;
+      // Use MediaQuery or View.of(context) instead of window
+      // This getter doesn't have context, so we'll use a different approach
+      return WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
     }
     return _themeMode == ThemeMode.dark;
   }
@@ -88,7 +92,8 @@ class ThemeProvider extends ChangeNotifier {
   Future<void> toggleTheme() async {
     if (_useSystemTheme) {
       // If using system theme, switch to opposite of current system brightness
-      final isDark = WidgetsBinding.instance.window.platformBrightness == Brightness.dark;
+      // ✅ FIXED: Use platformDispatcher instead of deprecated window
+      final isDark = WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
       _useSystemTheme = false;
       _themeMode = isDark ? ThemeMode.light : ThemeMode.dark;
     } else {
@@ -105,10 +110,19 @@ class ThemeProvider extends ChangeNotifier {
 
   ThemeData get currentTheme {
     if (_themeMode == ThemeMode.system) {
-      final isDark = WidgetsBinding.instance.window.platformBrightness == Brightness.dark;
+      // ✅ FIXED: Use platformDispatcher instead of deprecated window
+      final isDark = WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
       return isDark ? AppTheme.darkTheme : AppTheme.lightTheme;
     }
     return _themeMode == ThemeMode.dark ? AppTheme.darkTheme : AppTheme.lightTheme;
+  }
+
+  // ✅ ADDED: Method to get dark mode with BuildContext
+  bool isDarkModeWithContext(BuildContext context) {
+    if (_themeMode == ThemeMode.system) {
+      return MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+    }
+    return _themeMode == ThemeMode.dark;
   }
 
   // ============================================================
