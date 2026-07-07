@@ -1,15 +1,21 @@
 // lib/screens/transactions/add_income_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
-import '../../services/auth_service.dart';
-import '../../services/database_service.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/currency_provider.dart';
+import '../../providers/category_provider.dart';
+import '../../providers/transaction_provider.dart';
+import '../../providers/mode_provider.dart';
 import '../../models/transaction_model.dart';
-import '../../utils/app_theme.dart';
-import '../../utils/helpers.dart';
+import '../../widgets/common/custom_button.dart';
+import '../../widgets/common/custom_text_field.dart';
+import '../../widgets/common/custom_snackbar.dart';
+import 'widgets/category_picker.dart';
+import 'widgets/amount_input.dart';
+import 'widgets/date_time_picker.dart';
 
 class AddIncomeScreen extends StatefulWidget {
-  const AddIncomeScreen({super.key});
+  const AddIncomeScreen({Key? key}) : super(key: key);
 
   @override
   State<AddIncomeScreen> createState() => _AddIncomeScreenState();
@@ -17,233 +23,200 @@ class AddIncomeScreen extends StatefulWidget {
 
 class _AddIncomeScreenState extends State<AddIncomeScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _amountController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _notesController = TextEditingController();
   
+  double _amount = 0.0;
   String? _selectedCategory;
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
 
-  final List<String> _categories = [
-    'Salary',
-    'Freelance',
-    'Investment',
-    'Gift',
-    'Allowance',
-    'Pocket Money',
-    'Other',
-  ];
-
   @override
-  void dispose() {
-    _amountController.dispose();
-    _descriptionController.dispose();
-    _notesController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    final auth = context.read<AuthProvider>();
+    final categoryProvider = context.read<CategoryProvider>();
+    
+    if (auth.isAuthenticated) {
+      await categoryProvider.loadCategories(auth.userId);
+      
+      // Set default category
+      final incomeCategories = categoryProvider.incomeCategories;
+      if (incomeCategories.isNotEmpty) {
+        setState(() {
+          _selectedCategory = incomeCategories.first.id;
+        });
+      }
+    }
   }
 
   Future<void> _saveIncome() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_selectedCategory == null) {
+      CustomSnackBar.show(
+        context,
+        'Please select a category',
+        isError: true,
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
     try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final userId = authService.userId;
+      final auth = context.read<AuthProvider>();
+      final mode = context.read<ModeProvider>();
+      final transactionProvider = context.read<TransactionProvider>();
+      final categoryProvider = context.read<CategoryProvider>();
       
-      if (userId == null) {
-        throw Exception('User not logged in');
-      }
-
-      // ✅ Get profile for member info
-      final profile = authService.userProfile;
-      final memberName = profile?['displayName'] ?? 'User';
-
+      final category = categoryProvider.getCategoryById(_selectedCategory!);
+      
       final transaction = TransactionModel(
-        userId: userId,  // ✅ CRITICAL: Always include userId
-        amount: double.parse(_amountController.text),
-        category: _selectedCategory?.toLowerCase() ?? 'other',
+        id: '',
+        userId: auth.userId,
+        familyId: mode.isFamilyMode ? auth.user?.familyId : null,
+        amount: _amount,
+        category: category?.name ?? 'Income',
         description: _descriptionController.text.trim(),
         type: 'income',
         date: _selectedDate,
         notes: _notesController.text.trim(),
         createdAt: DateTime.now(),
-        memberName: memberName,
+        isFamilyTransaction: mode.isFamilyMode,
       );
 
-      await DatabaseService.addPersonalTransaction(transaction);
-
-      Helpers.showSnackBar(
-        context,
-        '✅ Income added successfully!',
-        color: Colors.green,
-      );
-
-      Navigator.pop(context, true);
+      final success = await transactionProvider.addTransaction(transaction);
+      
+      if (success && mounted) {
+        CustomSnackBar.show(
+          context,
+          'Income added successfully! 💰',
+        );
+        Navigator.pop(context, true);
+      }
     } catch (e) {
-      Helpers.showSnackBar(
-        context,
-        '❌ Failed to add income: $e',
-        color: Colors.red,
-      );
-    }
-
-    setState(() => _isLoading = false);
-  }
-
-  Future<void> _selectDate() async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-    );
-    if (date != null) {
-      setState(() => _selectedDate = date);
+      if (mounted) {
+        CustomSnackBar.show(
+          context,
+          'Failed to add income: ${e.toString()}',
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final currencyProvider = context.watch<CurrencyProvider>();
+    final categoryProvider = context.watch<CategoryProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('Add Income'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
+        actions: [
+          TextButton(
+            onPressed: _isLoading ? null : _saveIncome,
+            child: Text(
+              'Save',
+              style: TextStyle(
+                color: _isLoading ? Colors.grey : Colors.white,
+              ),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Amount
-              TextFormField(
-                controller: _amountController,
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
-                  labelText: 'Amount *',
-                  prefixIcon: Icon(Icons.attach_money),
-                  border: OutlineInputBorder(),
-                  filled: true,
-                  fillColor: Colors.white,
-                  hintText: '0.00',
-                ),
+              AmountInput(
+                label: 'Amount',
+                currency: currencyProvider.currentCurrency,
+                onChanged: (value) {
+                  setState(() {
+                    _amount = value;
+                  });
+                },
+                validator: (value) {
+                  if (value == null || value <= 0) {
+                    return 'Please enter a valid amount';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              
+              // Category
+              CategoryPicker(
+                categories: categoryProvider.incomeCategories,
+                selectedId: _selectedCategory,
+                onChanged: (id) {
+                  setState(() {
+                    _selectedCategory = id;
+                  });
+                },
+                label: 'Category',
+              ),
+              const SizedBox(height: 16),
+              
+              // Description
+              CustomTextField(
+                controller: _descriptionController,
+                label: 'Description',
+                hint: 'e.g., Salary, Freelance, Gift',
+                prefixIcon: Icons.description,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter amount';
-                  }
-                  if (double.tryParse(value) == null) {
-                    return 'Please enter a valid number';
+                    return 'Please enter a description';
                   }
                   return null;
                 },
+                textInputAction: TextInputAction.next,
               ),
               const SizedBox(height: 16),
-
-              // Category
-              DropdownButtonFormField<String>(
-                value: _selectedCategory,
-                decoration: const InputDecoration(
-                  labelText: 'Category *',
-                  prefixIcon: Icon(Icons.category),
-                  border: OutlineInputBorder(),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                items: _categories.map((category) {
-                  return DropdownMenuItem(
-                    value: category,
-                    child: Text(category),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() => _selectedCategory = value);
-                },
-                validator: (value) {
-                  if (value == null) {
-                    return 'Please select a category';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Description
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  prefixIcon: Icon(Icons.description),
-                  border: OutlineInputBorder(),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 16),
-
+              
               // Date
-              GestureDetector(
-                onTap: _selectDate,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.calendar_today, color: Colors.blue),
-                      const SizedBox(width: 12),
-                      Text(
-                        DateFormat('dd MMM yyyy').format(_selectedDate),
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                      const Spacer(),
-                      const Icon(Icons.arrow_drop_down),
-                    ],
-                  ),
-                ),
+              DateTimePicker(
+                label: 'Date',
+                initialDate: _selectedDate,
+                onChanged: (date) {
+                  setState(() {
+                    _selectedDate = date;
+                  });
+                },
               ),
               const SizedBox(height: 16),
-
+              
               // Notes
-              TextFormField(
+              CustomTextField(
                 controller: _notesController,
+                label: 'Notes (Optional)',
+                hint: 'Add any additional notes',
+                prefixIcon: Icons.note,
                 maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Notes (Optional)',
-                  prefixIcon: Icon(Icons.note),
-                  border: OutlineInputBorder(),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
+                textInputAction: TextInputAction.done,
               ),
               const SizedBox(height: 24),
-
+              
               // Save Button
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _saveIncome,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          'Add Income',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                ),
+              CustomButton(
+                onPressed: _isLoading ? null : _saveIncome,
+                text: 'Add Income',
+                isLoading: _isLoading,
+                type: ButtonType.primary,
+                size: ButtonSize.large,
+                icon: Icons.add,
               ),
             ],
           ),
