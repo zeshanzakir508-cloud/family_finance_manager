@@ -205,6 +205,7 @@ class FamilyModel extends HiveObject {
   @HiveField(10)
   final bool isActive;
 
+  // ✅ FIXED: Removed const keyword from constructor
   FamilyModel({
     required this.id,
     required this.name,
@@ -245,7 +246,7 @@ class FamilyModel extends HiveObject {
       familyCode: json['familyCode'],
       settings: json['settings'] != null
           ? FamilySettings.fromJson(json['settings'])
-          : const FamilySettings(),
+          : FamilySettings(),
       members: json['members'] != null
           ? (json['members'] as List)
               .map((m) => FamilyMember.fromJson(m))
