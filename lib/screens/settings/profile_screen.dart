@@ -229,7 +229,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildInfoTile(
                     icon: Icons.currency_exchange,
                     label: 'Currency',
-                    value: user.displayCurrency ?? 'USD',
+                    value: user.currency ?? 'USD',
                   ),
                   _buildInfoTile(
                     icon: Icons.family_restroom,
