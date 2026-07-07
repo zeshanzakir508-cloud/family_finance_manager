@@ -12,6 +12,80 @@ import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/custom_snackbar.dart';
 import 'widgets/category_budget_item.dart';
 
+// ✅ ADDED: CategoryBudgetItemWidget class since it was missing
+class CategoryBudgetItemWidget extends StatelessWidget {
+  final CategoryBudgetItem item;
+  final String currency;
+  final ValueChanged<double> onChanged;
+
+  const CategoryBudgetItemWidget({
+    Key? key,
+    required this.item,
+    required this.currency,
+    required this.onChanged,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = TextEditingController(
+      text: item.allocated == 0 ? '' : item.allocated.toString(),
+    );
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.categoryName,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Set budget amount',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(
+              width: 140,
+              child: TextFormField(
+                controller: controller,
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  prefixText: '$currency ',
+                  border: const OutlineInputBorder(),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                ),
+                onChanged: (value) {
+                  final amount = double.tryParse(value) ?? 0.0;
+                  onChanged(amount);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class AddBudgetScreen extends StatefulWidget {
   const AddBudgetScreen({Key? key}) : super(key: key);
 
