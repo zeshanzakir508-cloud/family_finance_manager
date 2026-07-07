@@ -5,8 +5,8 @@ import '../models/transaction_model.dart';
 
 class FamilyProvider extends ChangeNotifier {
   List<FamilyModel> _families = [];
-  List<TransactionModel> _personalTransactions = [];
-  List<TransactionModel> _familyTransactions = [];
+  final List<TransactionModel> _personalTransactions = [];
+  final List<TransactionModel> _familyTransactions = [];
   FamilyModel? _currentFamily;
 
   List<FamilyModel> get families => _families;
