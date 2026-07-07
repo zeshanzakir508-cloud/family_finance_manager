@@ -1,16 +1,26 @@
+// lib/screens/transactions/edit_transaction_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/currency_provider.dart';
+import '../../providers/category_provider.dart';
+import '../../providers/transaction_provider.dart';
+import '../../providers/mode_provider.dart';
 import '../../models/transaction_model.dart';
-import '../../services/database_service.dart';
-import '../../utils/app_theme.dart';
-import '../../utils/constants.dart';
-import '../../utils/helpers.dart';
+import '../../widgets/common/custom_button.dart';
+import '../../widgets/common/custom_text_field.dart';
+import '../../widgets/common/custom_snackbar.dart';
+import 'widgets/category_picker.dart';
+import 'widgets/amount_input.dart';
+import 'widgets/date_time_picker.dart';
 
 class EditTransactionScreen extends StatefulWidget {
-  final TransactionModel? transaction;
+  final String transactionId;
 
-  const EditTransactionScreen({super.key, this.transaction});
+  const EditTransactionScreen({
+    Key? key,
+    required this.transactionId,
+  }) : super(key: key);
 
   @override
   State<EditTransactionScreen> createState() => _EditTransactionScreenState();
@@ -18,192 +28,151 @@ class EditTransactionScreen extends StatefulWidget {
 
 class _EditTransactionScreenState extends State<EditTransactionScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _amountController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _notesController = TextEditingController();
-
-  String _selectedCategory = 'Food';
+  
+  double _amount = 0.0;
+  String? _selectedCategory;
   DateTime _selectedDate = DateTime.now();
-  bool _isLoading = false;
-
-  // ✅ FIXED: Use consistent category lists
-  final List<String> _incomeCategories = [
-    'Salary',
-    'Freelance',
-    'Investment',
-    'Rental Income',
-    'Business',
-    'Gift',
-    'Refund',
-    'Other Income',
-  ];
-
-  final List<String> _expenseCategories = [
-    'Food & Dining',
-    'Transportation',
-    'Shopping',
-    'Entertainment',
-    'Bills & Utilities',
-    'Rent',
-    'Healthcare',
-    'Education',
-    'Insurance',
-    'Groceries',
-    'Personal Care',
-    'Travel',
-    'Other Expense',
-  ];
-
-  // ✅ FIXED: Get categories based on transaction type
-  List<String> get _categories {
-    if (widget.transaction == null) return _expenseCategories;
-    return widget.transaction!.type == 'income' 
-        ? _incomeCategories 
-        : _expenseCategories;
-  }
+  String? _transactionType;
+  bool _isLoading = true;
+  bool _isSaving = false;
+  TransactionModel? _transaction;
 
   @override
   void initState() {
     super.initState();
-    if (widget.transaction != null) {
-      final t = widget.transaction!;
-      _amountController.text = t.amount?.toString() ?? '';
-      _descriptionController.text = t.description ?? '';
-      _notesController.text = t.notes ?? '';
-      _selectedCategory = t.category ?? 'Food';
-      _selectedDate = t.date ?? DateTime.now();
-    }
+    _loadData();
   }
 
   @override
   void dispose() {
-    _amountController.dispose();
     _descriptionController.dispose();
     _notesController.dispose();
     super.dispose();
   }
 
-  Future<void> _saveTransaction() async {
-    if (!_formKey.currentState!.validate()) return;
-
+  Future<void> _loadData() async {
     setState(() => _isLoading = true);
 
     try {
-      if (widget.transaction == null) {
-        throw Exception('Transaction not found');
+      final transactionProvider = context.read<TransactionProvider>();
+      final categoryProvider = context.read<CategoryProvider>();
+      
+      // Find transaction in provider
+      final transaction = transactionProvider.allTransactions
+          .firstWhere((t) => t.id == widget.transactionId);
+      
+      if (transaction != null) {
+        _transaction = transaction;
+        _amount = transaction.amount ?? 0.0;
+        _selectedCategory = transaction.category;
+        _selectedDate = transaction.date ?? DateTime.now();
+        _transactionType = transaction.type;
+        _descriptionController.text = transaction.description ?? '';
+        _notesController.text = transaction.notes ?? '';
+        
+        // Find category id
+        final category = categoryProvider.getCategoryByName(transaction.category ?? '');
+        if (category != null) {
+          _selectedCategory = category.id;
+        }
       }
-
-      final updated = widget.transaction!.copyWith(
-        amount: double.parse(_amountController.text),
-        category: _selectedCategory,
-        description: _descriptionController.text.trim(),
-        date: _selectedDate,
-        notes: _notesController.text.trim(),
-      );
-
-      await DatabaseService.saveTransaction(updated);
-
+    } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Transaction updated successfully! ✅'),
-            backgroundColor: Colors.green,
-          ),
+        CustomSnackBar.show(
+          context,
+          'Failed to load transaction: ${e.toString()}',
+          isError: true,
+        );
+        Navigator.pop(context);
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _saveChanges() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedCategory == null) {
+      CustomSnackBar.show(
+        context,
+        'Please select a category',
+        isError: true,
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      final transactionProvider = context.read<TransactionProvider>();
+      final categoryProvider = context.read<CategoryProvider>();
+      
+      final category = categoryProvider.getCategoryById(_selectedCategory!);
+      
+      final updates = {
+        'amount': _amount,
+        'category': category?.name ?? _transaction?.category,
+        'description': _descriptionController.text.trim(),
+        'date': _selectedDate,
+        'notes': _notesController.text.trim(),
+      };
+
+      final success = await transactionProvider.updateTransaction(
+        widget.transactionId,
+        updates,
+      );
+      
+      if (success && mounted) {
+        CustomSnackBar.show(
+          context,
+          'Transaction updated successfully! ✅',
         );
         Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+        CustomSnackBar.show(
+          context,
+          'Failed to update transaction: ${e.toString()}',
+          isError: true,
         );
       }
-    }
-
-    setState(() => _isLoading = false);
-  }
-
-  Future<void> _deleteTransaction() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Transaction?'),
-        content: const Text('Are you sure you want to delete this transaction? This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true && widget.transaction != null) {
-      setState(() => _isLoading = true);
-      try {
-        await DatabaseService.deleteTransaction(widget.transaction!.id!);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Transaction deleted successfully'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-          Navigator.pop(context, true);
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error deleting: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-      setState(() => _isLoading = false);
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.transaction == null) {
+    final currencyProvider = context.watch<CurrencyProvider>();
+    final categoryProvider = context.watch<CategoryProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Edit Transaction'),
-          backgroundColor: AppTheme.primaryColor,
-          foregroundColor: Colors.white,
-        ),
-        body: const Center(
-          child: Text('Transaction not found'),
-        ),
+        appBar: AppBar(title: const Text('Edit Transaction')),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
-    final t = widget.transaction!;
-    final isIncome = t.type == 'income';
+    final categories = _transactionType == 'income'
+        ? categoryProvider.incomeCategories
+        : categoryProvider.expenseCategories;
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: Text('Edit ${isIncome ? 'Income' : 'Expense'}'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
+        title: const Text('Edit Transaction'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: _deleteTransaction,
-            tooltip: 'Delete',
+          TextButton(
+            onPressed: _isSaving ? null : _saveChanges,
+            child: Text(
+              'Save',
+              style: TextStyle(
+                color: _isSaving ? Colors.grey : Colors.white,
+              ),
+            ),
           ),
         ],
       ),
@@ -212,199 +181,188 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
         child: Form(
           key: _formKey,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Transaction Type Indicator
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      spreadRadius: 2,
-                      blurRadius: 8,
-                    ),
-                  ],
+                  color: _transactionType == 'income'
+                      ? Colors.green.withOpacity(0.1)
+                      : Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Column(
+                child: Row(
                   children: [
-                    // Transaction Type Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isIncome 
-                            ? Colors.green.withOpacity(0.1) 
-                            : Colors.red.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isIncome ? Icons.arrow_upward : Icons.arrow_downward,
-                            color: isIncome ? Colors.green : Colors.red,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            isIncome ? 'Income' : 'Expense',
-                            style: TextStyle(
-                              color: isIncome ? Colors.green : Colors.red,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
+                    Icon(
+                      _transactionType == 'income'
+                          ? Icons.arrow_upward
+                          : Icons.arrow_downward,
+                      color: _transactionType == 'income'
+                          ? Colors.green
+                          : Colors.red,
                     ),
-                    const SizedBox(height: 16),
-
-                    // Amount
-                    TextFormField(
-                      controller: _amountController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
+                    const SizedBox(width: 8),
+                    Text(
+                      _transactionType == 'income' ? 'Income' : 'Expense',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: _transactionType == 'income'
+                            ? Colors.green
+                            : Colors.red,
                       ),
-                      decoration: const InputDecoration(
-                        labelText: 'Amount *',
-                        prefixIcon: Icon(Icons.attach_money),
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter an amount';
-                        }
-                        if (double.tryParse(value) == null) {
-                          return 'Please enter a valid number';
-                        }
-                        if (double.parse(value) <= 0) {
-                          return 'Amount must be greater than 0';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Category
-                    DropdownButtonFormField<String>(
-                      value: _selectedCategory,
-                      decoration: const InputDecoration(
-                        labelText: 'Category *',
-                        prefixIcon: Icon(Icons.category),
-                        border: OutlineInputBorder(),
-                      ),
-                      items: _categories.map((category) {
-                        return DropdownMenuItem(
-                          value: category,
-                          child: Text(category),
-                        );
-                      }).toList(),
-                      onChanged: (value) => setState(() => _selectedCategory = value!),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please select a category';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Description
-                    TextFormField(
-                      controller: _descriptionController,
-                      decoration: const InputDecoration(
-                        labelText: 'Description',
-                        prefixIcon: Icon(Icons.description),
-                        border: OutlineInputBorder(),
-                        hintText: 'Optional description',
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Date
-                    ListTile(
-                      leading: const Icon(Icons.calendar_today),
-                      title: Text(
-                        DateFormat('MMM dd, yyyy').format(_selectedDate),
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                      trailing: const Icon(Icons.arrow_drop_down),
-                      onTap: () async {
-                        final date = await showDatePicker(
-                          context: context,
-                          initialDate: _selectedDate,
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime.now(),
-                        );
-                        if (date != null) {
-                          setState(() => _selectedDate = date);
-                        }
-                      },
-                      tileColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        side: BorderSide(color: Colors.grey.shade300),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Notes
-                    TextFormField(
-                      controller: _notesController,
-                      decoration: const InputDecoration(
-                        labelText: 'Notes (optional)',
-                        prefixIcon: Icon(Icons.note),
-                        border: OutlineInputBorder(),
-                        hintText: 'Add any additional notes',
-                      ),
-                      maxLines: 3,
                     ),
                   ],
                 ),
               ),
-
+              const SizedBox(height: 16),
+              
+              // Amount
+              AmountInput(
+                label: 'Amount',
+                currency: currencyProvider.currentCurrency,
+                initialValue: _amount,
+                onChanged: (value) {
+                  setState(() {
+                    _amount = value;
+                  });
+                },
+                validator: (value) {
+                  if (value == null || value <= 0) {
+                    return 'Please enter a valid amount';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              
+              // Category
+              CategoryPicker(
+                categories: categories,
+                selectedId: _selectedCategory,
+                onChanged: (id) {
+                  setState(() {
+                    _selectedCategory = id;
+                  });
+                },
+                label: 'Category',
+              ),
+              const SizedBox(height: 16),
+              
+              // Description
+              CustomTextField(
+                controller: _descriptionController,
+                label: 'Description',
+                hint: 'Enter description',
+                prefixIcon: Icons.description,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a description';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              
+              // Date
+              DateTimePicker(
+                label: 'Date',
+                initialDate: _selectedDate,
+                onChanged: (date) {
+                  setState(() {
+                    _selectedDate = date;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+              
+              // Notes
+              CustomTextField(
+                controller: _notesController,
+                label: 'Notes (Optional)',
+                hint: 'Add any additional notes',
+                prefixIcon: Icons.note,
+                maxLines: 3,
+              ),
               const SizedBox(height: 24),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _isLoading ? null : () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('Cancel'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _saveTransaction,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text('Save Changes'),
-                    ),
-                  ),
-                ],
+              
+              // Save Button
+              CustomButton(
+                onPressed: _isSaving ? null : _saveChanges,
+                text: 'Save Changes',
+                isLoading: _isSaving,
+                type: ButtonType.primary,
+                size: ButtonSize.large,
+                icon: Icons.save,
+              ),
+              const SizedBox(height: 12),
+              
+              // Delete Button
+              CustomButton(
+                onPressed: () {
+                  _showDeleteConfirmation();
+                },
+                text: 'Delete Transaction',
+                type: ButtonType.danger,
+                size: ButtonSize.medium,
+                icon: Icons.delete,
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Transaction'),
+        content: const Text(
+          'Are you sure you want to delete this transaction? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              setState(() => _isSaving = true);
+              
+              try {
+                final transactionProvider = context.read<TransactionProvider>();
+                final success = await transactionProvider.deleteTransaction(
+                  widget.transactionId,
+                );
+                
+                if (success && mounted) {
+                  CustomSnackBar.show(
+                    context,
+                    'Transaction deleted successfully',
+                  );
+                  Navigator.pop(context, true);
+                }
+              } catch (e) {
+                if (mounted) {
+                  CustomSnackBar.show(
+                    context,
+                    'Failed to delete: ${e.toString()}',
+                    isError: true,
+                  );
+                }
+              } finally {
+                if (mounted) setState(() => _isSaving = false);
+              }
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
   }
