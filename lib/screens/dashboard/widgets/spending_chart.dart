@@ -160,7 +160,8 @@ class SpendingChart extends StatelessWidget {
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
-          badgePosition: PieChartBadgePosition.topCenter,
+          // ✅ FIXED: Removed badgePosition (not supported in fl_chart)
+          // badgePosition: PieChartBadgePosition.topCenter,
         ),
       );
       index++;
