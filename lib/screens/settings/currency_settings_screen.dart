@@ -1,348 +1,288 @@
 // lib/screens/settings/currency_settings_screen.dart
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../utils/app_theme.dart';
-import '../../utils/helpers.dart';
+import 'package:provider/provider.dart';
+import '../../providers/currency_provider.dart';
+import '../../models/currency_model.dart';
+import '../../widgets/common/custom_button.dart';
+import '../../widgets/common/custom_snackbar.dart';
 
 class CurrencySettingsScreen extends StatefulWidget {
-  const CurrencySettingsScreen({super.key});
+  const CurrencySettingsScreen({Key? key}) : super(key: key);
 
   @override
   State<CurrencySettingsScreen> createState() => _CurrencySettingsScreenState();
 }
 
 class _CurrencySettingsScreenState extends State<CurrencySettingsScreen> {
-  String _selectedCurrency = 'USD';
-  String _initialCurrency = 'USD';
-  bool _hasChanges = false;
-  String _searchQuery = '';
-
-  final List<Map<String, String>> _allCurrencies = [
-    {'code': 'USD', 'name': 'US Dollar', 'symbol': '\$', 'flag': '🇺🇸'},
-    {'code': 'EUR', 'name': 'Euro', 'symbol': '€', 'flag': '🇪🇺'},
-    {'code': 'GBP', 'name': 'British Pound', 'symbol': '£', 'flag': '🇬🇧'},
-    {'code': 'PKR', 'name': 'Pakistani Rupee', 'symbol': 'Rs', 'flag': '🇵🇰'},
-    {'code': 'INR', 'name': 'Indian Rupee', 'symbol': '₹', 'flag': '🇮🇳'},
-    {'code': 'AED', 'name': 'UAE Dirham', 'symbol': 'د.إ', 'flag': '🇦🇪'},
-    {'code': 'SAR', 'name': 'Saudi Riyal', 'symbol': '﷼', 'flag': '🇸🇦'},
-    {'code': 'CAD', 'name': 'Canadian Dollar', 'symbol': 'C\$', 'flag': '🇨🇦'},
-    {'code': 'AUD', 'name': 'Australian Dollar', 'symbol': 'A\$', 'flag': '🇦🇺'},
-    {'code': 'JPY', 'name': 'Japanese Yen', 'symbol': '¥', 'flag': '🇯🇵'},
-    {'code': 'CNY', 'name': 'Chinese Yuan', 'symbol': '¥', 'flag': '🇨🇳'},
-    {'code': 'KRW', 'name': 'South Korean Won', 'symbol': '₩', 'flag': '🇰🇷'},
-    {'code': 'BHD', 'name': 'Bahraini Dinar', 'symbol': 'BD', 'flag': '🇧🇭'},
-    {'code': 'KWD', 'name': 'Kuwaiti Dinar', 'symbol': 'KD', 'flag': '🇰🇼'},
-    {'code': 'OMR', 'name': 'Omani Rial', 'symbol': 'RO', 'flag': '🇴🇲'},
-    {'code': 'QAR', 'name': 'Qatari Riyal', 'symbol': '﷼', 'flag': '🇶🇦'},
-    {'code': 'EGP', 'name': 'Egyptian Pound', 'symbol': 'E£', 'flag': '🇪🇬'},
-    {'code': 'TRY', 'name': 'Turkish Lira', 'symbol': '₺', 'flag': '🇹🇷'},
-    {'code': 'RUB', 'name': 'Russian Ruble', 'symbol': '₽', 'flag': '🇷🇺'},
-    {'code': 'BRL', 'name': 'Brazilian Real', 'symbol': 'R\$', 'flag': '🇧🇷'},
-    {'code': 'ZAR', 'name': 'South African Rand', 'symbol': 'R', 'flag': '🇿🇦'},
-    {'code': 'SGD', 'name': 'Singapore Dollar', 'symbol': 'S\$', 'flag': '🇸🇬'},
-    {'code': 'MYR', 'name': 'Malaysian Ringgit', 'symbol': 'RM', 'flag': '🇲🇾'},
-    {'code': 'PHP', 'name': 'Philippine Peso', 'symbol': '₱', 'flag': '🇵🇭'},
-    {'code': 'IDR', 'name': 'Indonesian Rupiah', 'symbol': 'Rp', 'flag': '🇮🇩'},
-    {'code': 'THB', 'name': 'Thai Baht', 'symbol': '฿', 'flag': '🇹🇭'},
-    {'code': 'VND', 'name': 'Vietnamese Dong', 'symbol': '₫', 'flag': '🇻🇳'},
-  ];
-
-  List<Map<String, String>> get _favoriteCurrencies {
-    return _allCurrencies.where((c) => 
-      c['code'] == 'USD' || c['code'] == 'PKR' || c['code'] == 'EUR' || 
-      c['code'] == 'GBP' || c['code'] == 'AED' || c['code'] == 'SAR'
-    ).toList();
-  }
-
-  List<Map<String, String>> get _filteredCurrencies {
-    if (_searchQuery.isEmpty) return _allCurrencies;
-    return _allCurrencies.where((c) =>
-      c['code']!.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-      c['name']!.toLowerCase().contains(_searchQuery.toLowerCase())
-    ).toList();
-  }
+  String? _selectedCurrency;
+  List<CurrencyModel> _currencies = [];
+  List<CurrencyModel> _filteredCurrencies = [];
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    _loadCurrency();
+    _loadCurrencies();
   }
 
-  Future<void> _loadCurrency() async {
-    final prefs = await SharedPreferences.getInstance();
-    final currency = prefs.getString('currency') ?? 'USD';
-    setState(() {
-      _selectedCurrency = currency;
-      _initialCurrency = currency;
-      _hasChanges = false;
-    });
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
-  void _selectCurrency(String code) {
+  void _loadCurrencies() {
+    final currencyProvider = context.read<CurrencyProvider>();
+    _selectedCurrency = currencyProvider.currentCurrency;
+    _currencies = currencyProvider.getCurrencyList();
+    _filteredCurrencies = _currencies;
+  }
+
+  void _searchCurrencies(String query) {
     setState(() {
-      _selectedCurrency = code;
-      _hasChanges = _selectedCurrency != _initialCurrency;
+      if (query.isEmpty) {
+        _filteredCurrencies = _currencies;
+      } else {
+        final lowerQuery = query.toLowerCase();
+        _filteredCurrencies = _currencies.where((c) {
+          return c.code.toLowerCase().contains(lowerQuery) ||
+              c.name.toLowerCase().contains(lowerQuery);
+        }).toList();
+      }
     });
   }
 
   Future<void> _saveCurrency() async {
-    if (!_hasChanges) {
-      Navigator.pop(context);
+    if (_selectedCurrency == null) {
+      CustomSnackBar.show(
+        context,
+        'Please select a currency',
+        isError: true,
+      );
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('currency', _selectedCurrency);
-    await Helpers.setCurrency(_selectedCurrency);
-    
-    setState(() => _hasChanges = false);
-    
-    Helpers.showSnackBar(
-      context,
-      'Currency updated to $_selectedCurrency',
-      color: Colors.green,
-    );
-    
-    Navigator.pop(context, _selectedCurrency);
-  }
+    setState(() => _isSaving = true);
 
-  void _cancelChanges() {
-    if (_hasChanges) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Discard Changes?'),
-          content: const Text('You have unsaved currency changes. Are you sure you want to discard them?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Keep Editing'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                setState(() {
-                  _selectedCurrency = _initialCurrency;
-                  _hasChanges = false;
-                });
-                Helpers.showSnackBar(
-                  context,
-                  'Currency changes discarded',
-                  color: Colors.grey,
-                );
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.red,
-              ),
-              child: const Text('Discard'),
-            ),
-          ],
-        ),
-      );
-    } else {
-      Navigator.pop(context);
+    try {
+      final currencyProvider = context.read<CurrencyProvider>();
+      await currencyProvider.setCurrency(_selectedCurrency!);
+      
+      if (mounted) {
+        CustomSnackBar.show(
+          context,
+          'Currency updated to ${_selectedCurrency!} successfully!',
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        CustomSnackBar.show(
+          context,
+          'Failed to update currency: ${e.toString()}',
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('Currency Settings'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
         actions: [
-          if (_hasChanges)
-            TextButton(
-              onPressed: _saveCurrency,
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
+          TextButton(
+            onPressed: _isSaving ? null : _saveCurrency,
+            child: Text(
+              'Save',
+              style: TextStyle(
+                color: _isSaving ? Colors.grey : Colors.white,
               ),
-              child: const Text('Save'),
             ),
+          ),
         ],
       ),
       body: Column(
         children: [
-          // Search Bar
+          // Search bar
           Padding(
             padding: const EdgeInsets.all(16),
             child: TextField(
+              controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'Search currency...',
                 prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          _searchCurrencies('');
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
                 ),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               ),
-              onChanged: (value) {
-                setState(() => _searchQuery = value);
-              },
+              onChanged: _searchCurrencies,
             ),
           ),
-          Expanded(
-            child: ListView(
+
+          // Current currency
+          Container(
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey[800] : Colors.grey[100],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.blue.withOpacity(0.3),
+              ),
+            ),
+            child: Row(
               children: [
-                // Current Currency
-                _buildSectionHeader('Current Currency'),
-                _buildCurrencyTile(
-                  currency: _allCurrencies.firstWhere(
-                    (c) => c['code'] == _selectedCurrency,
-                    orElse: () => {'code': 'USD', 'name': 'US Dollar', 'symbol': '\$', 'flag': '🇺🇸'},
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  isSelected: true,
-                  showCheck: true,
-                ),
-                const SizedBox(height: 8),
-
-                // Favorites
-                _buildSectionHeader('Favorites'),
-                ..._favoriteCurrencies.map((currency) =>
-                  _buildCurrencyTile(
-                    currency: currency,
-                    isSelected: _selectedCurrency == currency['code'],
-                    onTap: () => _selectCurrency(currency['code']!),
+                  child: Text(
+                    CurrencyService.getSymbol(_selectedCurrency ?? 'PKR'),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 8),
-
-                // All Currencies
-                _buildSectionHeader('All Currencies'),
-                ..._filteredCurrencies.map((currency) =>
-                  _buildCurrencyTile(
-                    currency: currency,
-                    isSelected: _selectedCurrency == currency['code'],
-                    onTap: () => _selectCurrency(currency['code']!),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Current Currency',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      Text(
+                        _selectedCurrency ?? 'PKR',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                Text(
+                  CurrencyService.getName(_selectedCurrency ?? 'PKR'),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
               ],
             ),
           ),
-          _buildBottomButtons(),
-        ],
-      ),
-    );
-  }
+          const SizedBox(height: 8),
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: Colors.grey.shade600,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCurrencyTile({
-    required Map<String, String> currency,
-    bool isSelected = false,
-    VoidCallback? onTap,
-    bool showCheck = false,
-  }) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      elevation: isSelected ? 2 : 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isSelected ? AppTheme.primaryColor : Colors.grey.shade200,
-          width: isSelected ? 2 : 1,
-        ),
-      ),
-      child: ListTile(
-        leading: Text(
-          currency['flag'] ?? '🌍',
-          style: const TextStyle(fontSize: 24),
-        ),
-        title: Text(
-          '${currency['code']} - ${currency['name']}',
-          style: TextStyle(
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            color: isSelected ? AppTheme.primaryColor : null,
-          ),
-        ),
-        subtitle: Text(
-          currency['symbol'] ?? '',
-          style: TextStyle(
-            color: isSelected ? AppTheme.primaryColor : Colors.grey.shade600,
-          ),
-        ),
-        trailing: showCheck || isSelected
-            ? Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.check,
-                  color: Colors.white,
-                  size: 16,
-                ),
-              )
-            : null,
-        onTap: onTap,
-        selected: isSelected,
-        selectedTileColor: AppTheme.primaryColor.withOpacity(0.05),
-      ),
-    );
-  }
-
-  Widget _buildBottomButtons() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 2,
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
+          // Currency list
           Expanded(
-            child: OutlinedButton(
-              onPressed: _cancelChanges,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.grey,
-                side: BorderSide(color: Colors.grey.shade300),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text('Cancel'),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _hasChanges ? _saveCurrency : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _hasChanges 
-                    ? AppTheme.primaryColor 
-                    : Colors.grey.shade300,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(_hasChanges ? 'Save Changes' : 'No Changes'),
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: _filteredCurrencies.length,
+              itemBuilder: (context, index) {
+                final currency = _filteredCurrencies[index];
+                final isSelected = currency.code == _selectedCurrency;
+                final isPopular = currency.isPopular;
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 4),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? Colors.blue.withOpacity(0.1)
+                        : isDark
+                            ? Colors.grey[800]
+                            : Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isSelected
+                          ? Colors.blue
+                          : isDark
+                              ? Colors.grey[700]!
+                              : Colors.grey[200]!,
+                    ),
+                  ),
+                  child: ListTile(
+                    leading: Text(
+                      currency.symbol,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? Colors.blue : null,
+                      ),
+                    ),
+                    title: Row(
+                      children: [
+                        Text(
+                          currency.code,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected ? Colors.blue : null,
+                          ),
+                        ),
+                        if (isPopular) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Popular',
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: Colors.amber[700],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    subtitle: Text(currency.name),
+                    trailing: isSelected
+                        ? const Icon(
+                            Icons.check_circle,
+                            color: Colors.blue,
+                          )
+                        : null,
+                    onTap: () {
+                      setState(() {
+                        _selectedCurrency = currency.code;
+                      });
+                    },
+                  ),
+                );
+              },
             ),
           ),
         ],
