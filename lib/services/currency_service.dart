@@ -1,8 +1,9 @@
 // lib/services/currency_service.dart
-import 'dart:convert'; // ✅ ADDED: For json.decode/encode
-import 'package:http/http.dart' as http; // ✅ ADDED: For HTTP requests
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+// ✅ FIXED: Removed unused import
+// import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/currency_model.dart';
 
 class CurrencyService {
@@ -176,12 +177,10 @@ class CurrencyService {
         final data = json.decode(response.body);
         final rates = Map<String, double>.from(data['rates']);
         
-        // Cache rates
         await _cacheRates(rates);
         return rates;
       }
       
-      // Fallback to cached rates
       final cached = await _getCachedRates();
       return cached;
     } catch (e) {
@@ -269,7 +268,6 @@ class CurrencyService {
   }
 
   static Future<String> getDefaultCurrencyByCountry(String countryCode) async {
-    // Map country codes to currency codes
     final countryCurrencyMap = {
       'PK': 'PKR',
       'US': 'USD',
@@ -306,7 +304,6 @@ class CurrencyService {
     return countryCurrencyMap[countryCode] ?? 'USD';
   }
 
-  // ✅ FIXED: Get currency name for code (for display)
   static String getNameForCode(String code) {
     return _names[code] ?? code;
   }
