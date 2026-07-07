@@ -9,7 +9,8 @@ import 'mode_provider.dart';
 
 class TransactionProvider extends ChangeNotifier {
   final TransactionService _transactionService = TransactionService();
-  final CurrencyService _currencyService = CurrencyService();
+  // ✅ FIXED: Removed unused CurrencyService
+  // final CurrencyService _currencyService = CurrencyService();
   
   List<TransactionModel> _transactions = [];
   List<TransactionModel> _filteredTransactions = [];
