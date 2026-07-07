@@ -14,12 +14,12 @@ class FirebaseConfig {
     try {
       _app = await Firebase.initializeApp(
         options: const FirebaseOptions(
-          apiKey: 'YOUR_API_KEY',
-          appId: 'YOUR_APP_ID',
-          messagingSenderId: 'YOUR_SENDER_ID',
-          projectId: 'YOUR_PROJECT_ID',
-          authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
-          storageBucket: 'YOUR_PROJECT_ID.appspot.com',
+          apiKey: 'AIzaSyCqtTXPsJFw1kGsL83KQWVxSMuTKJTxDW4',
+          appId: '1:939621300884:android:ddc013394d763393f91281',
+          messagingSenderId: '939621300884',
+          projectId: 'family-finance-manager-92dc9',
+          authDomain: 'family-finance-manager-92dc9.firebaseapp.com',
+          storageBucket: 'family-finance-manager-92dc9.firebasestorage.app',
         ),
       );
       
@@ -136,6 +136,56 @@ class FirebaseConfig {
       return await ref.getDownloadURL();
     } catch (_) {
       return null;
+    }
+  }
+
+  // ============================================================
+  // OWNER/MODERATOR HELPERS
+  // ============================================================
+
+  static Future<Map<String, dynamic>?> getUserProfile(String uid) async {
+    try {
+      final doc = await firestore.collection('users').doc(uid).get();
+      if (doc.exists) {
+        return doc.data();
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching user profile: $e');
+      return null;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getAllUsers() async {
+    try {
+      final snapshot = await firestore.collection('users').get();
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    } catch (e) {
+      print('Error fetching all users: $e');
+      return [];
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getFamily(String familyId) async {
+    try {
+      final doc = await firestore.collection('families').doc(familyId).get();
+      if (doc.exists) {
+        return doc.data();
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching family: $e');
+      return null;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getAllFamilies() async {
+    try {
+      final snapshot = await firestore.collection('families').get();
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    } catch (e) {
+      print('Error fetching all families: $e');
+      return [];
     }
   }
 }
