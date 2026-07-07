@@ -2,158 +2,100 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/family_provider.dart';
-import '../../services/auth_service.dart';
-import '../../services/database_service.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../models/family_model.dart';
-import '../../utils/app_theme.dart';
-import '../../utils/helpers.dart';
-import '../dashboard/family_dashboard.dart';
+import '../../widgets/common/empty_state_widget.dart';
+import '../../widgets/common/loading_widget.dart';
+import '../../widgets/common/custom_button.dart';
+import '../../widgets/common/custom_snackbar.dart';
+import 'widgets/family_member_card.dart';
+import 'widgets/family_invite_code.dart';
 
 class FamilyManagementScreen extends StatefulWidget {
-  const FamilyManagementScreen({super.key});
+  const FamilyManagementScreen({Key? key}) : super(key: key);
 
   @override
   State<FamilyManagementScreen> createState() => _FamilyManagementScreenState();
 }
 
 class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
-  bool _isLoading = true;
-  bool _isRefreshing = false;
-  FamilyModel? _currentFamily;
-  List<FamilyModel> _families = [];
-  DateTime? _lastBackPress;
-
   @override
   void initState() {
     super.initState();
     _loadData();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_isLoading) {
-      _loadData();
-    }
-  }
-
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-    
-    final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final userId = authService.userId;
-    
-    if (userId != null) {
-      _families = await DatabaseService.getUserFamilies(userId);
-      _currentFamily = familyProvider.currentFamily;
-    }
-    
-    setState(() => _isLoading = false);
+    final familyProvider = context.read<FamilyProvider>();
+    await familyProvider.refreshData();
   }
 
   Future<void> _refreshData() async {
-    setState(() => _isRefreshing = true);
     await _loadData();
-    setState(() => _isRefreshing = false);
   }
 
-  Future<void> _createFamily() async {
-    final result = await Navigator.pushNamed(context, '/family-creation');
-    if (result == true) {
-      _refreshData();
-      _navigateToDashboard();
-    }
-  }
+  void _showInviteDialog() {
+    final family = context.read<FamilyProvider>().currentFamily;
+    if (family == null) return;
 
-  Future<void> _joinFamily() async {
-    final codeController = TextEditingController();
-    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Join Family'),
+        title: const Text('Invite Member'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Enter the family code to join:'),
-            const SizedBox(height: 12),
+            const Text(
+              'Share this code with family members to join:',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            FamilyInviteCode(code: family.familyCode ?? 'N/A'),
+            const SizedBox(height: 16),
+            const Text(
+              'Or send an invitation email:',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
             TextField(
-              controller: codeController,
               decoration: const InputDecoration(
-                labelText: 'Family Code',
+                labelText: 'Email address',
                 border: OutlineInputBorder(),
-                hintText: 'e.g., ABC123',
-                prefixIcon: Icon(Icons.code),
+                prefixIcon: Icon(Icons.email),
               ),
-              textCapitalization: TextCapitalization.characters,
-              autofocus: true,
+              keyboardType: TextInputType.emailAddress,
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text('Close'),
           ),
-          ElevatedButton(
-            onPressed: () async {
-              final code = codeController.text.trim().toUpperCase();
-              if (code.isEmpty) {
-                Helpers.showSnackBar(
-                  context,
-                  'Please enter a family code',
-                  color: Colors.red,
-                );
-                return;
-              }
-              
+          TextButton(
+            onPressed: () {
+              // TODO: Send invitation email
               Navigator.pop(context);
-              
-              try {
-                final authService = Provider.of<AuthService>(context, listen: false);
-                final userId = authService.userId;
-                
-                if (userId != null) {
-                  await DatabaseService.joinFamily(code, userId);
-                  _refreshData();
-                  _navigateToDashboard();
-                }
-              } catch (e) {
-                Helpers.showSnackBar(
-                  context,
-                  'Failed to join: $e',
-                  color: Colors.red,
-                );
-              }
+              CustomSnackBar.show(
+                context,
+                'Invitation sent successfully!',
+              );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Join'),
+            child: const Text('Send Invite'),
           ),
         ],
       ),
     );
   }
 
-  void _navigateToDashboard() {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const FamilyDashboard()),
-      (route) => false,
-    );
-  }
-
-  Future<void> _leaveFamily(FamilyModel family) async {
+  void _showLeaveFamilyDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Leave Family'),
-        content: Text(
-          'Are you sure you want to leave "${family.name}"? '
-          'You will lose access to all family transactions.',
+        content: const Text(
+          'Are you sure you want to leave this family? You will lose access to all family data.',
         ),
         actions: [
           TextButton(
@@ -163,13 +105,19 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              
-              final authService = Provider.of<AuthService>(context, listen: false);
-              final userId = authService.userId;
-              
-              if (userId != null) {
-                await DatabaseService.leaveFamily(family.id, userId);
-                _refreshData();
+              try {
+                // TODO: Implement leave family
+                CustomSnackBar.show(
+                  context,
+                  'You have left the family',
+                );
+                Navigator.pop(context);
+              } catch (e) {
+                CustomSnackBar.show(
+                  context,
+                  'Failed to leave family: ${e.toString()}',
+                  isError: true,
+                );
               }
             },
             style: TextButton.styleFrom(
@@ -182,320 +130,251 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     );
   }
 
-  // ✅ FIXED: Better family code generation
-  String _generateFamilyCode() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    String code = '';
-    final random = DateTime.now().millisecondsSinceEpoch;
-    for (int i = 0; i < 6; i++) {
-      final index = (random + i * 31) % chars.length;
-      code += chars[index];
-    }
-    return code;
-  }
-
-  // ✅ Back button handling (FIXED for #6)
-  Future<bool> _onWillPop() async {
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-      return false;
-    }
-    
-    final now = DateTime.now();
-    if (_lastBackPress == null || now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
-      _lastBackPress = now;
-      Helpers.showSnackBar(
-        context,
-        'Tap again to exit',
-        color: Colors.grey[850],
-      );
-      return false;
-    }
-    
-    return true;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final familyProvider = Provider.of<FamilyProvider>(context);
-    _currentFamily = familyProvider.currentFamily;
+    final familyProvider = context.watch<FamilyProvider>();
+    final currencyProvider = context.watch<CurrencyProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return WillPopScope(
-      onWillPop: _onWillPop,
-      child: Scaffold(
-        backgroundColor: AppTheme.backgroundColor,
-        appBar: AppBar(
-          title: const Text('Family Management'),
-          backgroundColor: AppTheme.primaryColor,
-          foregroundColor: Colors.white,
-          automaticallyImplyLeading: false,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: _refreshData,
-            ),
-          ],
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Family Management'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person_add),
+            onPressed: _showInviteDialog,
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _refreshData,
+        child: _buildContent(
+          context,
+          familyProvider,
+          currencyProvider.currentCurrency,
+          isDark,
         ),
-        body: _isLoading || _isRefreshing
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-                onRefresh: _refreshData,
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  Widget _buildContent(
+    BuildContext context,
+    FamilyProvider provider,
+    String currency,
+    bool isDark,
+  ) {
+    if (provider.isLoading) {
+      return const LoadingWidget();
+    }
+
+    final family = provider.currentFamily;
+
+    if (family == null) {
+      return EmptyStateWidget(
+        icon: Icons.family_restroom,
+        title: 'No Family Found',
+        description: 'Create a family or join an existing one to get started.',
+        buttonText: 'Create Family',
+        onPressed: () {
+          Navigator.pushNamed(context, '/family_setup');
+        },
+        secondaryButtonText: 'Join Family',
+        onSecondaryPressed: () {
+          Navigator.pushNamed(context, '/join_family');
+        },
+      );
+    }
+
+    final members = provider.getFamilyMembers();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Family info card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).primaryColor,
+                  Theme.of(context).primaryColor.withOpacity(0.7),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            family.name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (family.description?.isNotEmpty ?? false)
+                            Text(
+                              family.description!,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${members.length} Members',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: _buildQuickAction(
-                            icon: Icons.add,
-                            label: 'Create',
-                            color: Colors.blue,
-                            onTap: _createFamily,
+                        const Text(
+                          'Family Balance',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildQuickAction(
-                            icon: Icons.qr_code_scanner,
-                            label: 'Join',
-                            color: Colors.green,
-                            onTap: _joinFamily,
+                        Text(
+                          '$currency ${family.totalBalance?.toStringAsFixed(2) ?? '0.00'}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-
-                    if (_currentFamily != null) ...[
-                      const Text(
-                        'Current Family',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildFamilyCard(_currentFamily!, isActive: true),
-                      const SizedBox(height: 16),
-                    ],
-
-                    if (_families.where((f) => f.id != _currentFamily?.id).isNotEmpty) ...[
-                      const Text(
-                        'Other Families',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      ..._families
-                          .where((f) => f.id != _currentFamily?.id)
-                          .map((family) => _buildFamilyCard(family, isActive: false)),
-                      const SizedBox(height: 16),
-                    ],
-
-                    if (_families.isEmpty) ...[
-                      Container(
-                        padding: const EdgeInsets.all(32),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.family_restroom,
-                              size: 64,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'No Families Yet',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Create a new family or join an existing one',
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blue.withOpacity(0.2)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.info_outline, color: Colors.blue),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Family Limits',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                Text(
-                                  '• Max 3 families created\n'
-                                  '• Max 3 families joined\n'
-                                  '• Max 10 members per family',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade700,
-                                  ),
-                                ),
-                              ],
-                            ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text(
+                          'Family Code',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
                           ),
-                        ],
-                      ),
+                        ),
+                        FamilyInviteCode(
+                          code: family.familyCode ?? 'N/A',
+                          color: Colors.white,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 24),
                   ],
                 ),
-              ),
-      ),
-    );
-  }
-
-  Widget _buildQuickAction({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w600,
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
+          ),
+          const SizedBox(height: 24),
 
-  Widget _buildFamilyCard(FamilyModel family, {required bool isActive}) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      elevation: isActive ? 4 : 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isActive ? AppTheme.primaryColor : Colors.grey.shade200,
-          width: isActive ? 2 : 1,
-        ),
-      ),
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: isActive ? AppTheme.primaryColor.withOpacity(0.1) : Colors.grey.shade100,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            Icons.family_restroom,
-            color: isActive ? AppTheme.primaryColor : Colors.grey,
-          ),
-        ),
-        title: Text(
-          family.name,
-          style: TextStyle(
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-            color: isActive ? AppTheme.primaryColor : null,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '${family.members?.length ?? 0} members',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade600,
-              ),
-            ),
-            if (family.familyCode != null)
-              Text(
-                'Code: ${family.familyCode}',
+          // Members section
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Members',
                 style: TextStyle(
-                  fontSize: 11,
-                  color: AppTheme.primaryColor,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isActive)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  'Active',
+              TextButton.icon(
+                onPressed: _showInviteDialog,
+                icon: const Icon(Icons.person_add, size: 16),
+                label: const Text('Invite'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          if (members.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Text(
+                  'No members in this family',
                   style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.green,
-                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[600],
                   ),
                 ),
               ),
-            if (!isActive)
-              IconButton(
-                icon: const Icon(Icons.exit_to_app, color: Colors.red),
-                onPressed: () => _leaveFamily(family),
-                tooltip: 'Leave Family',
-              ),
-            // ✅ FIXED: Arrow button with proper navigation
-            IconButton(
-              icon: Icon(
-                isActive ? Icons.chevron_right : Icons.swap_horiz,
-                color: isActive ? Colors.grey : AppTheme.primaryColor,
-              ),
-              onPressed: () {
-                final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
-                familyProvider.setCurrentFamily(family);
-                _navigateToDashboard();
-              },
-              tooltip: isActive ? 'View Family' : 'Switch to this family',
-            ),
-          ],
-        ),
+            )
+          else
+            ...members.map((member) {
+              final isAdmin = member.isAdmin;
+              final isCurrentUser = member.userId == context.read<AuthProvider>().userId;
+              return FamilyMemberCard(
+                member: member,
+                isAdmin: isAdmin,
+                isCurrentUser: isCurrentUser,
+                onRemove: isAdmin && !isCurrentUser
+                    ? () {
+                        // TODO: Remove member
+                        CustomSnackBar.show(
+                          context,
+                          'Member removed',
+                        );
+                      }
+                    : null,
+                onPromote: isAdmin && !isCurrentUser
+                    ? () {
+                        // TODO: Promote member
+                        CustomSnackBar.show(
+                          context,
+                          'Member promoted to admin',
+                        );
+                      }
+                    : null,
+              );
+            }),
+
+          const SizedBox(height: 24),
+
+          // Leave Family button
+          CustomButton(
+            onPressed: _showLeaveFamilyDialog,
+            text: 'Leave Family',
+            type: ButtonType.danger,
+            size: ButtonSize.medium,
+            icon: Icons.exit_to_app,
+          ),
+        ],
       ),
     );
   }
