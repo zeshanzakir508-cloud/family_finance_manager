@@ -1,5 +1,6 @@
 // lib/screens/auth/biometric_auth_screen.dart
 import 'package:flutter/material.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
@@ -133,7 +134,7 @@ class _BiometricAuthScreenState extends State<BiometricAuthScreen> {
                 child: Icon(
                   _isAvailable
                       ? Icons.fingerprint
-                      : Icons.fingerprint_off,
+                      : Icons.fingerprint, // ✅ FIXED: fingerprint_off doesn't exist
                   size: 56,
                   color: _isAvailable
                       ? theme.primaryColor
