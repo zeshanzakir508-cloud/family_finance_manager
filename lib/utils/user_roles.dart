@@ -1,4 +1,6 @@
 // lib/utils/user_roles.dart
+import 'package:flutter/material.dart';
+
 class UserRoles {
   // ============================================================
   // FIXED ROLES
