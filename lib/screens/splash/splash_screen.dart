@@ -1,113 +1,111 @@
+// lib/screens/splash/splash_screen.dart
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../utils/app_theme.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  const SplashScreen({Key? key}) : super(key: key);
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
-
+class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
-    _controller.forward();
-    _navigateAfterDelay();
+    _navigate();
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  Future<void> _navigate() async {
+    // Wait for 2 seconds
+    await Future.delayed(const Duration(seconds: 2));
 
-  Future<void> _navigateAfterDelay() async {
-    await Future.delayed(const Duration(seconds: 3));
+    if (!mounted) return;
+
     final prefs = await SharedPreferences.getInstance();
-    final isFirstLaunch = prefs.getBool('is_first_launch') ?? true;
-    
-    if (mounted) {
-      if (isFirstLaunch) {
-        Navigator.pushReplacementNamed(context, '/onboarding');
+    final onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
+
+    // Check auth state
+    final auth = FirebaseAuth.instance.currentUser;
+
+    if (auth != null) {
+      // User is logged in
+      final authProvider = context.read<AuthProvider>();
+      await authProvider.refreshUser();
+
+      // Check if email is verified
+      if (!auth.emailVerified) {
+        Navigator.pushReplacementNamed(context, '/verify_email');
       } else {
+        // Check if mode is selected
+        final modeSelected = prefs.getBool('mode_selected') ?? false;
+        if (modeSelected) {
+          Navigator.pushReplacementNamed(context, '/home');
+        } else {
+          Navigator.pushReplacementNamed(context, '/mode_selection');
+        }
+      }
+    } else {
+      // User not logged in
+      if (onboardingComplete) {
         Navigator.pushReplacementNamed(context, '/login');
+      } else {
+        Navigator.pushReplacementNamed(context, '/onboarding');
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.watch<ThemeProvider>().isDarkMode;
+
     return Scaffold(
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppTheme.primaryColor,
-              AppTheme.primaryColor.withOpacity(0.8),
-            ],
-          ),
+          color: isDark ? Colors.grey[900] : Colors.white,
         ),
-        child: Center(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: ScaleTransition(
-              scale: _scaleAnimation,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.account_balance_wallet,
-                      size: 80,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'FinFam',
-                    style: TextStyle(
-                      fontSize: 40,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Family Finance Manager',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white70,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  const CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                ],
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              height: 100,
+              width: 100,
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: const Icon(
+                Icons.people,
+                size: 56,
+                color: Colors.white,
               ),
             ),
-          ),
+            const SizedBox(height: 24),
+            Text(
+              'FinFam',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Family Finance Manager',
+              style: TextStyle(
+                fontSize: 16,
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 48),
+            const CircularProgressIndicator(),
+          ],
         ),
       ),
     );
