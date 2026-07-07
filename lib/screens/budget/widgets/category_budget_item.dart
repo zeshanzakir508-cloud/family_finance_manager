@@ -2,6 +2,31 @@
 import 'package:flutter/material.dart';
 import '../../../models/budget_model.dart';
 
+// ✅ FIXED: Created CategoryBudgetItem class since it was missing
+class CategoryBudgetItem {
+  final String categoryId;
+  final String categoryName;
+  double allocated;
+
+  CategoryBudgetItem({
+    required this.categoryId,
+    required this.categoryName,
+    this.allocated = 0.0,
+  });
+
+  CategoryBudgetItem copyWith({
+    String? categoryId,
+    String? categoryName,
+    double? allocated,
+  }) {
+    return CategoryBudgetItem(
+      categoryId: categoryId ?? this.categoryId,
+      categoryName: categoryName ?? this.categoryName,
+      allocated: allocated ?? this.allocated,
+    );
+  }
+}
+
 class CategoryBudgetItemWidget extends StatelessWidget {
   final CategoryBudgetItem item;
   final String currency;
