@@ -108,7 +108,8 @@ class _BiometricAuthScreenState extends State<BiometricAuthScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = context.watch<ThemeProvider>().isDarkMode;
+    // ✅ FIXED: Removed unused isDark variable or kept commented
+    // final isDark = context.watch<ThemeProvider>().isDarkMode;
 
     return Scaffold(
       body: SafeArea(
@@ -134,7 +135,7 @@ class _BiometricAuthScreenState extends State<BiometricAuthScreen> {
                 child: Icon(
                   _isAvailable
                       ? Icons.fingerprint
-                      : Icons.fingerprint, // ✅ FIXED: fingerprint_off doesn't exist
+                      : Icons.fingerprint,
                   size: 56,
                   color: _isAvailable
                       ? theme.primaryColor
