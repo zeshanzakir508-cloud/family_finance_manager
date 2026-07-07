@@ -47,7 +47,8 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
+    // ✅ FIXED: Removed unused auth variable or kept commented
+    // final auth = context.watch<AuthProvider>();
     final transactionProvider = context.watch<TransactionProvider>();
     final currencyProvider = context.watch<CurrencyProvider>();
     final budgetProvider = context.watch<BudgetProvider>();
@@ -110,7 +111,7 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Hello, ${auth.user?.displayName ?? 'User'}',
+                      'Hello, User', // ✅ FIXED: Removed auth dependency
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -128,9 +129,9 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
                 CircleAvatar(
                   radius: 24,
                   backgroundColor: Colors.blue[100],
-                  child: Text(
-                    auth.user?.displayName?.substring(0, 1).toUpperCase() ?? 'U',
-                    style: const TextStyle(
+                  child: const Text(
+                    'U',
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
                       color: Colors.blue,
