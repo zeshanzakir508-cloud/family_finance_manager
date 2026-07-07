@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import '../models/budget_model.dart';
 import '../services/budget_service.dart';
-import 'auth_provider.dart';
 
 class BudgetProvider extends ChangeNotifier {
   final BudgetService _budgetService = BudgetService();
