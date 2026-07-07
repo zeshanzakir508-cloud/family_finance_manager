@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_core/firebase_core.dart';
+// ✅ FIXED: Removed unused import
+// import 'package:firebase_core/firebase_core.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+// ✅ FIXED: Keep these imports
 import 'config/app_config.dart';
 import 'config/firebase_config.dart';
 import 'config/route_config.dart';
