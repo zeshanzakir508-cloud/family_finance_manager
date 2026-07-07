@@ -50,6 +50,7 @@ class FirestoreService {
     }
   }
 
+  // ✅ FIXED: Cast return type to Map<String, dynamic>
   Future<List<Map<String, dynamic>>> query(
     String collection, {
     String? field,
