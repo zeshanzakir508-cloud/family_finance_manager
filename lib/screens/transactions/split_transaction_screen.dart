@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../models/transaction_model.dart';
+import '../../models/category_model.dart'; // ✅ ADDED: Missing import
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/custom_snackbar.dart';
