@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 import '../services/local_storage_service.dart';
-import 'auth_provider.dart';
 
 class NotificationProvider extends ChangeNotifier {
   final NotificationService _notificationService = NotificationService();
@@ -133,7 +132,8 @@ class NotificationProvider extends ChangeNotifier {
     String? payload,
   }) async {
     try {
-      await _notificationService.showNotification(
+      // ✅ FIXED: Use static method via class name
+      await NotificationService.showNotification(
         id: DateTime.now().millisecondsSinceEpoch.hashCode,
         title: title,
         body: body,
@@ -164,7 +164,8 @@ class NotificationProvider extends ChangeNotifier {
     String? payload,
   }) async {
     try {
-      await _notificationService.showNotification(
+      // ✅ FIXED: Use static method via class name
+      await NotificationService.showNotification(
         id: DateTime.now().millisecondsSinceEpoch.hashCode,
         title: title,
         body: body,
@@ -194,7 +195,8 @@ class NotificationProvider extends ChangeNotifier {
     String? payload,
   }) async {
     try {
-      await _notificationService.showNotification(
+      // ✅ FIXED: Use static method via class name
+      await NotificationService.showNotification(
         id: DateTime.now().millisecondsSinceEpoch.hashCode,
         title: title,
         body: body,
@@ -224,7 +226,8 @@ class NotificationProvider extends ChangeNotifier {
 
   Future<void> scheduleDailyReminder() async {
     try {
-      await _notificationService.scheduleNotification(
+      // ✅ FIXED: Use static method via class name
+      await NotificationService.scheduleNotification(
         id: DateTime.now().millisecondsSinceEpoch.hashCode,
         title: '📊 Daily Reminder',
         body: 'Don\'t forget to log your daily expenses!',
@@ -243,7 +246,8 @@ class NotificationProvider extends ChangeNotifier {
   }) async {
     try {
       final percentage = (spent / budget * 100).toStringAsFixed(0);
-      await _notificationService.showNotification(
+      // ✅ FIXED: Use static method via class name
+      await NotificationService.showNotification(
         id: DateTime.now().millisecondsSinceEpoch.hashCode,
         title: '⚠️ Budget Alert',
         body: 'You have used $percentage% of your $category budget (\$$spent/\$$budget)',
