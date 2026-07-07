@@ -1,87 +1,61 @@
 // lib/utils/helpers.dart
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:math';
 
 class Helpers {
-  static String? _cachedCurrency;
-  static bool _isInitialized = false;
+  // ============================================================
+  // ID GENERATION
+  // ============================================================
 
-  // ✅ Initialize currency once
-  static Future<void> initCurrency() async {
-    if (_isInitialized) return;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _cachedCurrency = prefs.getString('currency') ?? 'USD';
-      _isInitialized = true;
-    } catch (e) {
-      _cachedCurrency = 'USD';
-      _isInitialized = true;
-    }
+  static String generateId() {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final random = Random();
+    return String.fromCharCodes(
+      Iterable.generate(20, (_) => chars.codeUnitAt(random.nextInt(chars.length))),
+    );
   }
 
-  // ✅ Get current currency with caching
-  static Future<String> getCurrentCurrency() async {
-    if (_cachedCurrency != null) return _cachedCurrency!;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _cachedCurrency = prefs.getString('currency') ?? 'USD';
-      return _cachedCurrency!;
-    } catch (e) {
-      return 'USD';
-    }
+  static String generateFamilyCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final random = Random();
+    return String.fromCharCodes(
+      Iterable.generate(6, (_) => chars.codeUnitAt(random.nextInt(chars.length))),
+    );
   }
 
-  // ✅ Get currency synchronously (after init)
-  static String getCurrencySync() {
-    return _cachedCurrency ?? 'USD';
-  }
+  // ============================================================
+  // DATE FORMATTING
+  // ============================================================
 
-  // ✅ Set currency and update cache
-  static Future<void> setCurrency(String currencyCode) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('currency', currencyCode);
-      _cachedCurrency = currencyCode;
-    } catch (e) {
-      print('❌ Failed to save currency: $e');
-    }
-  }
-
-  // ✅ FIXED: Format currency with proper async handling
-  static String formatCurrency(double amount, {String? currencyCode}) {
-    // Use provided code, cached, or default
-    final code = currencyCode ?? _cachedCurrency ?? 'USD';
-    final symbol = getCurrencySymbol(code);
-    return '$symbol${amount.toStringAsFixed(2)}';
-  }
-
-  // ✅ FIXED: Async version for before init
-  static Future<String> formatCurrencyAsync(double amount, {String? currencyCode}) async {
-    final code = currencyCode ?? await getCurrentCurrency();
-    final symbol = getCurrencySymbol(code);
-    return '$symbol${amount.toStringAsFixed(2)}';
-  }
-
-  // Format with currency code
-  static String formatCurrencyWithCode(double amount, String currencyCode) {
-    final symbol = getCurrencySymbol(currencyCode);
-    return '$symbol${amount.toStringAsFixed(2)} $currencyCode';
-  }
-
-  // Format date
   static String formatDate(DateTime date) {
-    return DateFormat('dd MMM yyyy').format(date);
+    return '${date.day}/${date.month}/${date.year}';
   }
 
-  // Format date time
-  static String formatDateTime(DateTime date) {
-    return DateFormat('dd MMM yyyy, hh:mm a').format(date);
+  static String formatDateWithTime(DateTime date) {
+    return '${date.day}/${date.month}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
-  // Format time ago
+  static String getMonthName(int month) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return months[month - 1];
+  }
+
+  static String getShortMonthName(int month) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months[month - 1];
+  }
+
+  static String getDayName(int day) {
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    return days[day - 1];
+  }
+
   static String timeAgo(DateTime date) {
     final difference = DateTime.now().difference(date);
+    
     if (difference.inDays > 365) {
       return '${(difference.inDays / 365).floor()}y';
     } else if (difference.inDays > 30) {
@@ -95,132 +69,84 @@ class Helpers {
     } else if (difference.inMinutes > 0) {
       return '${difference.inMinutes}m';
     } else {
-      return 'Just now';
+      return 'Now';
     }
   }
 
-  // Generate unique ID
-  static String generateId() {
-    return DateTime.now().millisecondsSinceEpoch.toString();
+  // ============================================================
+  // TEXT FORMATTING
+  // ============================================================
+
+  static String capitalize(String text) {
+    if (text.isEmpty) return text;
+    return text[0].toUpperCase() + text.substring(1);
   }
 
-  // Generate family code
-  static String generateFamilyCode() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    final random = DateTime.now().millisecondsSinceEpoch;
-    return String.fromCharCodes(
-      List.generate(8, (index) {
-        final charIndex = (random + index * 7) % chars.length;
-        return chars.codeUnitAt(charIndex);
-      }),
-    );
+  static String titleCase(String text) {
+    if (text.isEmpty) return text;
+    return text.split(' ').map((word) => capitalize(word)).join(' ');
   }
 
-  // Validate email
-  static bool isValidEmail(String email) {
-    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  static String truncate(String text, int length) {
+    if (text.length <= length) return text;
+    return '${text.substring(0, length)}...';
   }
 
-  // Validate phone
-  static bool isValidPhone(String phone) {
-    return RegExp(r'^[0-9]{10,15}$').hasMatch(phone);
-  }
-
-  // Truncate text
-  static String truncateText(String text, int maxLength) {
-    if (text.length <= maxLength) return text;
-    return '${text.substring(0, maxLength)}...';
-  }
-
-  // Get initials
   static String getInitials(String name) {
-    if (name.isEmpty) return 'U';
-    final parts = name.split(' ');
+    if (name.isEmpty) return '?';
+    final parts = name.trim().split(' ');
     if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}';
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     }
     return parts[0][0].toUpperCase();
   }
 
-  // Calculate percentage
-  static double calculatePercentage(double value, double total) {
-    if (total == 0) return 0;
-    return (value / total) * 100;
+  // ============================================================
+  // VALIDATION
+  // ============================================================
+
+  static bool isValidEmail(String email) {
+    return RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(email);
   }
 
-  // Format with commas
-  static String formatWithCommas(double number) {
-    return NumberFormat('#,##0.00').format(number);
+  static bool isValidPhone(String phone) {
+    return RegExp(r'^[0-9+\- ]{10,15}$').hasMatch(phone);
   }
 
-  // Get currency symbol
-  static String getCurrencySymbol(String currencyCode) {
-    switch (currencyCode.toUpperCase()) {
-      case 'USD': return '\$';
-      case 'EUR': return '€';
-      case 'GBP': return '£';
-      case 'PKR': return 'Rs';
-      case 'INR': return '₹';
-      case 'AED': return 'د.إ';
-      case 'SAR': return '﷼';
-      case 'CAD': return 'C\$';
-      case 'AUD': return 'A\$';
-      case 'JPY': return '¥';
-      case 'CNY': return '¥';
-      case 'KRW': return '₩';
-      case 'BHD': return 'BD';
-      case 'KWD': return 'KD';
-      case 'OMR': return 'RO';
-      case 'QAR': return '﷼';
-      case 'EGP': return 'E£';
-      case 'TRY': return '₺';
-      case 'RUB': return '₽';
-      case 'BRL': return 'R\$';
-      case 'ZAR': return 'R';
-      case 'SGD': return 'S\$';
-      case 'MYR': return 'RM';
-      case 'PHP': return '₱';
-      case 'IDR': return 'Rp';
-      case 'THB': return '฿';
-      case 'VND': return '₫';
-      default: return '\$';
+  static bool isValidUsername(String username) {
+    return RegExp(r'^[a-zA-Z0-9_]{3,20}$').hasMatch(username);
+  }
+
+  static bool isValidPassword(String password) {
+    return password.length >= 6;
+  }
+
+  static bool isValidAmount(String amount) {
+    return RegExp(r'^[0-9]+(\.[0-9]{1,2})?$').hasMatch(amount);
+  }
+
+  // ============================================================
+  // MISC
+  // ============================================================
+
+  static T? enumFromString<T>(Iterable<T> values, String? value) {
+    if (value == null) return null;
+    try {
+      return values.firstWhere((v) => v.toString().split('.').last == value);
+    } catch (_) {
+      return null;
     }
   }
 
-  // Get currency name
-  static String getCurrencyName(String currencyCode) {
-    switch (currencyCode.toUpperCase()) {
-      case 'USD': return 'US Dollar';
-      case 'EUR': return 'Euro';
-      case 'GBP': return 'British Pound';
-      case 'PKR': return 'Pakistani Rupee';
-      case 'INR': return 'Indian Rupee';
-      case 'AED': return 'UAE Dirham';
-      case 'SAR': return 'Saudi Riyal';
-      case 'CAD': return 'Canadian Dollar';
-      case 'AUD': return 'Australian Dollar';
-      case 'JPY': return 'Japanese Yen';
-      default: return currencyCode;
-    }
+  static String enumToString<T>(T value) {
+    return value.toString().split('.').last;
   }
 
-  // ✅ SnackBar helper (FIXED)
-  static void showSnackBar(BuildContext context, String message, {Color? color}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color ?? Colors.grey[850],
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.only(
-          bottom: 20,
-          left: 16,
-          right: 16,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+  static List<T> distinctList<T>(List<T> list) {
+    return list.toSet().toList();
+  }
+
+  static bool isNullOrEmpty(String? text) {
+    return text == null || text.isEmpty;
   }
 }
