@@ -10,6 +10,7 @@ import '../../models/category_model.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/custom_snackbar.dart';
+// ✅ FIXED: Added import for CategoryBudgetItem
 import 'widgets/category_budget_item.dart';
 
 // ✅ ADDED: CategoryBudgetItemWidget class since it was missing
