@@ -1,26 +1,22 @@
 // lib/screens/settings/privacy_policy_screen.dart
 import 'package:flutter/material.dart';
-import '../../utils/app_theme.dart';
+import 'package:provider/provider.dart';
+import '../../providers/theme_provider.dart';
 
-class PrivacyPolicyScreen extends StatefulWidget {
-  const PrivacyPolicyScreen({super.key});
+class PrivacyPolicyScreen extends StatelessWidget {
+  const PrivacyPolicyScreen({Key? key}) : super(key: key);
 
-  @override
-  State<PrivacyPolicyScreen> createState() => _PrivacyPolicyScreenState();
-}
-
-class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final currentYear = DateTime.now().year;
+
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('Privacy Policy'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -28,47 +24,25 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.05),
+                color: isDark ? Colors.grey[800] : Colors.grey[100],
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
-                ),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.privacy_tip,
-                      color: AppTheme.primaryColor,
-                      size: 28,
+                  const Text(
+                    'Privacy Policy',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Your Privacy Matters',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        // ✅ FIXED: 2024 → 2026
-                        Text(
-                          'Last updated: July 2026',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 4),
+                  Text(
+                    'Last updated: $currentYear',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
                     ),
                   ),
                 ],
@@ -79,136 +53,199 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
             // Introduction
             _buildSection(
               title: '1. Introduction',
-              content: 'FinFam ("we", "our", "us") is committed to protecting your privacy. '
-                  'This Privacy Policy explains how we collect, use, and safeguard your personal information '
-                  'when you use our family finance management application.',
+              content: '''
+Welcome to FinFam ("we", "our", "us"). We are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application.
+
+Please read this Privacy Policy carefully. By using FinFam, you agree to the collection and use of information in accordance with this policy.
+''',
+              isDark: isDark,
             ),
             const SizedBox(height: 16),
 
-            // Information We Collect
+            // Information we collect
             _buildSection(
               title: '2. Information We Collect',
-              content: 'We collect information you provide directly:',
-              bulletPoints: [
-                'Name and email address',
-                'Financial transaction data you enter',
-                'Family member information',
-                'Budget and expense categories',
-                'Profile photo (if uploaded)',
-                'Device information for app functionality',
-              ],
+              content: '''
+We collect information that you provide directly to us:
+
+• Account Information: Name, email address, username, phone number
+• Financial Data: Income, expenses, budgets, goals, transactions
+• Family Data: Family members, relationships, shared budgets
+• Device Information: Device type, operating system, app version
+• Usage Data: How you interact with the app, features used
+• Location Data: Approximate location (if you enable this feature)
+''',
+              isDark: isDark,
             ),
             const SizedBox(height: 16),
 
-            // How We Use Information
+            // How we use information
             _buildSection(
               title: '3. How We Use Your Information',
-              content: 'We use your information to:',
-              bulletPoints: [
-                'Provide and maintain the app services',
-                'Track and manage your financial data',
-                'Generate reports and analytics',
-                'Send transaction notifications',
-                'Improve app functionality',
-                'Provide customer support',
-              ],
+              content: '''
+We use your information to:
+
+• Provide and maintain the app's core functionality
+• Process and track your financial transactions
+• Enable family sharing and collaboration features
+• Send you notifications and reminders
+• Improve and optimize the app experience
+• Provide customer support and respond to inquiries
+• Generate analytics and insights to improve our services
+• Comply with legal obligations
+''',
+              isDark: isDark,
             ),
             const SizedBox(height: 16),
 
-            // Data Storage
+            // Data sharing
             _buildSection(
-              title: '4. Data Storage and Security',
-              content: 'Your data is stored securely:',
-              bulletPoints: [
-                'All data is encrypted in transit and at rest',
-                'Firebase Firestore for secure cloud storage',
-                'Local storage for offline access',
-                'We never sell or share your data with third parties',
-                'You can delete your data anytime',
-              ],
+              title: '4. Data Sharing',
+              content: '''
+We do not sell your personal information. We may share your information in the following cases:
+
+• With your explicit consent
+• With family members you invite to share data
+• With service providers who assist in app operations
+• When required by law or legal process
+• To protect our rights, property, or safety
+
+We ensure that any third parties we share data with maintain appropriate security measures.
+''',
+              isDark: isDark,
             ),
             const SizedBox(height: 16),
 
-            // Your Rights
+            // Data security
             _buildSection(
-              title: '5. Your Rights',
-              content: 'You have the right to:',
-              bulletPoints: [
-                'Access your personal data',
-                'Correct inaccurate data',
-                'Delete your account and data',
-                'Export your data (CSV format)',
-                'Opt-out of notifications',
-                'Request data portability',
-              ],
+              title: '5. Data Security',
+              content: '''
+We implement robust security measures to protect your data:
+
+• End-to-end encryption for sensitive financial data
+• Secure Firebase infrastructure
+• Regular security audits and updates
+• Strong authentication mechanisms
+• Access controls and permissions
+
+While we take every precaution, no method of data transmission or storage is 100% secure.
+''',
+              isDark: isDark,
             ),
             const SizedBox(height: 16),
 
-            // Children's Privacy
+            // User rights
             _buildSection(
-              title: '6. Children\'s Privacy',
-              content: 'FinFam is not intended for children under 13. '
-                  'We do not knowingly collect personal information from children under 13. '
-                  'If you are a parent and believe your child has provided us with personal information, '
-                  'please contact us.',
+              title: '6. Your Rights',
+              content: '''
+You have the right to:
+
+• Access and view your personal data
+• Correct or update your information
+• Delete your account and associated data
+• Withdraw consent for data processing
+• Export your data in a portable format
+• Object to certain data processing activities
+
+Contact us to exercise these rights at support@finfam.com
+''',
+              isDark: isDark,
             ),
             const SizedBox(height: 16),
 
-            // Changes to Policy
+            // Data retention
             _buildSection(
-              title: '7. Changes to This Policy',
-              content: 'We may update this Privacy Policy from time to time. '
-                  'We will notify you of any changes by posting the new policy in the app. '
-                  'You are advised to review this policy periodically for any changes.',
+              title: '7. Data Retention',
+              content: '''
+We retain your personal information for as long as your account is active. You can delete your account and all associated data at any time. Some data may be retained longer if required by law or for legitimate business purposes (such as tax reporting).
+''',
+              isDark: isDark,
             ),
             const SizedBox(height: 16),
 
-            // Contact Us - Email only
+            // Children's privacy
             _buildSection(
-              title: '8. Contact Us',
-              content: 'If you have questions about this Privacy Policy, please contact us at:',
-              bulletPoints: [
-                '📧 Email: zeshanzakir508@gmail.com',
-                '📱 App: FinFam - Family Finance Manager',
-              ],
+              title: '8. Children\'s Privacy',
+              content: '''
+FinFam is not intended for children under the age of 13. We do not knowingly collect personal information from children. If we discover that we have collected data from a child without parental consent, we will delete it immediately.
+''',
+              isDark: isDark,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
 
-            // Consent/Agreement
-            Center(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.green.withOpacity(0.2)),
-                ),
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.verified,
-                      color: Colors.green,
-                      size: 48,
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'By using FinFam, you agree to our Privacy Policy',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'We respect your privacy and protect your data',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
+            // Updates to policy
+            _buildSection(
+              title: '9. Updates to Policy',
+              content: '''
+We may update this Privacy Policy from time to time. We will notify you of any significant changes by:
+• Posting the updated policy in the app
+• Sending you a notification
+• Displaying a notice when you open the app
+
+We encourage you to review this policy periodically.
+''',
+              isDark: isDark,
+            ),
+            const SizedBox(height: 16),
+
+            // Contact
+            _buildSection(
+              title: '10. Contact Us',
+              content: '''
+If you have questions, concerns, or requests regarding this Privacy Policy:
+
+📧 Email: support@finfam.com
+🌐 Website: finfam.com
+📍 Address: FinFam Technologies, 123 Finance Street, Tech City
+
+We will respond to your inquiries within 3 business days.
+''',
+              isDark: isDark,
+            ),
+            const SizedBox(height: 16),
+
+            // Acknowledgment
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.blue.withOpacity(0.3),
                 ),
               ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.security,
+                        color: Colors.blue[700],
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Your Privacy Matters',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'We are committed to protecting your privacy and handling your data responsibly. If you have any questions, please contact us.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.blue[700],
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
           ],
         ),
       ),
@@ -218,63 +255,38 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
   Widget _buildSection({
     required String title,
     required String content,
-    List<String>? bulletPoints,
+    required bool isDark,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[800] : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
         ),
-        const SizedBox(height: 8),
-        Text(
-          content,
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey.shade700,
-            height: 1.6,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        if (bulletPoints != null) ...[
           const SizedBox(height: 8),
-          ...bulletPoints.map(
-            (point) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '• ',
-                    style: TextStyle(
-                      color: AppTheme.primaryColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      point,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade700,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+          Text(
+            content,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+              height: 1.6,
             ),
           ),
         ],
-        const SizedBox(height: 8),
-        Container(
-          height: 1,
-          color: Colors.grey.shade200,
-        ),
-      ],
+      ),
     );
   }
 }
