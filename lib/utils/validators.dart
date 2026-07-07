@@ -1,10 +1,12 @@
 // lib/utils/validators.dart
+import 'package:flutter/material.dart';
+
 class Validators {
   // ============================================================
   // REQUIRED
   // ============================================================
 
-  static String? required(String field) {
+  static String? Function(String?)? required(String field) {
     return (String? value) {
       if (value == null || value.trim().isEmpty) {
         return '$field is required';
@@ -141,6 +143,7 @@ class Validators {
     return null;
   }
 
+  // ✅ FIXED: Added proper return type
   static String? dateRange(DateTimeRange? value) {
     if (value == null) {
       return 'Date range is required';
@@ -188,19 +191,19 @@ class Validators {
   // ============================================================
 
   static String? requiredEmail(String? value) {
-    final requiredError = required('Email')(value);
+    final requiredError = required('Email')!(value);
     if (requiredError != null) return requiredError;
     return email(value);
   }
 
   static String? requiredPassword(String? value) {
-    final requiredError = required('Password')(value);
+    final requiredError = required('Password')!(value);
     if (requiredError != null) return requiredError;
     return password(value);
   }
 
   static String? requiredUsername(String? value) {
-    final requiredError = required('Username')(value);
+    final requiredError = required('Username')!(value);
     if (requiredError != null) return requiredError;
     return username(value);
   }
