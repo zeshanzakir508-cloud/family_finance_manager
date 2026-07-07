@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect x="40" y="50" width="120" height="15" rx="4" fill="#E0E0E0"/>
+  <rect x="40" y="75" width="120" height="15" rx="4" fill="#E0E0E0"/>
+  <rect x="40" y="100" width="120" height="15" rx="4" fill="#E0E0E0"/>
+  <rect x="40" y="125" width="80" height="15" rx="4" fill="#E0E0E0"/>
+  <text x="100" y="175" font-family="Arial" font-size="16" fill="#999" text-anchor="middle">No Budget</text>
+</svg>
