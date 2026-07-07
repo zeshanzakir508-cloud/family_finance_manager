@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import '../models/category_model.dart';
 import '../services/category_service.dart';
-import 'auth_provider.dart';
 
 class CategoryProvider extends ChangeNotifier {
   final CategoryService _categoryService = CategoryService();
@@ -144,12 +143,13 @@ class CategoryProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> updateCategoryOrder(List<String> categoryIds) async {
+  // ✅ FIXED: updateCategoryOrder with correct parameters
+  Future<bool> updateCategoryOrder(String userId, List<String> categoryIds) async {
     _setLoading(true);
     _clearError();
 
     try {
-      await _categoryService.updateCategoryOrder(categoryIds);
+      await _categoryService.updateCategoryOrder(userId, categoryIds);
       
       // Update order locally
       for (int i = 0; i < categoryIds.length; i++) {
