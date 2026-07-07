@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/mode_provider.dart';
-import '../providers/theme_provider.dart';
-import '../providers/transaction_provider.dart';
-import '../providers/budget_provider.dart';
+// ✅ FIXED: Removed unused imports
+// import '../providers/theme_provider.dart';
+// import '../providers/transaction_provider.dart';
+// import '../providers/budget_provider.dart';
 import '../widgets/common/custom_bottom_nav.dart';
 import 'dashboard/personal_dashboard.dart';
 import 'dashboard/family_dashboard.dart';
