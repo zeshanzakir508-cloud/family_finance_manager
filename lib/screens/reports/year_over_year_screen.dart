@@ -5,6 +5,7 @@ import '../../providers/report_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../models/transaction_model.dart'; // ✅ ADDED: Missing import
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_snackbar.dart';
 import 'widgets/bar_chart_widget.dart';
