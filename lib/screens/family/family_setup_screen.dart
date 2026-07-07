@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/family_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/currency_provider.dart';
+import '../../models/family_model.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/custom_snackbar.dart';
@@ -63,6 +64,8 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
         settings: FamilySettings(currency: _selectedCurrency),
         members: [],
         memberIds: [],
+        totalBalance: 0.0,
+        isActive: true,
       );
 
       familyProvider.createFamily(family);
