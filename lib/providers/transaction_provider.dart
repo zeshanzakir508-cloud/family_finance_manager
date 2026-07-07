@@ -2,15 +2,14 @@
 import 'package:flutter/material.dart';
 import '../models/transaction_model.dart';
 import '../services/transaction_service.dart';
-import '../services/currency_service.dart';
+// ✅ FIXED: Removed unused import
+// import '../services/currency_service.dart';
 import 'auth_provider.dart';
 import 'family_provider.dart';
 import 'mode_provider.dart';
 
 class TransactionProvider extends ChangeNotifier {
   final TransactionService _transactionService = TransactionService();
-  // ✅ FIXED: Removed unused CurrencyService
-  // final CurrencyService _currencyService = CurrencyService();
   
   List<TransactionModel> _transactions = [];
   List<TransactionModel> _filteredTransactions = [];
