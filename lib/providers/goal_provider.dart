@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import '../models/goal_model.dart';
 import '../services/goal_service.dart';
-import 'auth_provider.dart';
 
 class GoalProvider extends ChangeNotifier {
   final GoalService _goalService = GoalService();
@@ -209,11 +208,14 @@ class GoalProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ✅ FIXED: Removed redundant null check
   void setCurrentGoalById(String id) {
-    final goal = _goals.firstWhere((g) => g.id == id);
-    if (goal != null) {
+    try {
+      final goal = _goals.firstWhere((g) => g.id == id);
       _currentGoal = goal;
       notifyListeners();
+    } catch (_) {
+      // Goal not found, do nothing
     }
   }
 
