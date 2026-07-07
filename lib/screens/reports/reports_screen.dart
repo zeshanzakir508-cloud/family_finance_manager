@@ -1,923 +1,546 @@
 // lib/screens/reports/reports_screen.dart
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
-import 'package:fl_chart/fl_chart.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
-import '../../providers/mode_provider.dart';
-import '../../providers/family_provider.dart';
-import '../../services/auth_service.dart';
-import '../../services/database_service.dart';
-import '../../models/transaction_model.dart';
-import '../../models/family_model.dart';
-import '../../utils/app_theme.dart';
-import '../../utils/helpers.dart';
+import '../../providers/report_provider.dart';
+import '../../providers/currency_provider.dart';
+import '../../providers/transaction_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../models/report_model.dart';
+import '../../widgets/common/empty_state_widget.dart';
+import '../../widgets/common/loading_widget.dart';
+import '../../widgets/common/custom_button.dart';
+import '../../widgets/common/custom_snackbar.dart';
 
 class ReportsScreen extends StatefulWidget {
-  const ReportsScreen({super.key});
+  const ReportsScreen({Key? key}) : super(key: key);
 
   @override
   State<ReportsScreen> createState() => _ReportsScreenState();
 }
 
-class _ReportsScreenState extends State<ReportsScreen> {
-  DateTime? _customStartDate;
-  DateTime? _customEndDate;
-  
-  int _selectedTab = 0;
-
-  String? _selectedType;
-  String? _selectedCategory;
-
-  List<TransactionModel> _filteredTransactions = [];
-  List<TransactionModel> _allTransactions = [];
-  double _totalIncome = 0;
-  double _totalExpense = 0;
-  double _balance = 0;
+class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  DateTimeRange? _selectedDateRange;
   bool _isLoading = true;
-  bool _isExporting = false;
 
-  final List<Color> _categoryColors = [
-    Colors.blue, Colors.green, Colors.red, Colors.orange, Colors.purple,
-    Colors.teal, Colors.pink, Colors.amber, Colors.indigo, Colors.lime,
+  final List<ReportType> _reportTypes = [
+    ReportType.spendingBreakdown,
+    ReportType.incomeVsExpense,
+    ReportType.monthlyTrends,
+    ReportType.categoryWise,
+    ReportType.budgetPerformance,
+    ReportType.cashFlow,
+    ReportType.profitLoss,
+    ReportType.yearOverYear,
   ];
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _tabController = TabController(length: 2, vsync: this);
+    _loadReports();
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_isLoading) {
-      _loadData();
-    }
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadReports() async {
     setState(() => _isLoading = true);
-    
-    try {
-      final modeProvider = Provider.of<ModeProvider>(context, listen: false);
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final userId = authService.userId;
-
-      if (userId == null) {
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      if (modeProvider.isPersonalMode) {
-        _allTransactions = await DatabaseService.getUserTransactions(userId);
-      } else {
-        final family = Provider.of<FamilyProvider>(context, listen: false).currentFamily;
-        if (family != null) {
-          _allTransactions = await DatabaseService.getFamilyTransactions(family.id, userId);
-        } else {
-          _allTransactions = [];
-        }
-      }
-
-      _allTransactions.sort((a, b) => b.date!.compareTo(a.date!));
-      _applyFilters();
-    } catch (e) {
-      print('❌ Error loading reports: $e');
-    }
-    
+    final auth = context.read<AuthProvider>();
+    final reportProvider = context.read<ReportProvider>();
+    await reportProvider.loadSavedReports(auth.userId);
     setState(() => _isLoading = false);
   }
 
-  void _applyFilters() {
-    _filteredTransactions = _allTransactions.where((transaction) {
-      if (transaction.date == null) return false;
-      
-      if (_customStartDate != null && _customEndDate != null) {
-        if (transaction.date!.isBefore(_customStartDate!) ||
-            transaction.date!.isAfter(_customEndDate!)) {
-          return false;
-        }
-      }
+  Future<void> _refreshData() async {
+    await _loadReports();
+  }
 
-      if (_selectedType != null && _selectedType != 'all') {
-        final type = _selectedType == 'income' ? 'income' : 'expense';
-        if (transaction.type != type) return false;
-      }
+  void _showGenerateReportDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Generate Report',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ..._reportTypes.map((type) {
+                return ListTile(
+                  leading: Icon(
+                    _getReportIcon(type),
+                    color: _getReportColor(type),
+                  ),
+                  title: Text(_getReportName(type)),
+                  subtitle: Text(_getReportDescription(type)),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _generateReport(type);
+                  },
+                );
+              }).toList(),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-      if (_selectedCategory != null && _selectedCategory != 'all') {
-        if (transaction.category != _selectedCategory) return false;
-      }
+  Future<void> _generateReport(ReportType type) async {
+    final auth = context.read<AuthProvider>();
+    final reportProvider = context.read<ReportProvider>();
+    final transactionProvider = context.read<TransactionProvider>();
 
-      return true;
-    }).toList();
+    // Get date range (default: last 30 days)
+    final endDate = DateTime.now();
+    final startDate = endDate.subtract(const Duration(days: 30));
 
-    double income = 0;
-    double expense = 0;
+    ReportModel? report;
 
-    for (var transaction in _filteredTransactions) {
-      if (transaction.type == 'income') {
-        income += transaction.amount ?? 0;
-      } else if (transaction.type == 'expense') {
-        expense += transaction.amount ?? 0;
-      }
+    switch (type) {
+      case ReportType.spendingBreakdown:
+        report = await reportProvider.generateSpendingBreakdown(
+          userId: auth.userId,
+          startDate: startDate,
+          endDate: endDate,
+        );
+        break;
+      case ReportType.incomeVsExpense:
+        report = await reportProvider.generateIncomeVsExpense(
+          userId: auth.userId,
+          startDate: startDate,
+          endDate: endDate,
+        );
+        break;
+      case ReportType.monthlyTrends:
+        report = await reportProvider.generateMonthlyTrends(
+          userId: auth.userId,
+          year: DateTime.now().year,
+        );
+        break;
+      case ReportType.categoryWise:
+        report = await reportProvider.generateCategoryWiseSpending(
+          userId: auth.userId,
+          startDate: startDate,
+          endDate: endDate,
+        );
+        break;
+      case ReportType.cashFlow:
+        report = await reportProvider.generateCashFlow(
+          userId: auth.userId,
+          startDate: startDate,
+          endDate: endDate,
+        );
+        break;
+      default:
+        // TODO: Implement other report types
+        CustomSnackBar.show(
+          context,
+          'Report type not implemented yet',
+          isError: true,
+        );
+        return;
     }
 
-    setState(() {
-      _totalIncome = income;
-      _totalExpense = expense;
-      _balance = income - expense;
-    });
+    if (report != null && mounted) {
+      final id = await reportProvider.saveReport(report);
+      if (id != null) {
+        CustomSnackBar.show(
+          context,
+          'Report generated successfully! 📊',
+        );
+        await _refreshData();
+      }
+    }
+  }
+
+  IconData _getReportIcon(ReportType type) {
+    switch (type) {
+      case ReportType.spendingBreakdown:
+        return Icons.pie_chart;
+      case ReportType.incomeVsExpense:
+        return Icons.show_chart;
+      case ReportType.monthlyTrends:
+        return Icons.trending_up;
+      case ReportType.categoryWise:
+        return Icons.category;
+      case ReportType.budgetPerformance:
+        return Icons.speed;
+      case ReportType.cashFlow:
+        return Icons.assessment;
+      case ReportType.profitLoss:
+        return Icons.attach_money;
+      case ReportType.yearOverYear:
+        return Icons.calendar_today;
+    }
+  }
+
+  Color _getReportColor(ReportType type) {
+    switch (type) {
+      case ReportType.spendingBreakdown:
+        return Colors.blue;
+      case ReportType.incomeVsExpense:
+        return Colors.green;
+      case ReportType.monthlyTrends:
+        return Colors.orange;
+      case ReportType.categoryWise:
+        return Colors.purple;
+      case ReportType.budgetPerformance:
+        return Colors.teal;
+      case ReportType.cashFlow:
+        return Colors.cyan;
+      case ReportType.profitLoss:
+        return Colors.red;
+      case ReportType.yearOverYear:
+        return Colors.indigo;
+    }
+  }
+
+  String _getReportName(ReportType type) {
+    switch (type) {
+      case ReportType.spendingBreakdown:
+        return 'Spending Breakdown';
+      case ReportType.incomeVsExpense:
+        return 'Income vs Expense';
+      case ReportType.monthlyTrends:
+        return 'Monthly Trends';
+      case ReportType.categoryWise:
+        return 'Category-wise Spending';
+      case ReportType.budgetPerformance:
+        return 'Budget Performance';
+      case ReportType.cashFlow:
+        return 'Cash Flow';
+      case ReportType.profitLoss:
+        return 'Profit/Loss';
+      case ReportType.yearOverYear:
+        return 'Year-over-Year';
+    }
+  }
+
+  String _getReportDescription(ReportType type) {
+    switch (type) {
+      case ReportType.spendingBreakdown:
+        return 'View spending by category';
+      case ReportType.incomeVsExpense:
+        return 'Compare income and expenses';
+      case ReportType.monthlyTrends:
+        return 'Track monthly spending patterns';
+      case ReportType.categoryWise:
+        return 'Detailed category analysis';
+      case ReportType.budgetPerformance:
+        return 'Monitor budget progress';
+      case ReportType.cashFlow:
+        return 'Analyze cash flow over time';
+      case ReportType.profitLoss:
+        return 'View profit/loss summary';
+      case ReportType.yearOverYear:
+        return 'Compare year-over-year trends';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final modeProvider = Provider.of<ModeProvider>(context);
+    final reportProvider = context.watch<ReportProvider>();
+    final currencyProvider = context.watch<CurrencyProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: LoadingWidget()),
+      );
+    }
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: Text(
-          modeProvider.isPersonalMode ? 'Personal Reports' : 'Family Reports',
+        title: const Text('Reports'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'My Reports'),
+            Tab(text: 'Favorites'),
+          ],
         ),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-            tooltip: 'Refresh',
-          ),
-          IconButton(
-            icon: _isExporting
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.download_outlined),
-            onPressed: _isExporting ? null : _showExportDialog,
-            tooltip: 'Export Report',
+            icon: const Icon(Icons.add),
+            onPressed: _showGenerateReportDialog,
+            tooltip: 'Generate Report',
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildCustomDatePicker(),
-                    const SizedBox(height: 16),
-                    _buildFilters(),
-                    const SizedBox(height: 16),
-                    _buildSummaryCards(),
-                    const SizedBox(height: 16),
-                    _buildTabs(),
-                    const SizedBox(height: 16),
-                    _buildTabContent(),
-                  ],
-                ),
-              ),
+      body: RefreshIndicator(
+        onRefresh: _refreshData,
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildReportList(
+              context,
+              reportProvider.savedReports,
+              currencyProvider.currentCurrency,
+              isDark,
+              false,
             ),
+            _buildReportList(
+              context,
+              reportProvider.favoriteReports,
+              currencyProvider.currentCurrency,
+              isDark,
+              true,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildCustomDatePicker() {
-    return Container(
+  Widget _buildReportList(
+    BuildContext context,
+    List<ReportModel> reports,
+    String currency,
+    bool isDark,
+    bool isFavorites,
+  ) {
+    if (reports.isEmpty) {
+      return EmptyStateWidget(
+        icon: Icons.analytics,
+        title: isFavorites ? 'No Favorite Reports' : 'No Reports',
+        description: isFavorites
+            ? 'Your favorite reports will appear here'
+            : 'Generate your first report to get started',
+        buttonText: isFavorites ? null : 'Generate Report',
+        onPressed: isFavorites ? null : _showGenerateReportDialog,
+      );
+    }
+
+    return ListView.builder(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue.withOpacity(0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withOpacity(0.1),
-            blurRadius: 4,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Select Date Range',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.blue,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildDateButton(
-                  label: 'Start Date',
-                  date: _customStartDate,
-                  onTap: () => _selectDate(isStart: true),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildDateButton(
-                  label: 'End Date',
-                  date: _customEndDate,
-                  onTap: () => _selectDate(isStart: false),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    _customStartDate = null;
-                    _customEndDate = null;
-                    _applyFilters();
-                  });
-                },
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.red,
-                ),
-                child: const Text('Clear Dates'),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () {
-                  if (_customStartDate != null && _customEndDate != null) {
-                    _applyFilters();
-                  } else {
-                    Helpers.showSnackBar(
-                      context,
-                      'Please select both start and end dates',
-                      color: Colors.orange,
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Apply Range'),
-              ),
-            ],
-          ),
-          if (_customStartDate != null && _customEndDate != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                'Showing: ${DateFormat('MMM dd, yyyy').format(_customStartDate!)} - ${DateFormat('MMM dd, yyyy').format(_customEndDate!)}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.green.shade700,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDateButton({
-    required String label,
-    required DateTime? date,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade50,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade300),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.calendar_today,
-              size: 16,
-              color: Colors.blue,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                date != null
-                    ? DateFormat('MMM dd, yyyy').format(date)
-                    : label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: date != null ? Colors.black : Colors.grey.shade500,
-                ),
-              ),
-            ),
-            const Icon(
-              Icons.arrow_drop_down,
-              size: 16,
-              color: Colors.grey,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _selectDate({required bool isStart}) async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: isStart
-          ? (_customStartDate ?? DateTime.now())
-          : (_customEndDate ?? DateTime.now()),
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-    );
-
-    if (date != null) {
-      setState(() {
-        if (isStart) {
-          _customStartDate = date;
-          if (_customEndDate != null && _customEndDate!.isBefore(date)) {
-            _customEndDate = date;
-          }
-        } else {
-          _customEndDate = date;
-          if (_customStartDate != null && _customStartDate!.isAfter(date)) {
-            _customStartDate = date;
-          }
-        }
-        _applyFilters();
-      });
-    }
-  }
-
-  Widget _buildFilters() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        DecoratedBox(
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: DropdownButton<String>(
-              value: _selectedType ?? 'all',
-              items: const [
-                DropdownMenuItem(value: 'all', child: Text('All Types')),
-                DropdownMenuItem(value: 'income', child: Text('Income')),
-                DropdownMenuItem(value: 'expense', child: Text('Expense')),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _selectedType = value;
-                  _applyFilters();
-                });
-              },
-              icon: const Icon(Icons.arrow_drop_down, color: Colors.blue),
-              underline: const SizedBox(),
-            ),
-          ),
-        ),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: DropdownButton<String>(
-              value: _selectedCategory ?? 'all',
-              items: [
-                const DropdownMenuItem(value: 'all', child: Text('All Categories')),
-                ..._getUniqueCategories().map((category) {
-                  return DropdownMenuItem(
-                    value: category,
-                    child: Text(_getCategoryDisplayName(category)),
-                  );
-                }),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _selectedCategory = value;
-                  _applyFilters();
-                });
-              },
-              icon: const Icon(Icons.arrow_drop_down, color: Colors.blue),
-              underline: const SizedBox(),
-            ),
-          ),
-        ),
-        if (_selectedType != 'all' || _selectedCategory != 'all')
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _selectedType = 'all';
-                _selectedCategory = 'all';
-                _applyFilters();
-              });
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
-            ),
-            child: const Text('Clear Filters'),
-          ),
-      ],
-    );
-  }
-
-  List<String> _getUniqueCategories() {
-    final categories = <String>{};
-    for (var transaction in _filteredTransactions) {
-      if (transaction.category != null) {
-        categories.add(transaction.category!);
-      }
-    }
-    return categories.toList();
-  }
-
-  String _getCategoryDisplayName(String category) {
-    return category.split('_').map((word) =>
-      word[0].toUpperCase() + word.substring(1)
-    ).join(' ');
-  }
-
-  Widget _buildSummaryCards() {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _buildSummaryCard(
-                title: 'Total Income',
-                amount: _totalIncome,
-                color: Colors.green,
-                icon: Icons.arrow_upward,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildSummaryCard(
-                title: 'Total Expenses',
-                amount: _totalExpense,
-                color: Colors.red,
-                icon: Icons.arrow_downward,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
+      itemCount: reports.length,
+      itemBuilder: (context, index) {
+        final report = reports[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: _balance >= 0
-                ? Colors.green.withOpacity(0.1)
-                : Colors.red.withOpacity(0.1),
+            color: isDark ? Colors.grey[800] : Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: _balance >= 0
-                  ? Colors.green.withOpacity(0.3)
-                  : Colors.red.withOpacity(0.3),
+              color: Colors.grey.withOpacity(0.2),
             ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Net Balance',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              Text(
-                Helpers.formatCurrency(_balance),
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: _balance >= 0 ? Colors.green : Colors.red,
-                ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSummaryCard({
-    required String title,
-    required double amount,
-    required Color color,
-    required IconData icon,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: color, size: 16),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            Helpers.formatCurrency(amount),
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabs() {
-    final tabs = ['Overview', 'Categories', 'Trends'];
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Row(
-        children: List.generate(tabs.length, (index) {
-          final isSelected = _selectedTab == index;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedTab = index;
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: isSelected ? Colors.blue : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(
-                    tabs[index],
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.grey.shade600,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-
-  Widget _buildTabContent() {
-    switch (_selectedTab) {
-      case 0:
-        return _buildOverviewTab();
-      case 1:
-        return _buildCategoriesTab();
-      case 2:
-        return _buildTrendsTab();
-      default:
-        return _buildOverviewTab();
-    }
-  }
-
-  Widget _buildOverviewTab() {
-    if (_filteredTransactions.isEmpty) {
-      return _buildEmptyState('No transactions for this period');
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'All Transactions (${_filteredTransactions.length})',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 8),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _filteredTransactions.length > 20 ? 20 : _filteredTransactions.length,
-          separatorBuilder: (context, index) => const Divider(),
-          itemBuilder: (context, index) {
-            final transaction = _filteredTransactions[index];
-            return _buildTransactionTile(transaction);
-          },
-        ),
-        if (_filteredTransactions.length > 20)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              'Showing 20 of ${_filteredTransactions.length} transactions',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-              textAlign: TextAlign.center,
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildTransactionTile(TransactionModel transaction) {
-    final isIncome = transaction.type == 'income';
-    final color = isIncome ? Colors.green : Colors.red;
-    final icon = isIncome ? Icons.arrow_upward : Icons.arrow_downward;
-    
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, color: color, size: 20),
-      ),
-      title: Text(
-        transaction.description ?? 'Transaction',
-        style: const TextStyle(fontSize: 14),
-      ),
-      subtitle: Text(
-        '${transaction.memberName ?? 'You'} • ${_getCategoryDisplayName(transaction.category ?? 'other')} • ${_formatDate(transaction.date!)}',
-        style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-      ),
-      trailing: Text(
-        '${isIncome ? '+' : '-'}${Helpers.formatCurrency(transaction.amount ?? 0)}',
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    return DateFormat('MMM dd, yyyy').format(date);
-  }
-
-  Widget _buildCategoriesTab() {
-    if (_filteredTransactions.isEmpty) {
-      return _buildEmptyState('No transactions to analyze');
-    }
-
-    final categoryMap = <String, double>{};
-    for (var transaction in _filteredTransactions) {
-      if (transaction.type == 'expense' && transaction.category != null) {
-        categoryMap[transaction.category!] =
-            (categoryMap[transaction.category!] ?? 0) + (transaction.amount ?? 0);
-      }
-    }
-
-    final entries = categoryMap.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    final totalExpense = entries.fold(0.0, (sum, e) => sum + e.value);
-
-    if (entries.isEmpty) {
-      return _buildEmptyState('No expense data available');
-    }
-
-    return Column(
-      children: [
-        SizedBox(
-          height: 200,
-          child: PieChart(
-            PieChartData(
-              sections: entries.map((entry) {
-                final percentage = totalExpense > 0 ? (entry.value / totalExpense) * 100 : 0;
-                final colorIndex = entries.indexOf(entry) % _categoryColors.length;
-                return PieChartSectionData(
-                  value: entry.value,
-                  title: '${percentage.toStringAsFixed(1)}%',
-                  color: _categoryColors[colorIndex],
-                  radius: 60,
-                  titleStyle: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                );
-              }).toList(),
-              sectionsSpace: 2,
-              centerSpaceRadius: 40,
-              startDegreeOffset: -90,
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        ...entries.map((entry) {
-          final percentage = totalExpense > 0 ? (entry.value / totalExpense) * 100 : 0;
-          final colorIndex = entries.indexOf(entry) % _categoryColors.length;
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: _categoryColors[colorIndex],
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    _getCategoryDisplayName(entry.key),
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                ),
-                Text(
-                  Helpers.formatCurrency(entry.value),
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '(${percentage.toStringAsFixed(1)}%)',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                ),
-              ],
-            ),
-          );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildTrendsTab() {
-    if (_filteredTransactions.isEmpty) {
-      return _buildEmptyState('No data available for trends');
-    }
-
-    final monthMap = <String, Map<String, double>>{};
-    for (var transaction in _filteredTransactions) {
-      if (transaction.date == null) continue;
-      final monthKey = DateFormat('MMM yyyy').format(transaction.date!);
-      if (!monthMap.containsKey(monthKey)) {
-        monthMap[monthKey] = {'income': 0, 'expense': 0};
-      }
-      if (transaction.type == 'income') {
-        monthMap[monthKey]!['income'] =
-            (monthMap[monthKey]!['income'] ?? 0) + (transaction.amount ?? 0);
-      } else if (transaction.type == 'expense') {
-        monthMap[monthKey]!['expense'] =
-            (monthMap[monthKey]!['expense'] ?? 0) + (transaction.amount ?? 0);
-      }
-    }
-
-    final entries = monthMap.entries.toList();
-    if (entries.isEmpty) {
-      return _buildEmptyState('No transactions to show trends');
-    }
-
-    final maxValue = entries.fold<double>(0, (max, entry) {
-      final total = (entry.value['income'] ?? 0) + (entry.value['expense'] ?? 0);
-      return total > max ? total : max;
-    });
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Monthly Trends',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 200,
-          child: BarChart(
-            BarChartData(
-              alignment: BarChartAlignment.spaceAround,
-              maxY: maxValue * 1.2,
-              barGroups: entries.map((entry) {
-                return BarChartGroupData(
-                  x: entries.indexOf(entry),
-                  barRods: [
-                    BarChartRodData(
-                      toY: entry.value['income'] ?? 0,
-                      color: Colors.green,
-                      width: 12,
-                    ),
-                    BarChartRodData(
-                      toY: entry.value['expense'] ?? 0,
-                      color: Colors.red,
-                      width: 12,
-                    ),
-                  ],
-                );
-              }).toList(),
-              titlesData: FlTitlesData(
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    getTitlesWidget: (value, meta) {
-                      final index = value.toInt();
-                      if (index >= 0 && index < entries.length) {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            entries[index].key,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              _getReportIcon(report.type),
+                              color: _getReportColor(report.type),
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              report.name,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (report.description?.isNotEmpty ?? false)
+                          Text(
+                            report.description!,
                             style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 10,
+                              fontSize: 13,
+                              color: Colors.grey[600],
                             ),
                           ),
-                        );
-                      }
-                      return const SizedBox();
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      report.isFavorite ? Icons.star : Icons.star_border,
+                      color: report.isFavorite ? Colors.amber : Colors.grey,
+                    ),
+                    onPressed: () {
+                      reportProvider.toggleFavorite(report.id);
                     },
                   ),
-                ),
+                ],
               ),
-            ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      report.dateRange,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${report.durationInDays} days',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.blue[700],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: CustomButton(
+                      onPressed: () {
+                        reportProvider.setCurrentReport(report);
+                        Navigator.pushNamed(
+                          context,
+                          '/report_detail',
+                          arguments: report.id,
+                        );
+                      },
+                      text: 'View Report',
+                      type: ButtonType.outline,
+                      size: ButtonSize.small,
+                      icon: Icons.visibility,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.share),
+                    onPressed: () {
+                      // TODO: Share report
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.more_vert),
+                    onPressed: () {
+                      _showReportOptions(report);
+                    },
+                  ),
+                ],
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  color: Colors.green,
-                ),
-                const SizedBox(width: 8),
-                const Text('Income'),
-              ],
-            ),
-            const SizedBox(width: 24),
-            Row(
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  color: Colors.red,
-                ),
-                const SizedBox(width: 8),
-                const Text('Expense'),
-              ],
-            ),
-          ],
-        ),
-      ],
+        );
+      },
     );
   }
 
-  Widget _buildEmptyState(String message) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
+  void _showReportOptions(ReportModel report) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
           children: [
-            Icon(
-              Icons.analytics_outlined,
-              size: 64,
-              color: Colors.grey.shade400,
+            ListTile(
+              leading: const Icon(Icons.visibility),
+              title: const Text('View Report'),
+              onTap: () {
+                Navigator.pop(context);
+                context.read<ReportProvider>().setCurrentReport(report);
+                Navigator.pushNamed(
+                  context,
+                  '/report_detail',
+                  arguments: report.id,
+                );
+              },
             ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              style: TextStyle(
-                color: Colors.grey.shade600,
+            ListTile(
+              leading: Icon(
+                report.isFavorite ? Icons.star : Icons.star_border,
               ),
-              textAlign: TextAlign.center,
+              title: Text(report.isFavorite ? 'Remove Favorite' : 'Add to Favorites'),
+              onTap: () {
+                Navigator.pop(context);
+                context.read<ReportProvider>().toggleFavorite(report.id);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.file_download),
+              title: const Text('Export PDF'),
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: Export PDF
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.file_download_outlined),
+              title: const Text('Export CSV'),
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: Export CSV
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: const Text('Delete Report', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                _showDeleteConfirmation(report);
+              },
             ),
           ],
         ),
@@ -925,175 +548,36 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  void _showExportDialog() {
+  void _showDeleteConfirmation(ReportModel report) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: Row(
-          children: [
-            const Icon(Icons.file_download, color: Colors.blue),
-            const SizedBox(width: 8),
-            const Text('Export Report'),
-          ],
-        ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Choose your preferred format:',
-              style: TextStyle(fontSize: 14),
-            ),
-            SizedBox(height: 16),
-            Row(
-              children: [
-                Icon(Icons.table_chart, color: Colors.green, size: 20),
-                SizedBox(width: 8),
-                Text('CSV - Open in Excel/Sheets'),
-              ],
-            ),
-            SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.picture_as_pdf, color: Colors.red, size: 20),
-                SizedBox(width: 8),
-                Text('PDF - Print or Share'),
-              ],
-            ),
-          ],
-        ),
+        title: const Text('Delete Report'),
+        content: Text('Delete "${report.name}" report?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
-          ElevatedButton.icon(
-            onPressed: _isExporting ? null : () {
+          TextButton(
+            onPressed: () async {
               Navigator.pop(context);
-              _exportCSV();
+              await context.read<ReportProvider>().deleteReport(report.id);
+              if (mounted) {
+                CustomSnackBar.show(
+                  context,
+                  'Report deleted successfully',
+                );
+                await _refreshData();
+              }
             },
-            icon: const Icon(Icons.table_chart),
-            label: const Text('CSV'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
             ),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton.icon(
-            onPressed: _isExporting ? null : () {
-              Navigator.pop(context);
-              _exportPDF();
-            },
-            icon: const Icon(Icons.picture_as_pdf),
-            label: const Text('PDF'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
+            child: const Text('Delete'),
           ),
         ],
       ),
     );
-  }
-
-  Future<void> _exportCSV() async {
-    if (_filteredTransactions.isEmpty) {
-      Helpers.showSnackBar(
-        context,
-        'No data to export',
-        color: Colors.orange,
-      );
-      return;
-    }
-
-    setState(() => _isExporting = true);
-
-    try {
-      String csv = 'Date,Type,Category,Description,Amount,Member\n';
-      for (var t in _filteredTransactions) {
-        csv += '${_formatDate(t.date!)},';
-        csv += '${t.type},';
-        csv += '${t.category ?? 'other'},';
-        csv += '"${t.description ?? ''}",';
-        csv += '${t.amount ?? 0},';
-        csv += '${t.memberName ?? 'You'}\n';
-      }
-
-      final directory = await getTemporaryDirectory();
-      final file = File('${directory.path}/report_${DateTime.now().millisecondsSinceEpoch}.csv');
-      await file.writeAsString(csv);
-
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: 'Financial Report Export',
-      );
-
-      Helpers.showSnackBar(
-        context,
-        '✅ CSV Report exported successfully!',
-        color: Colors.green,
-      );
-    } catch (e) {
-      Helpers.showSnackBar(
-        context,
-        '❌ Export failed: $e',
-        color: Colors.red,
-      );
-    }
-
-    setState(() => _isExporting = false);
-  }
-
-  Future<void> _exportPDF() async {
-    if (_filteredTransactions.isEmpty) {
-      Helpers.showSnackBar(
-        context,
-        'No data to export',
-        color: Colors.orange,
-      );
-      return;
-    }
-
-    setState(() => _isExporting = true);
-
-    try {
-      String content = '=== FINANCIAL REPORT ===\n\n';
-      content += 'Generated: ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}\n';
-      content += 'Total Income: ${Helpers.formatCurrency(_totalIncome)}\n';
-      content += 'Total Expense: ${Helpers.formatCurrency(_totalExpense)}\n';
-      content += 'Net Balance: ${Helpers.formatCurrency(_balance)}\n\n';
-      content += '--- TRANSACTIONS ---\n';
-      
-      for (var t in _filteredTransactions) {
-        content += '${_formatDate(t.date!)} | ${t.type} | ${t.category ?? 'other'} | ${t.description ?? ''} | ${Helpers.formatCurrency(t.amount ?? 0)}\n';
-      }
-
-      final directory = await getTemporaryDirectory();
-      final file = File('${directory.path}/report_${DateTime.now().millisecondsSinceEpoch}.txt');
-      await file.writeAsString(content);
-
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: 'Financial Report Export',
-      );
-
-      Helpers.showSnackBar(
-        context,
-        '✅ PDF Report exported successfully!',
-        color: Colors.green,
-      );
-    } catch (e) {
-      Helpers.showSnackBar(
-        context,
-        '❌ Export failed: $e',
-        color: Colors.red,
-      );
-    }
-
-    setState(() => _isExporting = false);
   }
 }
