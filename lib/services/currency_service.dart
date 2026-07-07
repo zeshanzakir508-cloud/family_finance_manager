@@ -1,4 +1,6 @@
 // lib/services/currency_service.dart
+import 'dart:convert'; // ✅ ADDED: For json.decode/encode
+import 'package:http/http.dart' as http; // ✅ ADDED: For HTTP requests
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/currency_model.dart';
@@ -180,10 +182,12 @@ class CurrencyService {
       }
       
       // Fallback to cached rates
-      return await _getCachedRates();
+      final cached = await _getCachedRates();
+      return cached;
     } catch (e) {
       print('Error fetching exchange rates: $e');
-      return await _getCachedRates() ?? {};
+      final cached = await _getCachedRates();
+      return cached;
     }
   }
 
@@ -300,5 +304,10 @@ class CurrencyService {
     };
     
     return countryCurrencyMap[countryCode] ?? 'USD';
+  }
+
+  // ✅ FIXED: Get currency name for code (for display)
+  static String getNameForCode(String code) {
+    return _names[code] ?? code;
   }
 }
