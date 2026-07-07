@@ -1,480 +1,323 @@
 // lib/screens/settings/theme_settings_screen.dart
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../utils/app_theme.dart';
-import '../../utils/helpers.dart';
+import 'package:provider/provider.dart';
+import '../../providers/theme_provider.dart';
+import '../../providers/currency_provider.dart';
+import '../../widgets/common/custom_button.dart';
+import '../../widgets/common/custom_snackbar.dart';
 
 class ThemeSettingsScreen extends StatefulWidget {
-  final VoidCallback? onThemeChanged;
-
-  const ThemeSettingsScreen({super.key, this.onThemeChanged});
+  const ThemeSettingsScreen({Key? key}) : super(key: key);
 
   @override
   State<ThemeSettingsScreen> createState() => _ThemeSettingsScreenState();
 }
 
 class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
-  String _selectedTheme = 'system';
-  String _initialTheme = 'system';
-  bool _hasChanges = false;
-  
-  Timer? _debounceTimer;
-  bool _isProcessing = false;
+  late ThemeMode _selectedTheme;
+  bool _useSystemTheme = true;
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    _loadTheme();
-  }
-
-  @override
-  void dispose() {
-    _debounceTimer?.cancel();
-    super.dispose();
-  }
-
-  void _debounceAction(VoidCallback action) {
-    if (_isProcessing) return;
-    _debounceTimer?.cancel();
-    _isProcessing = true;
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      action();
-      _isProcessing = false;
-    });
-  }
-
-  Future<void> _loadTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedTheme = prefs.getString('theme_mode') ?? 'system';
-    setState(() {
-      _selectedTheme = savedTheme;
-      _initialTheme = savedTheme;
-      _hasChanges = false;
-    });
-  }
-
-  void _selectTheme(String theme) {
-    _debounceAction(() {
-      setState(() {
-        _selectedTheme = theme;
-        _hasChanges = _selectedTheme != _initialTheme;
-      });
-    });
+    final themeProvider = context.read<ThemeProvider>();
+    _selectedTheme = themeProvider.themeMode;
+    _useSystemTheme = themeProvider.isUsingSystemTheme;
   }
 
   Future<void> _saveTheme() async {
-    _debounceAction(() async {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('theme_mode', _selectedTheme);
-      setState(() {
-        _initialTheme = _selectedTheme;
-        _hasChanges = false;
-      });
+    setState(() => _isSaving = true);
+
+    try {
+      final themeProvider = context.read<ThemeProvider>();
       
-      await _applyTheme();
-      
-      if (widget.onThemeChanged != null) {
-        widget.onThemeChanged!();
+      if (_useSystemTheme) {
+        await themeProvider.setSystemTheme();
+      } else {
+        await themeProvider.setThemeMode(_selectedTheme);
       }
       
       if (mounted) {
-        Helpers.showSnackBar(
+        CustomSnackBar.show(
           context,
-          'Theme updated to ${_getThemeLabel(_selectedTheme)}',
-          color: Colors.green,
+          'Theme updated successfully!',
         );
-        Navigator.pop(context, _selectedTheme);
+        Navigator.pop(context, true);
       }
-    });
-  }
-
-  Future<void> _applyTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('theme_mode', _selectedTheme);
-    
-    if (widget.onThemeChanged != null) {
-      widget.onThemeChanged!();
-    }
-    
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  void _cancelChanges() {
-    _debounceAction(() {
-      if (_hasChanges) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Discard Changes?'),
-            content: const Text('You have unsaved theme changes. Are you sure you want to discard them?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Keep Editing'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _selectedTheme = _initialTheme;
-                    _hasChanges = false;
-                  });
-                  Helpers.showSnackBar(
-                    context,
-                    'Theme changes discarded',
-                    color: Colors.grey,
-                  );
-                },
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.red,
-                ),
-                child: const Text('Discard'),
-              ),
-            ],
-          ),
+    } catch (e) {
+      if (mounted) {
+        CustomSnackBar.show(
+          context,
+          'Failed to update theme: ${e.toString()}',
+          isError: true,
         );
-      } else {
-        Navigator.pop(context);
       }
-    });
-  }
-
-  String _getThemeLabel(String theme) {
-    switch (theme) {
-      case 'system': return 'System Default';
-      case 'light': return 'Light Mode';
-      case 'dark': return 'Dark Mode';
-      default: return theme;
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final currencyProvider = context.watch<CurrencyProvider>();
+
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('Theme Settings'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
         actions: [
-          if (_hasChanges)
-            TextButton(
-              onPressed: _saveTheme,
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
+          TextButton(
+            onPressed: _isSaving ? null : _saveTheme,
+            child: Text(
+              'Save',
+              style: TextStyle(
+                color: _isSaving ? Colors.grey : Colors.white,
               ),
-              child: const Text('Save'),
-            ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              children: [
-                const SizedBox(height: 8),
-                _buildThemeTile(
-                  icon: Icons.phone_android,
-                  title: 'System Default',
-                  subtitle: 'Follow device theme',
-                  value: 'system',
-                ),
-                _buildThemeTile(
-                  icon: Icons.light_mode,
-                  title: 'Light Mode',
-                  subtitle: 'Always use light theme',
-                  value: 'light',
-                ),
-                _buildThemeTile(
-                  icon: Icons.dark_mode,
-                  title: 'Dark Mode',
-                  subtitle: 'Always use dark theme',
-                  value: 'dark',
-                ),
-                const SizedBox(height: 16),
-                _buildThemePreview(),
-                const SizedBox(height: 24),
-              ],
             ),
           ),
-          _buildBottomButtons(),
         ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Current theme preview
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[800] : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Preview',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[850] : Colors.grey[50],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).primaryColor,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'A',
+                            style: TextStyle(
+                              color: isDark ? Colors.white : Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Sample Card',
+                                style: TextStyle(
+                                  color: isDark ? Colors.white : Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                '${currencyProvider.currentCurrency} 100.00',
+                                style: TextStyle(
+                                  color: isDark ? Colors.white70 : Colors.black54,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'Active',
+                            style: TextStyle(
+                              color: Colors.green[700],
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Theme options
+            const Text(
+              'Select Theme',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // System theme
+            _buildThemeOption(
+              title: 'System Default',
+              subtitle: 'Follow your device theme',
+              icon: Icons.settings_overscan,
+              isSelected: _useSystemTheme,
+              onTap: () {
+                setState(() {
+                  _useSystemTheme = true;
+                });
+              },
+            ),
+            const SizedBox(height: 8),
+
+            // Light theme
+            _buildThemeOption(
+              title: 'Light Theme',
+              subtitle: 'Bright and clean',
+              icon: Icons.light_mode,
+              isSelected: !_useSystemTheme && _selectedTheme == ThemeMode.light,
+              onTap: () {
+                setState(() {
+                  _useSystemTheme = false;
+                  _selectedTheme = ThemeMode.light;
+                });
+              },
+            ),
+            const SizedBox(height: 8),
+
+            // Dark theme
+            _buildThemeOption(
+              title: 'Dark Theme',
+              subtitle: 'Easy on the eyes',
+              icon: Icons.dark_mode,
+              isSelected: !_useSystemTheme && _selectedTheme == ThemeMode.dark,
+              onTap: () {
+                setState(() {
+                  _useSystemTheme = false;
+                  _selectedTheme = ThemeMode.dark;
+                });
+              },
+            ),
+            const SizedBox(height: 24),
+
+            // Save Button
+            CustomButton(
+              onPressed: _isSaving ? null : _saveTheme,
+              text: 'Save Theme',
+              isLoading: _isSaving,
+              type: ButtonType.primary,
+              size: ButtonSize.large,
+              icon: Icons.save,
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildThemeTile({
-    required IconData icon,
+  Widget _buildThemeOption({
     required String title,
     required String subtitle,
-    required String value,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
   }) {
-    final isSelected = _selectedTheme == value;
-    
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      elevation: isSelected ? 4 : 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isSelected 
-              ? AppTheme.primaryColor 
-              : Colors.transparent,
-          width: 2,
-        ),
-      ),
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: isSelected 
-                ? AppTheme.primaryColor.withOpacity(0.1) 
-                : Colors.grey.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            icon,
-            color: isSelected ? AppTheme.primaryColor : Colors.grey,
-            size: 24,
-          ),
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            color: isSelected ? AppTheme.primaryColor : null,
-          ),
-        ),
-        subtitle: Text(subtitle),
-        trailing: isSelected
-            ? Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.check,
-                  color: Colors.white,
-                  size: 16,
-                ),
-              )
-            : null,
-        onTap: () => _selectTheme(value),
-        selected: isSelected,
-        selectedTileColor: AppTheme.primaryColor.withOpacity(0.05),
-      ),
-    );
-  }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-  Widget _buildThemePreview() {
-    final isDark = _selectedTheme == 'dark';
-    
-    final previewColor = isDark ? Colors.grey[900] : Colors.white;
-    final textColor = isDark ? Colors.white : Colors.black;
-    final cardColor = isDark ? Colors.grey[800] : Colors.grey[100];
-    
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: previewColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Theme Preview',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: textColor.withOpacity(0.7),
-            ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Theme.of(context).primaryColor.withOpacity(0.1)
+              : isDark
+                  ? Colors.grey[800]
+                  : Colors.grey[100],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? Theme.of(context).primaryColor
+                : isDark
+                    ? Colors.grey[700]!
+                    : Colors.grey[300]!,
+            width: isSelected ? 2 : 1,
           ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? Theme.of(context).primaryColor
+                    : isDark
+                        ? Colors.grey[700]
+                        : Colors.grey[300],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                icon,
+                color: isSelected ? Colors.white : Colors.grey,
+              ),
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: const BoxDecoration(
-                    color: Colors.blue,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Sample Title',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: textColor,
-                        ),
-                      ),
-                      Text(
-                        'Sample subtitle text',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: textColor.withOpacity(0.7),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    'Active',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    'Income: \$5,000',
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
                     style: TextStyle(
-                      color: Colors.green,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected ? Theme.of(context).primaryColor : null,
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    'Expense: \$2,000',
+                  Text(
+                    subtitle,
                     style: TextStyle(
-                      color: Colors.red,
                       fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[600],
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(6),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Selected: ${_getThemeLabel(_selectedTheme)}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: textColor.withOpacity(0.7),
-                  ),
-                ),
-                Icon(
-                  _selectedTheme == 'dark' 
-                      ? Icons.dark_mode 
-                      : (_selectedTheme == 'light' 
-                          ? Icons.light_mode 
-                          : Icons.phone_android),
-                  color: Colors.blue,
-                  size: 16,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomButtons() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 2,
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: _cancelChanges,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.grey,
-                side: BorderSide(color: Colors.grey.shade300),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+            if (isSelected)
+              Icon(
+                Icons.check_circle,
+                color: Theme.of(context).primaryColor,
               ),
-              child: const Text('Cancel'),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _hasChanges ? _saveTheme : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _hasChanges 
-                    ? AppTheme.primaryColor 
-                    : Colors.grey.shade300,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(_hasChanges ? 'Save Changes' : 'No Changes'),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
