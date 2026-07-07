@@ -1,37 +1,49 @@
-// lib/screens/auth/widgets/auth_footer.dart
+// lib/screens/auth/widgets/auth_header.dart
 import 'package:flutter/material.dart';
 
-class AuthFooter extends StatelessWidget {
-  final String text;
-  final String buttonText;
-  final VoidCallback onTap;
+class AuthHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
 
-  const AuthFooter({
+  const AuthHeader({
     Key? key,
-    required this.text,
-    required this.buttonText,
-    required this.onTap,
+    required this.title,
+    required this.subtitle,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
       children: [
-        Text(
-          text,
-          style: TextStyle(
-            color: Colors.grey[600],
+        Container(
+          height: 72,
+          width: 72,
+          decoration: BoxDecoration(
+            color: Theme.of(context).primaryColor,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Icon(
+            Icons.people,
+            size: 44,
+            color: Colors.white,
           ),
         ),
-        TextButton(
-          onPressed: onTap,
-          child: Text(
-            buttonText,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-            ),
+        const SizedBox(height: 16),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
           ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.grey[600],
+          ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
