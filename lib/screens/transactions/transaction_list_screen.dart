@@ -30,6 +30,12 @@ class _TransactionListScreenState extends State<TransactionListScreen> {
     _loadTransactions();
   }
 
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadTransactions() async {
     final auth = context.read<AuthProvider>();
     final mode = context.read<ModeProvider>();
