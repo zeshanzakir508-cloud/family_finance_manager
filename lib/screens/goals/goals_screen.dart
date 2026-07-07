@@ -1,479 +1,287 @@
+// lib/screens/goals/goals_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import '../../services/auth_service.dart';
-import '../../services/database_service.dart';
-import '../../models/transaction_model.dart';
+import '../../providers/goal_provider.dart';
+import '../../providers/currency_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../models/goal_model.dart';
-import '../../utils/app_theme.dart';
-import '../../utils/helpers.dart';
+import '../../widgets/common/empty_state_widget.dart';
+import '../../widgets/common/loading_widget.dart';
+import 'widgets/goal_card.dart';
 
 class GoalsScreen extends StatefulWidget {
-  const GoalsScreen({super.key});
+  const GoalsScreen({Key? key}) : super(key: key);
 
   @override
   State<GoalsScreen> createState() => _GoalsScreenState();
 }
 
-class _GoalsScreenState extends State<GoalsScreen> {
-  final TextEditingController _goalNameController = TextEditingController();
-  final TextEditingController _goalAmountController = TextEditingController();
-  final TextEditingController _goalNoteController = TextEditingController();
-
-  List<GoalModel> _goals = [];
-  double _currentSavings = 0;
-  bool _isLoading = true; // ✅ ADDED: Loading state
+class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadData();
-  }
-
-  // ✅ CHANGED: Made async and added loading state
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-    
-    try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final userId = authService.userId;
-
-      if (userId != null) {
-        // ✅ FIXED: Added await to get transactions
-        final transactions = await DatabaseService.getUserTransactions(userId);
-        double income = 0;
-        double expense = 0;
-        for (var t in transactions) {
-          if (t.type == 'income') {
-            income += t.amount ?? 0;
-          } else if (t.type == 'expense') {
-            expense += t.amount ?? 0;
-          }
-        }
-        _currentSavings = income - expense;
-
-        // Load goals from Hive
-        final goalsBox = Hive.box<GoalModel>('goals');
-        _goals = goalsBox.values
-            .where((g) => g.userId == userId)
-            .toList()
-            .cast<GoalModel>();
-      }
-    } catch (e) {
-      // Handle error
-      print('Error loading goals: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to load goals: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-    
-    setState(() => _isLoading = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Savings Goals'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: _showAddGoalDialog,
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-            tooltip: 'Refresh',
-          ),
-        ],
-      ),
-      body: _isLoading // ✅ ADDED: Loading indicator
-          ? const Center(child: CircularProgressIndicator())
-          : _goals.isEmpty
-              ? _buildEmptyState()
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _goals.length,
-                  itemBuilder: (context, index) {
-                    final goal = _goals[index];
-                    return _buildGoalCard(goal);
-                  },
-                ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.flag_outlined,
-            size: 64,
-            color: AppTheme.textSecondaryColor.withOpacity(0.5),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No Savings Goals Yet',
-            style: AppTheme.headingStyle.copyWith(
-              fontSize: 18,
-              color: AppTheme.textSecondaryColor,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Set a goal to start saving!',
-            style: AppTheme.bodyStyle.copyWith(
-              color: AppTheme.textSecondaryColor,
-            ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: _showAddGoalDialog,
-            icon: const Icon(Icons.add),
-            label: const Text('Create Goal'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGoalCard(GoalModel goal) {
-    final totalAmount = goal.totalAmount ?? 0;
-    final progress = totalAmount > 0
-        ? (_currentSavings / totalAmount).clamp(0.0, 1.0)
-        : 0.0;
-
-    final isAchieved = progress >= 1.0;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: isAchieved
-                        ? Colors.green.withOpacity(0.1)
-                        : AppTheme.primaryColor.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    isAchieved ? Icons.flag : Icons.flag_outlined,
-                    color: isAchieved ? Colors.green : AppTheme.primaryColor,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        goal.name ?? 'Goal',
-                        style: AppTheme.bodyStyle.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        'Target: ${Helpers.formatCurrency(totalAmount)}',
-                        style: AppTheme.captionStyle,
-                      ),
-                    ],
-                  ),
-                ),
-                if (isAchieved)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text(
-                      '✅ Achieved',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Progress Bar
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Progress: ${(progress * 100).toStringAsFixed(0)}%',
-                      style: AppTheme.captionStyle.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      '${Helpers.formatCurrency(_currentSavings)} / ${Helpers.formatCurrency(totalAmount)}',
-                      style: AppTheme.captionStyle,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 8,
-                    backgroundColor: Colors.grey.withOpacity(0.2),
-                    color: isAchieved ? Colors.green : AppTheme.primaryColor,
-                  ),
-                ),
-              ],
-            ),
-
-            if (goal.note != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                goal.note!,
-                style: AppTheme.captionStyle,
-              ),
-            ],
-
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Text(
-                  'Created: ${Helpers.formatDate(goal.createdAt ?? DateTime.now())}',
-                  style: AppTheme.captionStyle.copyWith(
-                    fontSize: 10,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                IconButton(
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    color: Colors.red,
-                    size: 16,
-                  ),
-                  onPressed: () => _deleteGoal(goal),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showAddGoalDialog() {
-    _goalNameController.clear();
-    _goalAmountController.clear();
-    _goalNoteController.clear();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create Savings Goal'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _goalNameController,
-              decoration: const InputDecoration(
-                labelText: 'Goal Name *',
-                hintText: 'e.g., Vacation Fund',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _goalAmountController,
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Target Amount *',
-                hintText: 'e.g., 5000',
-                prefixText: '\$ ',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _goalNoteController,
-              decoration: const InputDecoration(
-                labelText: 'Note (Optional)',
-                hintText: 'Add a note about this goal',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 2,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: _createGoal,
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.primaryColor,
-            ),
-            child: const Text('Create'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _createGoal() async {
-    if (_goalNameController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a goal name'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    final amount = double.tryParse(_goalAmountController.text.trim());
-    if (amount == null || amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a valid amount'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final userId = authService.userId;
-
-    if (userId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You must be logged in to create a goal'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    final goal = GoalModel(
-      id: Helpers.generateId(),
-      userId: userId,
-      name: _goalNameController.text.trim(),
-      totalAmount: amount,
-      note: _goalNoteController.text.trim().isEmpty
-          ? null
-          : _goalNoteController.text.trim(),
-      createdAt: DateTime.now(),
-    );
-
-    try {
-      final goalsBox = Hive.box<GoalModel>('goals');
-      await goalsBox.add(goal);
-
-      await _loadData();
-
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Goal created successfully! 🎯'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to create goal: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  void _deleteGoal(GoalModel goal) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Goal'),
-        content: Text('Delete "${goal.name ?? 'Goal'}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.errorColor,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      try {
-        final goalsBox = Hive.box<GoalModel>('goals');
-        await goalsBox.delete(goal.key);
-        await _loadData(); // ✅ Changed to await
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Goal deleted'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to delete goal: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    }
   }
 
   @override
   void dispose() {
-    _goalNameController.dispose();
-    _goalAmountController.dispose();
-    _goalNoteController.dispose();
+    _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    final auth = context.read<AuthProvider>();
+    final goalProvider = context.read<GoalProvider>();
+    
+    if (auth.isAuthenticated) {
+      await goalProvider.loadGoals(auth.userId);
+    }
+  }
+
+  Future<void> _refreshData() async {
+    await _loadData();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final goalProvider = context.watch<GoalProvider>();
+    final currencyProvider = context.watch<CurrencyProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Goals'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Active'),
+            Tab(text: 'Completed'),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () {
+              Navigator.pushNamed(context, '/add_goal');
+            },
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _refreshData,
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildContent(
+              context,
+              goalProvider.goals,
+              currencyProvider.currentCurrency,
+              isDark,
+              false,
+            ),
+            _buildContent(
+              context,
+              goalProvider.completedGoals,
+              currencyProvider.currentCurrency,
+              isDark,
+              true,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(
+    BuildContext context,
+    List<GoalModel> goals,
+    String currency,
+    bool isDark,
+    bool isCompleted,
+  ) {
+    if (goalProvider.isLoading) {
+      return const LoadingWidget();
+    }
+
+    if (goalProvider.error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Colors.red[300],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Failed to load goals',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              goalProvider.error!,
+              style: TextStyle(color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _refreshData,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (goals.isEmpty) {
+      return EmptyStateWidget(
+        icon: Icons.flag,
+        title: isCompleted ? 'No Completed Goals' : 'No Goals Yet',
+        description: isCompleted
+            ? 'Your completed goals will appear here.'
+            : 'Set a financial goal to start saving!',
+        buttonText: isCompleted ? null : 'Create Goal',
+        onPressed: isCompleted
+            ? null
+            : () {
+                Navigator.pushNamed(context, '/add_goal');
+              },
+      );
+    }
+
+    // Calculate total progress
+    double totalTarget = 0.0;
+    double totalCurrent = 0.0;
+    for (var goal in goals) {
+      totalTarget += goal.targetAmount ?? 0.0;
+      totalCurrent += goal.currentAmount ?? 0.0;
+    }
+    final totalProgress = totalTarget > 0 ? totalCurrent / totalTarget : 0.0;
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Summary card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context).primaryColor,
+                Theme.of(context).primaryColor.withOpacity(0.7),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isCompleted ? 'Completed Goals' : 'Active Goals Summary',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${goals.length} Goal${goals.length > 1 ? 's' : ''}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'Total: $currency ${totalTarget.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (!isCompleted) ...[
+                        Text(
+                          '${(totalProgress * 100).toStringAsFixed(0)}%',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Saved: $currency ${totalCurrent.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                      if (isCompleted)
+                        Text(
+                          'Completed! 🎉',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+              if (!isCompleted) ...[
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: totalProgress.clamp(0.0, 1.0),
+                    minHeight: 6,
+                    backgroundColor: Colors.white24,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Goal list
+        ...goals.map((goal) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: GoalCard(
+              goal: goal,
+              currency: currency,
+              onTap: () {
+                Navigator.pushNamed(
+                  context,
+                  '/goal_detail',
+                  arguments: goal.id,
+                );
+              },
+            ),
+          );
+        }),
+      ],
+    );
   }
 }
