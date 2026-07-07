@@ -140,16 +140,39 @@ class BackupService {
     return DatabaseService.getUserBackups(userId);
   }
 
-  static Future<bool> deleteBackupFile(BackupModel backup) async {
+  // ✅ FIXED: Delete backup - now accepts String id
+  static Future<bool> deleteBackup(String backupId) async {
     try {
-      final file = File(backup.filePath ?? '');
-      if (await file.exists()) {
-        await file.delete();
+      final backups = await DatabaseService.getUserBackups('');
+      final backup = backups.firstWhere((b) => b.id == backupId);
+      
+      if (backup.filePath != null) {
+        final file = File(backup.filePath!);
+        if (await file.exists()) {
+          await file.delete();
+        }
       }
-      await DatabaseService.deleteBackup(backup);
+      await DatabaseService.deleteBackup(backupId);
       return true;
     } catch (e) {
       print('❌ Delete backup error: $e');
+      return false;
+    }
+  }
+
+  // ✅ FIXED: Delete backup file by BackupModel (overload)
+  static Future<bool> deleteBackupFile(BackupModel backup) async {
+    try {
+      if (backup.filePath != null) {
+        final file = File(backup.filePath!);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }
+      await DatabaseService.deleteBackup(backup.id);
+      return true;
+    } catch (e) {
+      print('❌ Delete backup file error: $e');
       return false;
     }
   }
