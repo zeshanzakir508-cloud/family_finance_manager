@@ -1,786 +1,242 @@
 // lib/screens/settings/settings_screen.dart
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../providers/mode_provider.dart';
-import '../../models/user_model.dart';
-import '../../services/auth_service.dart';
-import '../../services/database_service.dart';
-import '../../utils/app_theme.dart';
-import '../../utils/constants.dart';
-import '../../utils/helpers.dart';
+import '../../services/remote_config_service.dart';
+import '../../widgets/common/custom_snackbar.dart';
+import 'widgets/settings_tile.dart';
+import 'widgets/settings_section.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({Key? key}) : super(key: key);
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  UserModel? _user;
-  bool _isLoading = true;
-  bool _isDarkMode = false;
-  String _selectedCurrency = 'USD';
-  bool _hasChanges = false;
-  bool _isFingerprintEnabled = false;
-
-  Timer? _debounceTimer;
-  bool _isProcessing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUser();
-    _loadSettings();
-  }
-
-  @override
-  void dispose() {
-    _debounceTimer?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _loadUser() async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final userId = authService.userId;
-    if (userId != null) {
-      _user = await DatabaseService.getUser(userId);
-    }
-    setState(() => _isLoading = false);
-  }
-
-  Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    final authService = Provider.of<AuthService>(context, listen: false);
-    setState(() {
-      _isDarkMode = prefs.getBool('isDarkMode') ?? false;
-      _selectedCurrency = prefs.getString('currency') ?? 'USD';
-      _isFingerprintEnabled = authService.isFingerprintEnabled;
-      _hasChanges = false;
-    });
-  }
-
-  void _debounceAction(VoidCallback action) {
-    if (_isProcessing) return;
-    _debounceTimer?.cancel();
-    _isProcessing = true;
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-      action();
-      _isProcessing = false;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    final modeProvider = Provider.of<ModeProvider>(context);
-    final authService = Provider.of<AuthService>(context);
-
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
+    final authProvider = context.watch<AuthProvider>();
+    final themeProvider = context.watch<ThemeProvider>();
+    final currencyProvider = context.watch<CurrencyProvider>();
+    final modeProvider = context.watch<ModeProvider>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('Settings'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
         actions: [
-          if (_hasChanges)
-            TextButton(
-              onPressed: _saveAllSettings,
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Save All'),
-            ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              children: [
-                _buildUserInfoSection(context),
-                const Divider(),
-                _buildModeSection(context, modeProvider),
-                const Divider(),
-                _buildGeneralSettings(context),
-                const Divider(),
-                _buildSecuritySettings(context),
-                const Divider(),
-                _buildAppSettings(context),
-                const Divider(),
-                _buildLogoutButton(context, authService),
-                const SizedBox(height: 24),
-              ],
-            ),
-          ),
-          _buildBottomButtons(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomButtons() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 2,
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: _cancelChanges,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.grey,
-                side: BorderSide(color: Colors.grey.shade300),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text('Cancel'),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _hasChanges ? _saveAllSettings : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _hasChanges 
-                    ? AppTheme.primaryColor 
-                    : Colors.grey.shade300,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(_hasChanges ? 'Save Changes' : 'No Changes'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _saveAllSettings() async {
-    _debounceAction(() async {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isDarkMode', _isDarkMode);
-      await prefs.setString('currency', _selectedCurrency);
-      
-      setState(() => _hasChanges = false);
-      
-      if (mounted) {
-        Helpers.showSnackBar(
-          context,
-          'Settings saved successfully!',
-          color: Colors.green,
-        );
-        Navigator.pop(context, true);
-      }
-    });
-  }
-
-  void _cancelChanges() {
-    _debounceAction(() {
-      if (_hasChanges) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Discard Changes?'),
-            content: const Text('You have unsaved changes. Are you sure you want to discard them?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Keep Editing'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _loadSettings();
-                  setState(() => _hasChanges = false);
-                  Helpers.showSnackBar(
-                    context,
-                    'Changes discarded',
-                    color: Colors.grey,
-                  );
-                },
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.red,
-                ),
-                child: const Text('Discard'),
-              ),
-            ],
-          ),
-        );
-      } else {
-        Navigator.pop(context);
-      }
-    });
-  }
-
-  void _markChanged() {
-    setState(() => _hasChanges = true);
-  }
-
-  Widget _buildUserInfoSection(BuildContext context) {
-    final authService = Provider.of<AuthService>(context);
-    final role = authService.getCachedUserRole() ?? 'member';
-    
-    bool isOwner = role == 'owner';
-    bool isModerator = role == 'moderator';
-    Color roleColor = isOwner ? Colors.amber : (isModerator ? Colors.blue : Colors.grey);
-    String roleDisplay = isOwner ? '👑 Owner' : (isModerator ? '🛡️ Moderator' : 'Member');
-    
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: isOwner ? Colors.amber : (isModerator ? Colors.blue : AppTheme.primaryColor),
-        child: Text(
-          isOwner ? '👑' : (isModerator ? '🛡️' : (_user?.initials ?? 'U')),
-          style: const TextStyle(color: Colors.white),
-        ),
-      ),
-      title: Row(
-        children: [
-          Text(_user?.displayName ?? 'User'),
-          const SizedBox(width: 8),
-          if (isOwner || isModerator)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: roleColor.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: roleColor),
-              ),
-              child: Text(
-                roleDisplay,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: roleColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-        ],
-      ),
-      subtitle: Text(_user?.email ?? 'No email'),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () {
-        _debounceAction(() {
-          Navigator.pushNamed(context, '/profile');
-        });
-      },
-    );
-  }
-
-  Widget _buildModeSection(BuildContext context, ModeProvider modeProvider) {
-    final isPersonal = modeProvider.isPersonalMode;
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            'Mode',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey,
-            ),
-          ),
-        ),
-        ListTile(
-          leading: Icon(
-            isPersonal ? Icons.person : Icons.family_restroom,
-            color: AppTheme.primaryColor,
-          ),
-          title: Text(
-            isPersonal ? 'Personal Mode' : 'Family Mode',
-            style: const TextStyle(fontWeight: FontWeight.w500),
-          ),
-          subtitle: Text(
-            isPersonal 
-                ? 'Managing personal finances' 
-                : 'Managing family finances',
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'Active',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.primaryColor,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right),
-            ],
-          ),
-          onTap: () {
-            _debounceAction(() {
-              _showModeSwitchDialog(context);
-            });
-          },
-        ),
-      ],
-    );
-  }
-
-  void _showModeSwitchDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Switch Mode'),
-        content: const Text(
-          'Changing mode will navigate you to the mode selection screen. '
-          'Your data will be preserved.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
+          IconButton(
+            icon: const Icon(Icons.refresh),
             onPressed: () {
-              Navigator.pop(context);
-              Navigator.pushReplacementNamed(context, '/mode-selection');
+              // Refresh settings
+              CustomSnackBar.show(
+                context,
+                'Settings refreshed',
+              );
             },
-            style: TextButton.styleFrom(
-              foregroundColor: AppTheme.primaryColor,
-            ),
-            child: const Text('Switch Mode'),
           ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // Profile Section
+          SettingsSection(
+            title: 'Profile',
+            children: [
+              SettingsTile(
+                icon: Icons.person,
+                title: 'Profile',
+                subtitle: authProvider.user?.displayName ?? 'No name',
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.pushNamed(context, '/profile');
+                },
+              ),
+              SettingsTile(
+                icon: Icons.email,
+                title: 'Email',
+                subtitle: authProvider.user?.email ?? 'No email',
+                trailing: const SizedBox(),
+                onTap: null,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Mode Section
+          SettingsSection(
+            title: 'Mode',
+            children: [
+              SettingsTile(
+                icon: Icons.swap_horiz,
+                title: 'Switch Mode',
+                subtitle: modeProvider.isPersonalMode ? 'Personal Mode' : 'Family Mode',
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.pushNamed(context, '/mode_selection');
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // General Section
+          SettingsSection(
+            title: 'General',
+            children: [
+              SettingsTile(
+                icon: Icons.currency_exchange,
+                title: 'Currency',
+                subtitle: currencyProvider.currentCurrency,
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.pushNamed(context, '/currency_settings');
+                },
+              ),
+              SettingsTile(
+                icon: Icons.brightness_6,
+                title: 'Theme',
+                subtitle: themeProvider.getThemeLabel(),
+                trailing: Switch(
+                  value: !themeProvider.isUsingSystemTheme && themeProvider.isDarkMode,
+                  onChanged: (_) {
+                    themeProvider.toggleTheme();
+                  },
+                ),
+                onTap: () {
+                  Navigator.pushNamed(context, '/theme_settings');
+                },
+              ),
+              SettingsTile(
+                icon: Icons.language,
+                title: 'Language',
+                subtitle: 'English',
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.pushNamed(context, '/language_settings');
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Security Section
+          SettingsSection(
+            title: 'Security',
+            children: [
+              SettingsTile(
+                icon: Icons.fingerprint,
+                title: 'Fingerprint Login',
+                subtitle: 'Enable biometric authentication',
+                trailing: Switch(
+                  value: false, // TODO: Implement fingerprint toggle
+                  onChanged: (_) {},
+                ),
+                onTap: () {
+                  Navigator.pushNamed(context, '/security_settings');
+                },
+              ),
+              SettingsTile(
+                icon: Icons.lock,
+                title: 'Change Password',
+                subtitle: 'Update your account password',
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.pushNamed(context, '/change_password');
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // App Section
+          SettingsSection(
+            title: 'App',
+            children: [
+              SettingsTile(
+                icon: Icons.notifications,
+                title: 'Notifications',
+                subtitle: 'Manage notification settings',
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.pushNamed(context, '/notification_settings');
+                },
+              ),
+              SettingsTile(
+                icon: Icons.backup,
+                title: 'Backup & Restore',
+                subtitle: 'Backup your data to cloud',
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.pushNamed(context, '/backup_restore');
+                },
+              ),
+              SettingsTile(
+                icon: Icons.file_download,
+                title: 'Export Data',
+                subtitle: 'Export your data as CSV or PDF',
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.pushNamed(context, '/export_data');
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // About Section
+          SettingsSection(
+            title: 'About',
+            children: [
+              SettingsTile(
+                icon: Icons.info,
+                title: 'About FinFam',
+                subtitle: 'Version 2.0.0',
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.pushNamed(context, '/about');
+                },
+              ),
+              SettingsTile(
+                icon: Icons.privacy_tip,
+                title: 'Privacy Policy',
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.pushNamed(context, '/privacy_policy');
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Logout Button
+          Card(
+            color: isDark ? Colors.grey[800] : Colors.white,
+            child: ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text(
+                'Logout',
+                style: TextStyle(color: Colors.red),
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                _showLogoutDialog();
+              },
+            ),
+          ),
+          const SizedBox(height: 32),
         ],
       ),
     );
   }
 
-  Widget _buildGeneralSettings(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            'General',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey,
-            ),
-          ),
-        ),
-        ListTile(
-          leading: const Icon(Icons.currency_exchange),
-          title: const Text('Currency'),
-          subtitle: Text(_selectedCurrency),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () {
-            _debounceAction(() {
-              Navigator.pushNamed(
-                context, 
-                '/currency-settings',
-                arguments: {'currentCurrency': _selectedCurrency},
-              ).then((result) {
-                if (result != null && result is String && result != _selectedCurrency) {
-                  setState(() {
-                    _selectedCurrency = result;
-                    _markChanged();
-                  });
-                }
-              });
-            });
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.palette),
-          title: const Text('Theme'),
-          subtitle: Text(_isDarkMode ? 'Dark' : 'Light'),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () {
-            _debounceAction(() {
-              Navigator.pushNamed(
-                context,
-                '/theme-settings',
-                arguments: {'isDarkMode': _isDarkMode},
-              ).then((result) {
-                if (result != null && result is bool && result != _isDarkMode) {
-                  setState(() {
-                    _isDarkMode = result;
-                    _markChanged();
-                  });
-                }
-              });
-            });
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSecuritySettings(BuildContext context) {
-    final authService = Provider.of<AuthService>(context);
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            'Security',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey,
-            ),
-          ),
-        ),
-        ListTile(
-          leading: const Icon(Icons.fingerprint),
-          title: const Text('Fingerprint Login'),
-          subtitle: Text(
-            authService.isFingerprintEnabled 
-                ? 'Enabled' 
-                : 'Disabled',
-          ),
-          trailing: Switch(
-            value: authService.isFingerprintEnabled,
-            onChanged: (value) async {
-              _debounceAction(() async {
-                if (value) {
-                  final available = await authService.isFingerprintAvailable();
-                  if (!available) {
-                    Helpers.showSnackBar(
-                      context,
-                      'Fingerprint not available on this device',
-                      color: Colors.red,
-                    );
-                    return;
-                  }
-                }
-                await authService.setFingerprintEnabled(value);
-                setState(() {});
-                Helpers.showSnackBar(
-                  context,
-                  value 
-                      ? 'Fingerprint login enabled!' 
-                      : 'Fingerprint login disabled!',
-                  color: Colors.green,
-                );
-              });
-            },
-            activeColor: AppTheme.primaryColor,
-          ),
-          onTap: () {
-            _debounceAction(() {
-              Navigator.pushNamed(context, '/security-settings').then((result) {
-                if (result == true) {
-                  _loadSettings();
-                }
-              });
-            });
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.lock_reset),
-          title: const Text('Change Password'),
-          subtitle: const Text('Update your account password'),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () {
-            _debounceAction(() {
-              _showChangePasswordDialog();
-            });
-          },
-        ),
-      ],
-    );
-  }
-
-  // ✅ FIXED: Cancel button position
-  void _showChangePasswordDialog() {
-    final currentPasswordController = TextEditingController();
-    final newPasswordController = TextEditingController();
-    final confirmPasswordController = TextEditingController();
-    bool isLoading = false;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Change Password'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: currentPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Current Password *',
-                  prefixIcon: Icon(Icons.lock),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: newPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'New Password *',
-                  prefixIcon: Icon(Icons.lock_outline),
-                  border: OutlineInputBorder(),
-                  hintText: 'Minimum 6 characters',
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: confirmPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Confirm New Password *',
-                  prefixIcon: Icon(Icons.lock_outline),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ElevatedButton(
-                  onPressed: isLoading
-                      ? null
-                      : () async {
-                          if (currentPasswordController.text.isEmpty) {
-                            Helpers.showSnackBar(
-                              context,
-                              'Please enter current password',
-                              color: Colors.red,
-                            );
-                            return;
-                          }
-                          if (newPasswordController.text.length < 6) {
-                            Helpers.showSnackBar(
-                              context,
-                              'New password must be at least 6 characters',
-                              color: Colors.red,
-                            );
-                            return;
-                          }
-                          if (newPasswordController.text != confirmPasswordController.text) {
-                            Helpers.showSnackBar(
-                              context,
-                              'Passwords do not match',
-                              color: Colors.red,
-                            );
-                            return;
-                          }
-
-                          setState(() => isLoading = true);
-
-                          try {
-                            final authService = Provider.of<AuthService>(context, listen: false);
-                            final success = await authService.changePassword(
-                              currentPasswordController.text,
-                              newPasswordController.text,
-                            );
-
-                            if (success) {
-                              if (mounted) {
-                                Helpers.showSnackBar(
-                                  context,
-                                  'Password changed successfully! 🔐',
-                                  color: Colors.green,
-                                );
-                                Navigator.pop(context);
-                              }
-                            }
-                          } catch (e) {
-                            Helpers.showSnackBar(
-                              context,
-                              'Error: ${e.toString().replaceAll('Exception: ', '')}',
-                              color: Colors.red,
-                            );
-                          } finally {
-                            setState(() => isLoading = false);
-                          }
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 45),
-                  ),
-                  child: isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Change Password'),
-                ),
-                const SizedBox(height: 8),
-                // ✅ Cancel button below Change Password
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.grey,
-                  ),
-                  child: const Text('Cancel'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAppSettings(BuildContext context) {
-    final authService = Provider.of<AuthService>(context);
-    final role = authService.getCachedUserRole() ?? 'member';
-    final isOwner = role == 'owner';
-    final isModerator = role == 'moderator';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            'App',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey,
-            ),
-          ),
-        ),
-        ListTile(
-          leading: const Icon(Icons.notifications),
-          title: const Text('Notifications'),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () {
-            _debounceAction(() {
-              Navigator.pushNamed(context, '/notification-settings');
-            });
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.backup),
-          title: const Text('Backup & Restore'),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () {
-            _debounceAction(() {
-              Navigator.pushNamed(context, '/backup');
-            });
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.privacy_tip),
-          title: const Text('Privacy Policy'),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () {
-            _debounceAction(() {
-              Navigator.pushNamed(context, '/privacy-policy');
-            });
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.info),
-          title: const Text('About'),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () {
-            _debounceAction(() {
-              Navigator.pushNamed(context, '/about');
-            });
-          },
-        ),
-        if (isOwner || isModerator)
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isOwner ? Colors.amber.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isOwner ? Colors.amber.withOpacity(0.3) : Colors.blue.withOpacity(0.3),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  isOwner ? Icons.star : Icons.shield,
-                  color: isOwner ? Colors.amber : Colors.blue,
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  isOwner ? '👑 Owner - Free Forever' : '🛡️ Moderator - Free Forever',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: isOwner ? Colors.amber.shade700 : Colors.blue.shade700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildLogoutButton(BuildContext context, AuthService authService) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ElevatedButton(
-        onPressed: () {
-          _debounceAction(() {
-            _showLogoutDialog(context, authService);
-          });
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.red.shade50,
-          foregroundColor: Colors.red,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: const Text('Logout'),
-      ),
-    );
-  }
-
-  void _showLogoutDialog(BuildContext context, AuthService authService) {
+  void _showLogoutDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -794,7 +250,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              await authService.signOut();
+              await context.read<AuthProvider>().logout();
               if (mounted) {
                 Navigator.pushReplacementNamed(context, '/login');
               }
