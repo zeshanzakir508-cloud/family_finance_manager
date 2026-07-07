@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <circle cx="70" cy="70" r="25" fill="#E0E0E0" opacity="0.5"/>
+  <circle cx="130" cy="70" r="25" fill="#E0E0E0" opacity="0.5"/>
+  <circle cx="70" cy="70" r="12" fill="#E0E0E0"/>
+  <circle cx="130" cy="70" r="12" fill="#E0E0E0"/>
+  <path d="M45 110 Q100 130 155 110" stroke="#E0E0E0" stroke-width="3" fill="none"/>
+  <text x="100" y="155" font-family="Arial" font-size="16" fill="#999" text-anchor="middle">No Family</text>
+</svg>
