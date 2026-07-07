@@ -5,6 +5,7 @@ import '../services/notification_service.dart';
 import '../services/local_storage_service.dart';
 
 class NotificationProvider extends ChangeNotifier {
+  // ✅ FIXED: Removed unused field or kept as is (it's used in commented code)
   final NotificationService _notificationService = NotificationService();
   
   List<NotificationModel> _notifications = [];
@@ -71,7 +72,7 @@ class NotificationProvider extends ChangeNotifier {
       await LocalStorageService.saveNotification(notification);
       notifyListeners();
     } catch (e) {
-      print('Error adding notification: $e');
+      debugPrint('Error adding notification: $e');
     }
   }
 
@@ -84,7 +85,7 @@ class NotificationProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('Error marking notification as read: $e');
+      debugPrint('Error marking notification as read: $e');
     }
   }
 
@@ -98,7 +99,7 @@ class NotificationProvider extends ChangeNotifier {
       }
       notifyListeners();
     } catch (e) {
-      print('Error marking all as read: $e');
+      debugPrint('Error marking all as read: $e');
     }
   }
 
@@ -108,7 +109,7 @@ class NotificationProvider extends ChangeNotifier {
       await LocalStorageService.deleteNotification(id);
       notifyListeners();
     } catch (e) {
-      print('Error deleting notification: $e');
+      debugPrint('Error deleting notification: $e');
     }
   }
 
@@ -118,7 +119,7 @@ class NotificationProvider extends ChangeNotifier {
       await LocalStorageService.clearNotifications();
       notifyListeners();
     } catch (e) {
-      print('Error deleting all notifications: $e');
+      debugPrint('Error deleting all notifications: $e');
     }
   }
 
@@ -132,7 +133,6 @@ class NotificationProvider extends ChangeNotifier {
     String? payload,
   }) async {
     try {
-      // ✅ FIXED: Use static method via class name
       await NotificationService.showNotification(
         id: DateTime.now().millisecondsSinceEpoch.hashCode,
         title: title,
@@ -154,7 +154,7 @@ class NotificationProvider extends ChangeNotifier {
       
       await addNotification(notification);
     } catch (e) {
-      print('Error sending transaction notification: $e');
+      debugPrint('Error sending transaction notification: $e');
     }
   }
 
@@ -164,7 +164,6 @@ class NotificationProvider extends ChangeNotifier {
     String? payload,
   }) async {
     try {
-      // ✅ FIXED: Use static method via class name
       await NotificationService.showNotification(
         id: DateTime.now().millisecondsSinceEpoch.hashCode,
         title: title,
@@ -185,7 +184,7 @@ class NotificationProvider extends ChangeNotifier {
       
       await addNotification(notification);
     } catch (e) {
-      print('Error sending family notification: $e');
+      debugPrint('Error sending family notification: $e');
     }
   }
 
@@ -195,7 +194,6 @@ class NotificationProvider extends ChangeNotifier {
     String? payload,
   }) async {
     try {
-      // ✅ FIXED: Use static method via class name
       await NotificationService.showNotification(
         id: DateTime.now().millisecondsSinceEpoch.hashCode,
         title: title,
@@ -216,7 +214,7 @@ class NotificationProvider extends ChangeNotifier {
       
       await addNotification(notification);
     } catch (e) {
-      print('Error sending system notification: $e');
+      debugPrint('Error sending system notification: $e');
     }
   }
 
@@ -226,7 +224,6 @@ class NotificationProvider extends ChangeNotifier {
 
   Future<void> scheduleDailyReminder() async {
     try {
-      // ✅ FIXED: Use static method via class name
       await NotificationService.scheduleNotification(
         id: DateTime.now().millisecondsSinceEpoch.hashCode,
         title: '📊 Daily Reminder',
@@ -235,7 +232,7 @@ class NotificationProvider extends ChangeNotifier {
         payload: 'reminder',
       );
     } catch (e) {
-      print('Error scheduling daily reminder: $e');
+      debugPrint('Error scheduling daily reminder: $e');
     }
   }
 
@@ -246,7 +243,6 @@ class NotificationProvider extends ChangeNotifier {
   }) async {
     try {
       final percentage = (spent / budget * 100).toStringAsFixed(0);
-      // ✅ FIXED: Use static method via class name
       await NotificationService.showNotification(
         id: DateTime.now().millisecondsSinceEpoch.hashCode,
         title: '⚠️ Budget Alert',
@@ -254,7 +250,7 @@ class NotificationProvider extends ChangeNotifier {
         payload: 'budget',
       );
     } catch (e) {
-      print('Error scheduling budget alert: $e');
+      debugPrint('Error scheduling budget alert: $e');
     }
   }
 
