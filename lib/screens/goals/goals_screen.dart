@@ -102,6 +102,9 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
     bool isDark,
     bool isCompleted,
   ) {
+    // ✅ FIXED: Access goalProvider correctly
+    final goalProvider = context.watch<GoalProvider>();
+
     if (goalProvider.isLoading) {
       return const LoadingWidget();
     }
