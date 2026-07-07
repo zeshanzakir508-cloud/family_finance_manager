@@ -2,8 +2,6 @@
 import 'package:flutter/material.dart';
 import '../models/report_model.dart';
 import '../services/report_service.dart';
-import 'auth_provider.dart';
-import 'transaction_provider.dart';
 
 class ReportProvider extends ChangeNotifier {
   final ReportService _reportService = ReportService();
@@ -260,10 +258,12 @@ class ReportProvider extends ChangeNotifier {
   }
 
   void setCurrentReportById(String id) {
-    final report = _savedReports.firstWhere((r) => r.id == id);
-    if (report != null) {
+    try {
+      final report = _savedReports.firstWhere((r) => r.id == id);
       _currentReport = report;
       notifyListeners();
+    } catch (_) {
+      // Report not found, do nothing
     }
   }
 
