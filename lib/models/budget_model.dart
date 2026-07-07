@@ -1,7 +1,7 @@
 // lib/models/budget_model.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hive/hive.dart';
-import 'package:flutter/material.dart';
+// ✅ FIXED: Removed unused import 'package:flutter/material.dart';
 
 // ✅ FIXED: Uncommented part directive for build_runner
 part 'budget_model.g.dart';
@@ -307,37 +307,64 @@ class BudgetModel extends HiveObject {
     }
   }
 
+  // ✅ FIXED: Update category spent with proper null safety
   BudgetModel updateCategorySpent(String categoryId, double amount) {
     final updatedCategories = categories.map((category) {
       if (category.id == categoryId) {
-        final newSpent = category.spent + amount;
+        final currentSpent = category.spent;
+        final currentAllocated = category.allocated;
+        
+        final newSpent = (currentSpent) + (amount);
+        final newRemaining = (currentAllocated) - newSpent;
+        
         return category.copyWith(
           spent: newSpent,
-          remaining: category.allocated - newSpent,
+          remaining: newRemaining,
         );
       }
       return category;
     }).toList();
 
+    final totalSpent = updatedCategories.fold<double>(
+      0.0, 
+      (sum, c) => sum + c.spent
+    );
+    
+    final totalRemaining = updatedCategories.fold<double>(
+      0.0, 
+      (sum, c) => sum + c.remaining
+    );
+
     return copyWith(
       categories: updatedCategories,
-      totalSpent: updatedCategories.fold(0.0, (sum, c) => sum + c.spent),
-      totalRemaining: updatedCategories.fold(0.0, (sum, c) => sum + c.remaining),
+      totalSpent: totalSpent,
+      totalRemaining: totalRemaining,
     );
   }
 
+  // ✅ FIXED: Reset budget for new month with proper null safety
   BudgetModel resetForNewMonth() {
     final resetCategories = categories.map((category) {
+      final currentRemaining = category.remaining;
+      final currentAllocated = category.allocated;
+      
       return category.copyWith(
         spent: 0.0,
-        remaining: isRollover ? category.remaining + category.allocated : category.allocated,
+        remaining: isRollover 
+            ? currentRemaining + currentAllocated 
+            : currentAllocated,
       );
     }).toList();
+
+    final totalRemaining = resetCategories.fold<double>(
+      0.0, 
+      (sum, c) => sum + c.remaining
+    );
 
     return copyWith(
       categories: resetCategories,
       totalSpent: 0.0,
-      totalRemaining: resetCategories.fold(0.0, (sum, c) => sum + c.remaining),
+      totalRemaining: totalRemaining,
       updatedAt: DateTime.now(),
     );
   }
