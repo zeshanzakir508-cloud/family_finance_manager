@@ -1,10 +1,12 @@
 // lib/config/firebase_config.dart
-import 'dart:typed_data'; // ← ADD THIS IMPORT for Uint8List
+import 'dart:typed_data';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+
+// ✅ FIXED: Removed @freezed and part directive - this is a config file, not a model
 
 class FirebaseConfig {
   static FirebaseApp? _app;
@@ -29,9 +31,8 @@ class FirebaseConfig {
       _firestore = FirebaseFirestore.instanceFor(app: _app!);
       _storage = FirebaseStorage.instanceFor(app: _app!);
       
-      // ✅ FIX: Enable offline persistence using the new method
-      // enablePersistence() is deprecated, use settings instead
-      await _firestore!.settings = const Settings(
+      // Enable offline persistence
+      _firestore!.settings = const Settings(
         persistenceEnabled: true,
       );
       
