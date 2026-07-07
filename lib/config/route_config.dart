@@ -152,6 +152,8 @@ class RouteConfig {
       addIncome: (context) => const AddIncomeScreen(),
       addExpense: (context) => const AddExpenseScreen(),
       transactionList: (context) => const TransactionListScreen(),
+      transactionDetail: (context) => const TransactionDetailScreen(),
+      editTransaction: (context) => const EditTransactionScreen(),
       searchTransactions: (context) => const SearchTransactionsScreen(),
       recurringTransactions: (context) => const RecurringTransactionsScreen(),
       splitTransaction: (context) => const SplitTransactionScreen(),
@@ -160,12 +162,14 @@ class RouteConfig {
       // Budget
       budget: (context) => const BudgetScreen(),
       addBudget: (context) => const AddBudgetScreen(),
+      budgetDetail: (context) => const BudgetDetailScreen(),
       budgetRollover: (context) => const BudgetRolloverScreen(),
       budgetTemplates: (context) => const BudgetTemplatesScreen(),
 
       // Goals
       goals: (context) => const GoalsScreen(),
       addGoal: (context) => const AddGoalScreen(),
+      goalDetail: (context) => const GoalDetailScreen(),
       goalContribution: (context) => const GoalContributionScreen(),
 
       // Family
@@ -179,6 +183,7 @@ class RouteConfig {
 
       // Reports
       reports: (context) => const ReportsScreen(),
+      reportDetail: (context) => const ReportDetailScreen(),
       spendingBreakdown: (context) => const SpendingBreakdownScreen(),
       incomeExpense: (context) => const IncomeExpenseScreen(),
       cashFlow: (context) => const CashFlowScreen(),
@@ -209,6 +214,50 @@ class RouteConfig {
 
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     // Handle routes with arguments
+    
+    // ✅ FIXED: Added proper route handling with arguments
+    if (settings.name == transactionDetail) {
+      final args = settings.arguments as String?;
+      return MaterialPageRoute(
+        builder: (context) => TransactionDetailScreen(transactionId: args ?? ''),
+      );
+    }
+    
+    if (settings.name == editTransaction) {
+      final args = settings.arguments as String?;
+      return MaterialPageRoute(
+        builder: (context) => EditTransactionScreen(transactionId: args ?? ''),
+      );
+    }
+    
+    if (settings.name == budgetDetail) {
+      final args = settings.arguments as String?;
+      return MaterialPageRoute(
+        builder: (context) => BudgetDetailScreen(budgetId: args ?? ''),
+      );
+    }
+    
+    if (settings.name == budgetRollover) {
+      final args = settings.arguments as String?;
+      return MaterialPageRoute(
+        builder: (context) => BudgetRolloverScreen(budgetId: args ?? ''),
+      );
+    }
+    
+    if (settings.name == goalDetail) {
+      final args = settings.arguments as String?;
+      return MaterialPageRoute(
+        builder: (context) => GoalDetailScreen(goalId: args ?? ''),
+      );
+    }
+    
+    if (settings.name == reportDetail) {
+      final args = settings.arguments as String?;
+      return MaterialPageRoute(
+        builder: (context) => ReportDetailScreen(reportId: args ?? ''),
+      );
+    }
+    
     return null;
   }
 }
