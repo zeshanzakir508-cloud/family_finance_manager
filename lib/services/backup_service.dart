@@ -1,7 +1,8 @@
 // lib/services/backup_service.dart
 import 'dart:convert';
 import 'dart:io';
-import 'package:hive_flutter/hive_flutter.dart';
+// ✅ FIXED: Removed unused import
+// import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/user_model.dart';
 import '../models/transaction_model.dart';
@@ -10,6 +11,7 @@ import '../models/transfer_model.dart';
 import '../models/notification_model.dart';
 import '../models/backup_model.dart';
 import 'database_service.dart';
+// ✅ FIXED: Removed unused import or kept for Constants
 import '../utils/constants.dart';
 import '../utils/helpers.dart';
 
@@ -19,7 +21,6 @@ class BackupService {
       final user = await DatabaseService.getUser(userId);
       if (user == null) return null;
 
-      // ✅ FIXED: Only get user's families
       final transactions = await DatabaseService.getUserTransactions(userId);
       final families = await DatabaseService.getUserFamilies(userId);
       final transfers = await DatabaseService.getUserTransfers(userId);
@@ -140,7 +141,6 @@ class BackupService {
     return DatabaseService.getUserBackups(userId);
   }
 
-  // ✅ FIXED: Delete backup - now accepts String id
   static Future<bool> deleteBackup(String backupId) async {
     try {
       final backups = await DatabaseService.getUserBackups('');
@@ -160,7 +160,6 @@ class BackupService {
     }
   }
 
-  // ✅ FIXED: Delete backup file by BackupModel (overload)
   static Future<bool> deleteBackupFile(BackupModel backup) async {
     try {
       if (backup.filePath != null) {
@@ -245,16 +244,13 @@ class BackupService {
     }
   }
 
-  // ✅ NEW: Delete old backups (keep only N)
   static Future<void> deleteOldBackups(String userId, int keepCount) async {
     try {
       final backups = await getBackups(userId);
       if (backups.length <= keepCount) return;
 
-      // Sort by date (newest first)
       backups.sort((a, b) => b.backupDate.compareTo(a.backupDate));
 
-      // Keep only latest 'keepCount', delete the rest
       for (int i = keepCount; i < backups.length; i++) {
         await deleteBackupFile(backups[i]);
       }
@@ -265,7 +261,6 @@ class BackupService {
     }
   }
 
-  // ✅ NEW: Get total backup size
   static Future<double> getTotalBackupSize(String userId) async {
     try {
       final backups = await getBackups(userId);
