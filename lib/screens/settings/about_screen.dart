@@ -1,565 +1,362 @@
 // lib/screens/settings/about_screen.dart
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import '../../utils/app_theme.dart';
-import '../../utils/helpers.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../providers/theme_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../widgets/common/custom_button.dart';
+import '../../widgets/common/custom_snackbar.dart';
 
 class AboutScreen extends StatefulWidget {
-  const AboutScreen({super.key});
+  const AboutScreen({Key? key}) : super(key: key);
 
   @override
   State<AboutScreen> createState() => _AboutScreenState();
 }
 
 class _AboutScreenState extends State<AboutScreen> {
-  String _appVersion = '1.0.0';
-  String _buildNumber = '1';
+  final String _appVersion = '2.0.0';
+  final String _buildYear = '2026';
 
-  @override
-  void initState() {
-    super.initState();
-    _loadAppInfo();
-  }
-
-  Future<void> _loadAppInfo() async {
+  Future<void> _launchURL(String url) async {
     try {
-      final info = await PackageInfo.fromPlatform();
-      if (mounted) {
-        setState(() {
-          _appVersion = info.version;
-          _buildNumber = info.buildNumber;
-        });
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        CustomSnackBar.show(
+          context,
+          'Could not open link',
+          isError: true,
+        );
       }
     } catch (e) {
-      // Use defaults if package info fails
+      CustomSnackBar.show(
+        context,
+        'Error opening link',
+        isError: true,
+      );
     }
   }
 
-  // ✅ Contact Support Popup
-  void _showContactSupportDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: const Row(
+  Future<void> _contactSupport() async {
+    final email = 'support@finfam.com';
+    final subject = 'FinFam Support Request';
+    final body = '''
+Hello FinFam Team,
+
+I need help with...
+
+---
+App Version: $_appVersion
+User: ${context.read<AuthProvider>().user?.email ?? 'Not logged in'}
+''';
+
+    final uri = Uri(
+      scheme: 'mailto',
+      path: email,
+      query: 'subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}',
+    );
+
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else {
+        CustomSnackBar.show(
+          context,
+          'No email app found',
+          isError: true,
+        );
+      }
+    } catch (e) {
+      CustomSnackBar.show(
+        context,
+        'Could not open email',
+        isError: true,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('About FinFam'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(Icons.support_agent, color: Colors.blue),
-            SizedBox(width: 8),
-            Text('Contact Support'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Email us for support or feedback:',
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.withOpacity(0.2)),
-              ),
-              child: Row(
+            // Logo
+            Center(
+              child: Column(
                 children: [
-                  const Icon(Icons.email, color: Colors.blue),
-                  const SizedBox(width: 12),
-                  Expanded(
+                  Container(
+                    height: 100,
+                    width: 100,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: const Icon(
+                      Icons.people,
+                      size: 56,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'FinFam',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Family Finance Manager',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     child: Text(
-                      'zeshanzakir508@gmail.com',
+                      'Version $_appVersion ($_buildYear)',
                       style: TextStyle(
-                        fontSize: 14,
-                        color: AppTheme.primaryColor,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 12,
+                        color: Colors.grey[600],
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'We\'ll respond within 24 hours.',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              // Copy email to clipboard
-              Navigator.pop(context);
-              Helpers.showSnackBar(
-                context,
-                'Email copied to clipboard!',
-                color: Colors.green,
-              );
-            },
-            child: const Text('Copy Email'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Helpers.showSnackBar(
-                context,
-                'Email sent! We\'ll get back to you soon.',
-                color: Colors.green,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Send Email'),
-          ),
-        ],
-      ),
-    );
-  }
+            const SizedBox(height: 32),
 
-  // ✅ Rate Dialog with proper alignment
-  void _showRateDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: const Text('Rate FinFam'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.star,
-              color: Colors.amber,
-              size: 48,
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Enjoying FinFam?',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'Please take a moment to rate us on the Play Store!',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14),
-            ),
-          ],
-        ),
-        actions: [
-          // ✅ "Maybe Later" on the left
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Helpers.showSnackBar(
-                context,
-                'We\'ll remind you later!',
-                color: Colors.grey[850],
-              );
-            },
-            child: const Text('Maybe Later'),
-          ),
-          // ✅ "Rate Now" on the right
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Helpers.showSnackBar(
-                context,
-                'Thank you for rating us! ⭐⭐⭐⭐⭐',
-                color: Colors.green,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Rate Now'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showTermsDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Terms of Service'),
-        content: const SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'By using FinFam, you agree to:',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              Text('• Use the app responsibly for personal/family finance management'),
-              Text('• Keep your account credentials secure'),
-              Text('• Not share your account with others'),
-              Text('• Provide accurate financial information'),
-              Text('• Accept that we are not responsible for financial decisions made'),
-              SizedBox(height: 8),
-              Text(
-                'For full terms, please visit our website.',
-                style: TextStyle(fontSize: 12),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showOpenSourceDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Open Source Libraries'),
-        content: const SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('FinFam uses the following open source libraries:'),
-              SizedBox(height: 8),
-              Text('• Flutter - UI Framework'),
-              Text('• Firebase - Backend Services'),
-              Text('• Hive - Local Storage'),
-              Text('• Provider - State Management'),
-              Text('• Shared Preferences - Settings Storage'),
-              Text('• Local Auth - Biometric Authentication'),
-              Text('• URL Launcher - Link Handling'),
-              Text('• Package Info Plus - Version Information'),
-              SizedBox(height: 8),
-              Text(
-                'Full source code is available on GitHub.',
-                style: TextStyle(fontSize: 12),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
-      appBar: AppBar(
-        title: const Text('About'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            _buildAppLogo(),
-            const SizedBox(height: 16),
-            const Text(
-              'FinFam',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              'Family Finance Manager',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade600,
-              ),
-            ),
-            const SizedBox(height: 4),
-            // ✅ FIXED: Version 1.0 (2026)
+            // Description
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
+                color: isDark ? Colors.grey[800] : Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Text(
-                'Version $_appVersion ($_buildNumber)',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.w500,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'About',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'FinFam is your all-in-one family finance manager. '
+                    'Track expenses, manage budgets, set financial goals, '
+                    'and collaborate with family members - all in one place.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Features
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[800] : Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Features',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildFeatureItem(Icons.attach_money, 'Track income & expenses'),
+                  _buildFeatureItem(Icons.speed, 'Create budgets'),
+                  _buildFeatureItem(Icons.flag, 'Set financial goals'),
+                  _buildFeatureItem(Icons.family_restroom, 'Family collaboration'),
+                  _buildFeatureItem(Icons.analytics, 'Reports & analytics'),
+                  _buildFeatureItem(Icons.cloud, 'Cloud backup'),
+                  _buildFeatureItem(Icons.security, 'Secure authentication'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Quick links
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[800] : Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Quick Links',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildLinkTile(
+                    icon: Icons.privacy_tip,
+                    title: 'Privacy Policy',
+                    onTap: () {
+                      Navigator.pushNamed(context, '/privacy_policy');
+                    },
+                  ),
+                  _buildLinkTile(
+                    icon: Icons.description,
+                    title: 'Terms of Service',
+                    onTap: () {
+                      // TODO: Navigate to terms
+                      CustomSnackBar.show(
+                        context,
+                        'Terms of Service coming soon',
+                      );
+                    },
+                  ),
+                  _buildLinkTile(
+                    icon: Icons.star,
+                    title: 'Rate Us',
+                    onTap: () {
+                      // TODO: Open Play Store
+                      CustomSnackBar.show(
+                        context,
+                        'Rate us on Play Store',
+                      );
+                    },
+                  ),
+                  _buildLinkTile(
+                    icon: Icons.share,
+                    title: 'Share App',
+                    onTap: () {
+                      // TODO: Share app
+                      CustomSnackBar.show(
+                        context,
+                        'Share app coming soon',
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Support
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[800] : Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Support',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildLinkTile(
+                    icon: Icons.email,
+                    title: 'Contact Support',
+                    onTap: _contactSupport,
+                  ),
+                  _buildLinkTile(
+                    icon: Icons.help,
+                    title: 'FAQ',
+                    onTap: () {
+                      // TODO: Navigate to FAQ
+                      CustomSnackBar.show(
+                        context,
+                        'FAQ coming soon',
+                      );
+                    },
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 24),
-            _buildDescriptionCard(),
+
+            // Footer
+            Center(
+              child: Column(
+                children: [
+                  Text(
+                    'Made with ❤️ by FinFam Team',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '© $_buildYear FinFam. All rights reserved.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 16),
-            _buildFeaturesCard(),
-            const SizedBox(height: 16),
-            _buildLinksCard(),
-            const SizedBox(height: 24),
-            _buildFooter(),
-            const SizedBox(height: 24),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildAppLogo() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 4,
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppTheme.primaryColor.withOpacity(0.1),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          Icons.people_alt,
-          size: 56,
-          color: AppTheme.primaryColor,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDescriptionCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.05),
-            spreadRadius: 2,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'About FinFam',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'FinFam is a comprehensive family finance management app designed to help '
-            'families track income, expenses, transfers, and budgets together. '
-            'With both Personal and Family modes, you can manage finances individually '
-            'or as a family unit.',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade700,
-              height: 1.6,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeaturesCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.05),
-            spreadRadius: 2,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '✨ Key Features',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildFeatureItem(Icons.person, 'Personal Mode'),
-          _buildFeatureItem(Icons.family_restroom, 'Family Mode'),
-          _buildFeatureItem(Icons.attach_money, 'Income & Expense Tracking'),
-          _buildFeatureItem(Icons.swap_horiz, 'Transfers & Approval System'),
-          _buildFeatureItem(Icons.bar_chart, 'Reports & Analytics'),
-          _buildFeatureItem(Icons.security, 'Fingerprint & PIN Lock'),
-          _buildFeatureItem(Icons.backup, 'Backup & Restore'),
-          _buildFeatureItem(Icons.star, 'Premium Plans Available'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLinksCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.05),
-            spreadRadius: 2,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '🔗 Useful Links',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildLinkItem(
-            icon: Icons.privacy_tip,
-            title: 'Privacy Policy',
-            onTap: () {
-              Navigator.pushNamed(context, '/privacy-policy');
-            },
-          ),
-          _buildLinkItem(
-            icon: Icons.description,
-            title: 'Terms of Service',
-            onTap: _showTermsDialog,
-          ),
-          // ✅ FIXED: Contact Support → Popup
-          _buildLinkItem(
-            icon: Icons.support_agent,
-            title: 'Contact Support',
-            onTap: _showContactSupportDialog,
-          ),
-          _buildLinkItem(
-            icon: Icons.star,
-            title: 'Rate Us',
-            onTap: _showRateDialog,
-          ),
-          _buildLinkItem(
-            icon: Icons.code,
-            title: 'Open Source Libraries',
-            onTap: _showOpenSourceDialog,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFooter() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.amber.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.withOpacity(0.2)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.amber.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.verified,
-              color: Colors.amber,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Developed by Zeshan Zakir ❤️',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                // ✅ FIXED: 2024 → 2026
-                Text(
-                  '© 2026 FinFam. All rights reserved.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeatureItem(IconData icon, String title) {
+  Widget _buildFeatureItem(IconData icon, String text) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AppTheme.primaryColor),
-          const SizedBox(width: 12),
+          Icon(
+            icon,
+            size: 16,
+            color: Colors.green[600],
+          ),
+          const SizedBox(width: 8),
           Text(
-            title,
+            text,
             style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade700,
+              fontSize: 13,
+              color: Colors.grey[700],
             ),
           ),
         ],
@@ -567,17 +364,31 @@ class _AboutScreenState extends State<AboutScreen> {
     );
   }
 
-  Widget _buildLinkItem({
+  Widget _buildLinkTile({
     required IconData icon,
     required String title,
     required VoidCallback onTap,
   }) {
     return ListTile(
-      leading: Icon(icon, color: AppTheme.primaryColor),
-      title: Text(title),
-      trailing: const Icon(Icons.chevron_right, size: 20),
+      leading: Icon(
+        icon,
+        size: 20,
+        color: Colors.grey[600],
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 14,
+        ),
+      ),
+      trailing: Icon(
+        Icons.arrow_forward_ios,
+        size: 14,
+        color: Colors.grey[400],
+      ),
       contentPadding: EdgeInsets.zero,
       onTap: onTap,
+      dense: true,
     );
   }
 }
