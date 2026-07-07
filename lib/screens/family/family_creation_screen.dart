@@ -2,13 +2,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/family_provider.dart';
-import '../../services/auth_service.dart';
-import '../../services/database_service.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/currency_provider.dart';
 import '../../models/family_model.dart';
-import '../../utils/app_theme.dart';
+import '../../widgets/common/custom_button.dart';
+import '../../widgets/common/custom_text_field.dart';
+import '../../widgets/common/custom_snackbar.dart';
 
 class FamilyCreationScreen extends StatefulWidget {
-  const FamilyCreationScreen({super.key});
+  const FamilyCreationScreen({Key? key}) : super(key: key);
 
   @override
   State<FamilyCreationScreen> createState() => _FamilyCreationScreenState();
@@ -19,12 +21,15 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   
+  String _selectedCurrency = 'PKR';
   bool _isLoading = false;
-  bool _allowMembersToAdd = true;
-  bool _requireApproval = true;
-  String _selectedCurrency = 'USD';
+  List<CurrencyOption> _currencies = [];
 
-  final List<String> _currencies = ['USD', 'PKR', 'EUR', 'GBP', 'SAR', 'BHD', 'AED'];
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrencies();
+  }
 
   @override
   void dispose() {
@@ -33,111 +38,77 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
     super.dispose();
   }
 
+  void _loadCurrencies() {
+    final currencyProvider = context.read<CurrencyProvider>();
+    final available = currencyProvider.getCurrencyList();
+    _currencies = available.map((c) => CurrencyOption(
+      code: c.code,
+      name: c.name,
+      symbol: c.symbol,
+    )).toList();
+    _selectedCurrency = currencyProvider.currentCurrency;
+  }
+
   Future<void> _createFamily() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final userId = authService.userId;
+      final auth = context.read<AuthProvider>();
+      final familyProvider = context.read<FamilyProvider>();
       
-      if (userId == null) {
-        throw Exception('User not logged in');
-      }
-
-      // ✅ Ensure profile is loaded
-      if (authService.userProfile == null) {
-        await authService.fetchUserProfile(userId);
-      }
-
-      final newFamily = FamilyModel(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+      final family = FamilyModel(
+        id: '',
         name: _nameController.text.trim(),
-        description: _descriptionController.text.trim().isNotEmpty
-            ? _descriptionController.text.trim()
-            : null,
-        createdBy: userId,
-        familyCode: _generateFamilyCode(),
+        description: _descriptionController.text.trim(),
+        createdBy: auth.userId,
+        familyCode: '', // Will be generated
         createdAt: DateTime.now(),
-        members: [
-          FamilyMember(
-            id: userId,
-            userId: userId,
-            displayName: authService.userProfile?['displayName'] ?? 'You',
-            email: authService.currentUser?.email ?? '',
-            role: 'admin',
-            joinedAt: DateTime.now(),
-            isActive: true,
-          ),
-        ],
-        memberIds: [userId],
-        settings: FamilySettings(
-          currency: _selectedCurrency,
-          allowMembersToAdd: _allowMembersToAdd,
-          requireApproval: _requireApproval,
-        ),
+        settings: FamilySettings(currency: _selectedCurrency),
+        members: [],
+        memberIds: [auth.userId],
       );
 
-      await DatabaseService.createFamily(newFamily);
+      familyProvider.createFamily(family);
       
-      final familyProvider = Provider.of<FamilyProvider>(context, listen: false);
-      familyProvider.createFamily(newFamily);
-
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Family "${_nameController.text.trim()}" created successfully! 🎉'),
-            backgroundColor: Colors.green,
-          ),
+        CustomSnackBar.show(
+          context,
+          'Family created successfully! 🎉',
         );
-        Navigator.pushReplacementNamed(context, '/family-dashboard');
+        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to create family: $e'),
-            backgroundColor: Colors.red,
-          ),
+        CustomSnackBar.show(
+          context,
+          'Failed to create family: ${e.toString()}',
+          isError: true,
         );
       }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-
-    setState(() => _isLoading = false);
-  }
-
-  String _generateFamilyCode() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    String code = '';
-    final now = DateTime.now().millisecondsSinceEpoch;
-    for (int i = 0; i < 6; i++) {
-      code += chars[(now + i * 7) % chars.length];
-    }
-    return code;
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('Create Family'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
         actions: [
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
+          TextButton(
+            onPressed: _isLoading ? null : _createFamily,
+            child: Text(
+              'Create',
+              style: TextStyle(
+                color: _isLoading ? Colors.grey : Colors.white,
               ),
             ),
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -147,20 +118,164 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildHeader(),
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).primaryColor,
+                      Theme.of(context).primaryColor.withOpacity(0.7),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Start Your Family Journey',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Create a family to manage finances together',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 24),
-              _buildNameField(),
+
+              // Family Name
+              CustomTextField(
+                controller: _nameController,
+                label: 'Family Name',
+                hint: 'e.g., The Smiths',
+                prefixIcon: Icons.family_restroom,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a family name';
+                  }
+                  if (value.length < 3) {
+                    return 'Family name must be at least 3 characters';
+                  }
+                  return null;
+                },
+                textInputAction: TextInputAction.next,
+              ),
               const SizedBox(height: 16),
-              _buildDescriptionField(),
+
+              // Description
+              CustomTextField(
+                controller: _descriptionController,
+                label: 'Description (Optional)',
+                hint: 'e.g., Our family budget and expenses',
+                prefixIcon: Icons.description,
+                maxLines: 2,
+                textInputAction: TextInputAction.next,
+              ),
               const SizedBox(height: 16),
-              _buildCurrencySelector(),
-              const SizedBox(height: 16),
-              _buildSettingsSection(),
+
+              // Currency
+              DropdownButtonFormField<String>(
+                value: _selectedCurrency,
+                decoration: const InputDecoration(
+                  labelText: 'Family Currency',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.currency_exchange),
+                ),
+                items: _currencies.map((c) {
+                  return DropdownMenuItem(
+                    value: c.code,
+                    child: Text('${c.symbol} ${c.code} - ${c.name}'),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedCurrency = value!;
+                  });
+                },
+              ),
               const SizedBox(height: 24),
-              _buildCreateButton(),
-              const SizedBox(height: 16),
-              _buildInfoCard(),
+
+              // Features preview
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey[800] : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'What you get:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildFeatureItem(
+                      icon: Icons.people,
+                      text: 'Add up to 10 family members',
+                    ),
+                    _buildFeatureItem(
+                      icon: Icons.attach_money,
+                      text: 'Shared family budget tracking',
+                    ),
+                    _buildFeatureItem(
+                      icon: Icons.analytics,
+                      text: 'Family spending reports',
+                    ),
+                    _buildFeatureItem(
+                      icon: Icons.shield,
+                      text: 'Admin controls for member management',
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 24),
+
+              // Create Button
+              CustomButton(
+                onPressed: _isLoading ? null : _createFamily,
+                text: 'Create Family',
+                isLoading: _isLoading,
+                type: ButtonType.primary,
+                size: ButtonSize.large,
+                icon: Icons.add,
+              ),
+              const SizedBox(height: 12),
+
+              // Alternative
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Already have a family?',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pushReplacementNamed(context, '/join_family');
+                    },
+                    child: const Text('Join Instead'),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -168,242 +283,26 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
     );
   }
 
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.1)),
-      ),
+  Widget _buildFeatureItem({
+    required IconData icon,
+    required String text,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.family_restroom,
-              color: AppTheme.primaryColor,
-              size: 28,
-            ),
+          Icon(
+            icon,
+            size: 16,
+            color: Colors.green[600],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Create Your Family',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  'Start managing finances together',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNameField() {
-    return TextFormField(
-      controller: _nameController,
-      decoration: const InputDecoration(
-        labelText: 'Family Name *',
-        prefixIcon: Icon(Icons.family_restroom),
-        border: OutlineInputBorder(),
-        filled: true,
-        fillColor: Colors.white,
-        hintText: 'e.g., Smith Family',
-      ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please enter a family name';
-        }
-        if (value.length < 2) {
-          return 'Family name must be at least 2 characters';
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildDescriptionField() {
-    return TextFormField(
-      controller: _descriptionController,
-      decoration: const InputDecoration(
-        labelText: 'Description (Optional)',
-        prefixIcon: Icon(Icons.description),
-        border: OutlineInputBorder(),
-        filled: true,
-        fillColor: Colors.white,
-        hintText: 'e.g., Our family finance group',
-      ),
-      maxLines: 2,
-    );
-  }
-
-  Widget _buildCurrencySelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Currency',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade300),
-          ),
-          child: DropdownButtonFormField<String>(
-            value: _selectedCurrency,
-            decoration: const InputDecoration(
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 8),
-            ),
-            items: _currencies.map((currency) {
-              return DropdownMenuItem<String>(
-                value: currency,
-                child: Text(currency),
-              );
-            }).toList(),
-            onChanged: (value) {
-              setState(() {
-                _selectedCurrency = value!;
-              });
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSettingsSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Family Settings',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          
-          SwitchListTile(
-            secondary: Icon(
-              Icons.person_add,
-              color: _allowMembersToAdd ? AppTheme.primaryColor : Colors.grey,
-            ),
-            title: const Text('Members Can Add'),
-            subtitle: const Text('Allow members to add transactions'),
-            value: _allowMembersToAdd,
-            onChanged: (value) {
-              setState(() {
-                _allowMembersToAdd = value;
-              });
-            },
-            activeColor: AppTheme.primaryColor,
-            contentPadding: EdgeInsets.zero,
-          ),
-          
-          SwitchListTile(
-            secondary: Icon(
-              Icons.approval,
-              color: _requireApproval ? AppTheme.primaryColor : Colors.grey,
-            ),
-            title: const Text('Require Approval'),
-            subtitle: const Text('Transfers require admin approval'),
-            value: _requireApproval,
-            onChanged: (value) {
-              setState(() {
-                _requireApproval = value;
-              });
-            },
-            activeColor: AppTheme.primaryColor,
-            contentPadding: EdgeInsets.zero,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCreateButton() {
-    return ElevatedButton(
-      onPressed: _isLoading ? null : _createFamily,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-      child: _isLoading
-          ? const SizedBox(
-              height: 24,
-              width: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            )
-          : const Text(
-              'Create Family',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-    );
-  }
-
-  Widget _buildInfoCard() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue.withOpacity(0.2)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.info_outline, color: Colors.blue, size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'You will be the admin of this family. '
-              'You can manage members, approve transfers, and control settings.',
+              text,
               style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade700,
+                fontSize: 14,
+                color: Colors.grey[700],
               ),
             ),
           ),
@@ -411,4 +310,20 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
       ),
     );
   }
+}
+
+// ============================================================
+// DATA CLASS
+// ============================================================
+
+class CurrencyOption {
+  final String code;
+  final String name;
+  final String symbol;
+
+  CurrencyOption({
+    required this.code,
+    required this.name,
+    required this.symbol,
+  });
 }
