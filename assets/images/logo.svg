@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="20" fill="#1A73E8"/>
+  <text x="50" y="68" font-family="Arial" font-size="48" fill="white" text-anchor="middle" font-weight="bold">F</text>
+  <circle cx="25" cy="35" r="8" fill="white" opacity="0.8"/>
+  <circle cx="75" cy="35" r="8" fill="white" opacity="0.8"/>
+  <path d="M20 60 Q50 80 80 60" stroke="white" stroke-width="4" fill="none" opacity="0.8"/>
+</svg>
