@@ -1,4 +1,6 @@
 // lib/config/firebase_config.dart
+import 'dart:typed_data'; // ← ADD THIS IMPORT for Uint8List
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -27,8 +29,11 @@ class FirebaseConfig {
       _firestore = FirebaseFirestore.instanceFor(app: _app!);
       _storage = FirebaseStorage.instanceFor(app: _app!);
       
-      // Enable offline persistence
-      await _firestore!.enablePersistence();
+      // ✅ FIX: Enable offline persistence using the new method
+      // enablePersistence() is deprecated, use settings instead
+      await _firestore!.settings = const Settings(
+        persistenceEnabled: true,
+      );
       
       print('✅ Firebase initialized successfully');
     } catch (e) {
