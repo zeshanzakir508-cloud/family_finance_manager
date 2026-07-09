@@ -1,8 +1,10 @@
 // lib/screens/family/add_member_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/family_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../models/family_model.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/custom_snackbar.dart';
@@ -31,19 +33,115 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
     super.dispose();
   }
 
+  // ✅ FIXED: Implement add member
   Future<void> _addMember() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      // TODO: Implement add member
-      await Future.delayed(const Duration(seconds: 1));
-      
+      final auth = context.read<AuthProvider>();
+      final familyProvider = context.read<FamilyProvider>();
+      final family = familyProvider.currentFamily;
+
+      if (family == null) {
+        throw Exception('No family found');
+      }
+
+      final email = _emailController.text.trim();
+      final name = _nameController.text.trim();
+      final role = _isAdmin ? 'admin' : 'member';
+
+      // Check if user exists
+      final userQuery = await FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: email)
+          .limit(1)
+          .get();
+
+      String userId;
+      String displayName = name;
+
+      if (userQuery.docs.isNotEmpty) {
+        final userDoc = userQuery.docs.first;
+        userId = userDoc.id;
+        final userData = userDoc.data();
+        displayName = userData['displayName'] ?? name;
+      } else {
+        // Create new user profile
+        final newUserRef = FirebaseFirestore.instance.collection('users').doc();
+        userId = newUserRef.id;
+        
+        await newUserRef.set({
+          'uid': userId,
+          'email': email,
+          'displayName': name,
+          'username': email.split('@').first,
+          'role': 'member',
+          'familyId': family.id,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+          'photoUrl': '',
+          'settings': {
+            'currency': 'USD',
+            'theme': 'system',
+            'notifications': true,
+          },
+        });
+      }
+
+      // Check if user already in family
+      if (family.memberIds.contains(userId)) {
+        if (mounted) {
+          CustomSnackBar.show(
+            context,
+            'User is already a member of this family',
+            isError: true,
+          );
+        }
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // Add member to family
+      final newMember = FamilyMember(
+        userId: userId,
+        displayName: displayName,
+        email: email,
+        role: role,
+        joinedAt: DateTime.now(),
+        isActive: true,
+      );
+
+      final updatedMembers = List<Map<String, dynamic>>.from(
+        family.members.map((m) => m.toJson()).toList()
+      );
+      updatedMembers.add(newMember.toJson());
+
+      await FirebaseFirestore.instance
+          .collection('families')
+          .doc(family.id)
+          .update({
+        'members': updatedMembers,
+        'memberIds': FieldValue.arrayUnion([userId]),
+      });
+
+      // Update user's familyId
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .update({
+        'familyId': family.id,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Refresh family data
+      await familyProvider.refreshData();
+
       if (mounted) {
         CustomSnackBar.show(
           context,
-          '${_nameController.text.trim()} added to family! 🎉',
+          '$displayName added to family as ${_isAdmin ? "Admin" : "Member"}! 🎉',
         );
         Navigator.pop(context, true);
       }
