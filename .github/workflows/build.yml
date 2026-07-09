@@ -1,0 +1,93 @@
+name: Build Flutter APK (Debug)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  build-android:
+    name: Build Debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout code
+      - name: 📂 Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. Setup Java
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      # 3. Setup Flutter
+      - name: 🚀 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: '3.22.0'
+
+      # 4. Get dependencies
+      - name: 📦 Get Flutter Dependencies
+        run: flutter pub get
+
+      # 5. Generate .g.dart files
+      - name: 🔧 Generate Build Runner Files
+        run: |
+          flutter pub run build_runner build --delete-conflicting-outputs
+
+      # 6. Verify generated files
+      - name: ✅ Verify Generated Files
+        run: |
+          echo "Checking generated files..."
+          find . -name "*.g.dart" | head -20
+
+      # 7. Build Debug APK
+      - name: 🏗️ Build Debug APK
+        run: flutter build apk --debug
+
+      # 8. Upload APK
+      - name: 📤 Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: family-finance-manager-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 30
+
+      # 9. Upload to Telegram (Optional)
+      - name: 📱 Send to Telegram
+        if: success() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            ✅ Build Successful!
+            📱 App: Family Finance Manager
+            🏷️ Version: 1.0.0
+            🔧 Type: Debug
+            📂 Size: ~30-50 MB
+            📦 Download: Check GitHub Actions Artifacts
+          document: build/app/outputs/flutter-apk/app-debug.apk
+
+      # 10. Notify on Failure
+      - name: ❌ Build Failed Notification
+        if: failure() && secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            ❌ Build Failed!
+            📱 App: Family Finance Manager
+            📝 Check GitHub Actions logs for details.
+            🔗 https://github.com/${{ github.repository }}/actions
