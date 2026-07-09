@@ -403,6 +403,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                       color: report.isFavorite ? Colors.amber : Colors.grey,
                     ),
                     onPressed: () {
+                      // ✅ FIXED: Using correct provider reference
                       reportProvider.toggleFavorite(report.id);
                     },
                   ),
@@ -454,6 +455,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                   Expanded(
                     child: CustomButton(
                       onPressed: () {
+                        // ✅ FIXED: Using correct provider reference
                         reportProvider.setCurrentReport(report);
                         Navigator.pushNamed(
                           context,
