@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/theme_provider.dart';
+// ✅ FIXED: Removed ThemeProvider import
+// import '../../providers/theme_provider.dart';
 import '../../services/biometric_service.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_snackbar.dart';
@@ -108,8 +109,7 @@ class _BiometricAuthScreenState extends State<BiometricAuthScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // ✅ FIXED: Removed unused isDark variable or kept commented
-    // final isDark = context.watch<ThemeProvider>().isDarkMode;
+    // ✅ REMOVED: isDark variable
 
     return Scaffold(
       body: SafeArea(
