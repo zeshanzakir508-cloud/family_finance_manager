@@ -68,7 +68,7 @@ class GoalCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          goal.name,
+                          goal.name ?? 'Goal', // ✅ FIXED: Null safety
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -118,7 +118,7 @@ class GoalCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    goal.category ?? 'Goal',
+                    goal.category ?? 'Goal', // ✅ FIXED: Null safety
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey[600],
