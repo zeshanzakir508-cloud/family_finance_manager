@@ -54,6 +54,7 @@ class PieChartWidget extends StatelessWidget {
                 sections: sortedEntries.asMap().entries.map((entry) {
                   final index = entry.key;
                   final value = entry.value;
+                  // ✅ FIXED: Proper division with total
                   final percentage = total > 0 ? (value / total * 100) : 0;
                   final color = colors[index % colors.length];
 
@@ -67,7 +68,7 @@ class PieChartWidget extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
-                    badgePosition: PieChartBadgePosition.topCenter,
+                    // ✅ FIXED: Removed badgePosition parameter
                   );
                 }).toList(),
                 sectionsSpace: 2,
