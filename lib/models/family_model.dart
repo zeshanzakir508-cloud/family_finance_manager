@@ -100,6 +100,7 @@ class FamilyMember extends HiveObject {
   @HiveField(8)
   final double? balance; // Optional: member's balance in family
 
+  // ✅ FIXED: Removed 'id' parameter - using 'userId' as the identifier
   FamilyMember({
     required this.userId,
     required this.displayName,
@@ -114,6 +115,9 @@ class FamilyMember extends HiveObject {
 
   bool get isAdmin => role == 'admin';
   bool get isViewer => role == 'viewer';
+
+  // ✅ ADDED: 'id' getter for backward compatibility
+  String get id => userId;
 
   Map<String, dynamic> toJson() {
     return {
@@ -205,7 +209,6 @@ class FamilyModel extends HiveObject {
   @HiveField(10)
   final bool isActive;
 
-  // ✅ FIXED: Removed const keyword from constructor
   FamilyModel({
     required this.id,
     required this.name,
