@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/goal_provider.dart';
 import '../../providers/currency_provider.dart';
-import '../../providers/auth_provider.dart'; // ✅ ADDED: Missing import
+import '../../providers/auth_provider.dart';
 import '../../models/goal_model.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_snackbar.dart';
@@ -309,7 +309,7 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                goal.name,
+                                goal.name ?? 'Goal', // ✅ FIXED: Null safety
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 24,
