@@ -1,6 +1,7 @@
 // lib/screens/budget/budget_templates_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/budget_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -27,13 +28,40 @@ class _BudgetTemplatesScreenState extends State<BudgetTemplatesScreen> {
     _loadTemplates();
   }
 
+  // ✅ FIXED: Load templates from Firestore
   Future<void> _loadTemplates() async {
     setState(() => _isLoading = true);
-    // TODO: Load templates from Firestore
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() => _isLoading = false);
+
+    try {
+      final auth = context.read<AuthProvider>();
+      final query = await FirebaseFirestore.instance
+          .collection('budget_templates')
+          .where('userId', isEqualTo: auth.userId)
+          .get();
+
+      _templates = query.docs.map((doc) {
+        final data = doc.data();
+        return BudgetModel.fromJson({
+          ...data,
+          'id': doc.id,
+        });
+      }).toList();
+
+      setState(() => _isLoading = false);
+    } catch (e) {
+      print('❌ Error loading templates: $e');
+      setState(() => _isLoading = false);
+      if (mounted) {
+        CustomSnackBar.show(
+          context,
+          'Failed to load templates: ${e.toString()}',
+          isError: true,
+        );
+      }
+    }
   }
 
+  // ✅ FIXED: Apply template to create new budget
   Future<void> _applyTemplate(BudgetModel template) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -56,15 +84,50 @@ class _BudgetTemplatesScreenState extends State<BudgetTemplatesScreen> {
     );
 
     if (confirm == true) {
-      // TODO: Apply template
-      CustomSnackBar.show(
-        context,
-        'Budget created from template! 📊',
-      );
-      Navigator.pop(context, true);
+      try {
+        final auth = context.read<AuthProvider>();
+        final budgetProvider = context.read<BudgetProvider>();
+        final now = DateTime.now();
+
+        // Create new budget from template
+        final newBudget = template.copyWith(
+          id: '',
+          userId: auth.userId,
+          month: now.month,
+          year: now.year,
+          totalSpent: 0.0,
+          totalRemaining: template.totalAllocated,
+          createdAt: DateTime.now(),
+          updatedAt: null,
+          isActive: true,
+          categories: template.categories.map((c) => c.copyWith(
+            spent: 0.0,
+            remaining: c.allocated,
+          )).toList(),
+        );
+
+        final success = await budgetProvider.createBudget(newBudget);
+
+        if (success && mounted) {
+          CustomSnackBar.show(
+            context,
+            'Budget created from template! 📊',
+          );
+          Navigator.pop(context, true);
+        }
+      } catch (e) {
+        if (mounted) {
+          CustomSnackBar.show(
+            context,
+            'Failed to apply template: ${e.toString()}',
+            isError: true,
+          );
+        }
+      }
     }
   }
 
+  // ✅ FIXED: Delete template from Firestore
   Future<void> _deleteTemplate(BudgetModel template) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -90,11 +153,87 @@ class _BudgetTemplatesScreenState extends State<BudgetTemplatesScreen> {
     );
 
     if (confirm == true) {
-      // TODO: Delete template
-      CustomSnackBar.show(
-        context,
-        'Template deleted successfully',
+      try {
+        await FirebaseFirestore.instance
+            .collection('budget_templates')
+            .doc(template.id)
+            .delete();
+
+        setState(() {
+          _templates.removeWhere((t) => t.id == template.id);
+        });
+
+        if (mounted) {
+          CustomSnackBar.show(
+            context,
+            'Template deleted successfully',
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          CustomSnackBar.show(
+            context,
+            'Failed to delete template: ${e.toString()}',
+            isError: true,
+          );
+        }
+      }
+    }
+  }
+
+  // ✅ FIXED: Save current budget as template
+  Future<void> _saveTemplate(String name, String description) async {
+    try {
+      final auth = context.read<AuthProvider>();
+      final budgetProvider = context.read<BudgetProvider>();
+      final currentBudget = budgetProvider.currentBudget;
+
+      if (currentBudget == null) {
+        CustomSnackBar.show(
+          context,
+          'No current budget to save as template',
+          isError: true,
+        );
+        return;
+      }
+
+      final templateData = currentBudget.toJson();
+      templateData['name'] = name;
+      templateData['description'] = description;
+      templateData['userId'] = auth.userId;
+      templateData['createdAt'] = FieldValue.serverTimestamp();
+      templateData['isTemplate'] = true;
+      templateData.pop('id');
+      templateData.pop('createdAt');
+
+      final docRef = await FirebaseFirestore.instance
+          .collection('budget_templates')
+          .add(templateData);
+
+      final newTemplate = currentBudget.copyWith(
+        id: docRef.id,
+        name: name,
+        description: description,
       );
+
+      setState(() {
+        _templates.insert(0, newTemplate);
+      });
+
+      if (mounted) {
+        CustomSnackBar.show(
+          context,
+          'Template saved successfully! 📋',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        CustomSnackBar.show(
+          context,
+          'Failed to save template: ${e.toString()}',
+          isError: true,
+        );
+      }
     }
   }
 
@@ -109,10 +248,7 @@ class _BudgetTemplatesScreenState extends State<BudgetTemplatesScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () {
-              // Show save current budget as template
-              _showSaveTemplateDialog();
-            },
+            onPressed: _showSaveTemplateDialog,
           ),
         ],
       ),
@@ -310,10 +446,9 @@ class _BudgetTemplatesScreenState extends State<BudgetTemplatesScreen> {
                 return;
               }
               Navigator.pop(context);
-              // TODO: Save template
-              CustomSnackBar.show(
-                context,
-                'Template saved successfully!',
+              _saveTemplate(
+                _nameController.text.trim(),
+                _descriptionController.text.trim(),
               );
             },
             child: const Text('Save'),
