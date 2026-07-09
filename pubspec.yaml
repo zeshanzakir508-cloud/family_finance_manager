@@ -74,9 +74,11 @@ flutter:
     - assets/images/
     - assets/images/empty_state/
     - assets/icons/categories/
-    - assets/translations/
-    - assets/app_icon.png
-    - assets/app_foreground.png
+    # ✅ FIXED: Removed translations if folder doesn't exist
+    # - assets/translations/
+    # ✅ FIXED: Commented out if files don't exist
+    # - assets/app_icon.png
+    # - assets/app_foreground.png
 
   # Uncomment when fonts are added
   # fonts:
