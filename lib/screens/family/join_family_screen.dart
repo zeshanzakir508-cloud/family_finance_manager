@@ -1,8 +1,10 @@
 // lib/screens/family/join_family_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // ✅ ADDED
 import '../../providers/family_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../models/family_model.dart'; // ✅ ADDED
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/custom_snackbar.dart';
@@ -25,20 +27,82 @@ class _JoinFamilyScreenState extends State<JoinFamilyScreen> {
     super.dispose();
   }
 
+  // ✅ FIXED: Implement join family with code
   Future<void> _joinFamily() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
+      final auth = context.read<AuthProvider>();
+      final familyCode = _codeController.text.trim().toUpperCase();
+
+      // Find family by code
+      final query = await FirebaseFirestore.instance
+          .collection('families')
+          .where('familyCode', isEqualTo: familyCode)
+          .limit(1)
+          .get();
+
+      if (query.docs.isEmpty) {
+        if (mounted) {
+          CustomSnackBar.show(
+            context,
+            'No family found with code: $familyCode',
+            isError: true,
+          );
+        }
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final familyDoc = query.docs.first;
+      final familyData = familyDoc.data();
+      final familyId = familyDoc.id;
+
+      // Check if user is already a member
+      final memberIds = List<String>.from(familyData['memberIds'] ?? []);
+      if (memberIds.contains(auth.userId)) {
+        if (mounted) {
+          CustomSnackBar.show(
+            context,
+            'You are already a member of this family',
+            isError: true,
+          );
+        }
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // Add user to family
+      final newMember = FamilyMember(
+        userId: auth.userId,
+        displayName: auth.userName,
+        email: auth.userEmail,
+        role: 'member',
+        joinedAt: DateTime.now(),
+        isActive: true,
+      );
+
+      final updatedMembers = List<Map<String, dynamic>>.from(familyData['members'] ?? []);
+      updatedMembers.add(newMember.toJson());
+
+      await FirebaseFirestore.instance
+          .collection('families')
+          .doc(familyId)
+          .update({
+        'members': updatedMembers,
+        'memberIds': FieldValue.arrayUnion([auth.userId]),
+      });
+
+      // Update family provider
       final familyProvider = context.read<FamilyProvider>();
-      // TODO: Implement join family with code
-      // await familyProvider.joinFamily(_codeController.text.trim().toUpperCase());
-      
+      await familyProvider.refreshData();
+
       if (mounted) {
         CustomSnackBar.show(
           context,
-          'Successfully joined family! 🎉',
+          'Successfully joined ${familyData['name']}! 🎉',
         );
         Navigator.pop(context, true);
       }
