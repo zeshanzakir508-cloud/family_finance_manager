@@ -88,10 +88,11 @@ class GoalMilestoneWidget extends StatelessWidget {
 
   List<_Milestone> _getMilestones() {
     return [
-      _Milestone(percentage: 0.25, label: '25% - Quarter Way'),
-      _Milestone(percentage: 0.50, label: '50% - Half Way'),
-      _Milestone(percentage: 0.75, label: '75% - Almost There'),
-      _Milestone(percentage: 1.0, label: '100% - Goal Achieved! 🎉'),
+      // ✅ FIXED: Proper constructor with 2 positional arguments
+      _Milestone(0.25, '25% - Quarter Way'),
+      _Milestone(0.50, '50% - Half Way'),
+      _Milestone(0.75, '75% - Almost There'),
+      _Milestone(1.0, '100% - Goal Achieved! 🎉'),
     ];
   }
 }
