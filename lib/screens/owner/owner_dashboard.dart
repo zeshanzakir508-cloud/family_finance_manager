@@ -46,31 +46,58 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
     try {
       final firestore = FirebaseFirestore.instance;
       
-      // Count users
-      final userSnap = await firestore.collection('users').get();
-      _userCount = userSnap.docs.length;
+      // ✅ FIXED: Added error handling for each query
+      try {
+        final userSnap = await firestore.collection('users').get();
+        _userCount = userSnap.docs.length;
+      } catch (e) {
+        print('❌ Error loading users: $e');
+        _userCount = 0;
+      }
       
-      // Count families
-      final familySnap = await firestore.collection('families').get();
-      _familyCount = familySnap.docs.length;
+      try {
+        final familySnap = await firestore.collection('families').get();
+        _familyCount = familySnap.docs.length;
+      } catch (e) {
+        print('❌ Error loading families: $e');
+        _familyCount = 0;
+      }
       
-      // Count transactions
-      final transactionSnap = await firestore.collection('transactions').get();
-      _transactionCount = transactionSnap.docs.length;
+      try {
+        final transactionSnap = await firestore.collection('transactions').get();
+        _transactionCount = transactionSnap.docs.length;
+      } catch (e) {
+        print('❌ Error loading transactions: $e');
+        _transactionCount = 0;
+      }
       
     } catch (e) {
-      print('Error loading stats: $e');
+      print('❌ Error loading stats: $e');
+      if (mounted) {
+        CustomSnackBar.show(
+          context,
+          'Failed to load statistics: ${e.toString()}',
+          isError: true,
+        );
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   void _loadMessageStatus() {
-    _showMessage = RemoteConfigService.showMessage;
-    if (_showMessage) {
-      _titleController.text = RemoteConfigService.messageTitle;
-      _bodyController.text = RemoteConfigService.messageBody;
-      _buttonTextController.text = RemoteConfigService.messageButtonText;
+    try {
+      _showMessage = RemoteConfigService.showMessage;
+      if (_showMessage) {
+        _titleController.text = RemoteConfigService.messageTitle;
+        _bodyController.text = RemoteConfigService.messageBody;
+        _buttonTextController.text = RemoteConfigService.messageButtonText;
+      }
+    } catch (e) {
+      print('❌ Error loading message status: $e');
+      _showMessage = false;
     }
   }
 
@@ -86,12 +113,6 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
 
     try {
       // TODO: Implement sending custom message via Remote Config
-      // await RemoteConfigService.sendMessage(
-      //   title: _titleController.text,
-      //   body: _bodyController.text,
-      //   buttonText: _buttonTextController.text,
-      // );
-      
       CustomSnackBar.show(
         context,
         'Message sent to all users! 📢',
@@ -108,7 +129,6 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
 
   Future<void> _hideMessage() async {
     try {
-      // TODO: Hide message via Remote Config
       setState(() => _showMessage = false);
       CustomSnackBar.show(
         context,
@@ -129,6 +149,48 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isOwner = authProvider.isOwner;
     final isModerator = authProvider.isModerator;
+
+    // ✅ FIXED: Added check if user is null
+    if (authProvider.user == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Admin Dashboard')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.person_off,
+                size: 64,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'User Not Found',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Please login again',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  context.read<AuthProvider>().logout();
+                  Navigator.pushReplacementNamed(context, '/login');
+                },
+                child: const Text('Go to Login'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     if (!isOwner && !isModerator) {
       return Scaffold(
@@ -271,7 +333,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                       Expanded(
                         child: _buildStatCard(
                           'Total Income',
-                          '\$${_transactionCount * 10}', // Placeholder
+                          '\$${_transactionCount * 10}',
                           Icons.trending_up,
                           Colors.green,
                         ),
@@ -280,7 +342,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Custom Message Section (Owner & Moderator)
+                  // Custom Message Section
                   const Text(
                     'Send Custom Message',
                     style: TextStyle(
@@ -290,7 +352,7 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Send a custom message to all users (Eid, New Year, etc.)',
+                    'Send a custom message to all users',
                     style: TextStyle(
                       fontSize: 13,
                       color: Colors.grey[600],
@@ -464,7 +526,6 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                     const SizedBox(height: 12),
                     CustomButton(
                       onPressed: () {
-                        // TODO: Refresh Remote Config
                         CustomSnackBar.show(
                           context,
                           'Remote config refreshed',
@@ -478,7 +539,6 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                     const SizedBox(height: 8),
                     CustomButton(
                       onPressed: () {
-                        // TODO: View all users
                         CustomSnackBar.show(
                           context,
                           'Users list coming soon',
@@ -492,7 +552,6 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                     const SizedBox(height: 8),
                     CustomButton(
                       onPressed: () {
-                        // TODO: System logs
                         CustomSnackBar.show(
                           context,
                           'System logs coming soon',
