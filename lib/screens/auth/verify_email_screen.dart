@@ -3,7 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../providers/auth_provider.dart';
+// ✅ FIXED: Use alias to avoid ambiguity with AuthProvider
+import '../../providers/auth_provider.dart' as app_auth;
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_snackbar.dart';
 import 'widgets/auth_header.dart';
@@ -186,9 +187,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                   size: ButtonSize.large,
                 ),
               const SizedBox(height: 16),
+              // ✅ FIXED: Use alias for AuthProvider
               TextButton(
                 onPressed: () {
-                  context.read<AuthProvider>().logout();
+                  context.read<app_auth.AuthProvider>().logout();
                   Navigator.pushReplacementNamed(context, '/login');
                 },
                 child: const Text('Back to Login'),
