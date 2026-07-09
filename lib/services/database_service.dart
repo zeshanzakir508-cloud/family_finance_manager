@@ -212,8 +212,7 @@ class DatabaseService {
       final family = FamilyModel.fromJson(familyDoc.data());
       
       final newMember = FamilyMember(
-        id: userId,
-        userId: userId,
+        userId: userId, // ✅ FIXED: Removed 'id' parameter
         displayName: 'Member',
         email: '',
         role: 'member',
@@ -246,7 +245,8 @@ class DatabaseService {
       }
       
       final family = FamilyModel.fromJson(doc.data()!);
-      final updatedMembers = family.members?.where((m) => m.id != userId).toList() ?? [];
+      // ✅ FIXED: Changed m.id to m.userId
+      final updatedMembers = family.members?.where((m) => m.userId != userId).toList() ?? [];
       
       final updatedMemberIds = List<String>.from(family.memberIds ?? []);
       updatedMemberIds.remove(userId);
