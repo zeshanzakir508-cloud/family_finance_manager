@@ -1,6 +1,7 @@
 // lib/screens/settings/security_settings_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:local_auth/local_auth.dart'; // ✅ FIXED: Added import for BiometricType
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../services/biometric_service.dart';
@@ -35,7 +36,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     try {
       final biometricService = BiometricService();
       _isBiometricAvailable = await biometricService.checkAvailability();
-      _fingerprintEnabled = await biometricService.isFingerprintEnabled();
+      
+      // ✅ FIXED: Removed () from isFingerprintEnabled (it's a getter, not a method)
+      _fingerprintEnabled = biometricService.isFingerprintEnabled;
       
       // TODO: Load PIN and auto-logout settings from SharedPreferences
       _pinEnabled = false;
@@ -43,6 +46,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
       
       // Check face ID support
       final types = await biometricService.getAvailableBiometrics();
+      // ✅ FIXED: BiometricType is now imported from local_auth
       _faceIdEnabled = types.contains(BiometricType.face);
       
     } catch (e) {
