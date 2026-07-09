@@ -1,9 +1,11 @@
 // lib/screens/settings/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // ✅ ADDED
 import '../../providers/auth_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../providers/mode_provider.dart';
+import '../../providers/transaction_provider.dart'; // ✅ ADDED
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_snackbar.dart';
 
@@ -16,12 +18,42 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = false;
+  double _balance = 0.0;
+  double _totalIncome = 0.0;
+  double _totalExpense = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserStats();
+  }
+
+  // ✅ ADDED: Load real user stats from transactions
+  Future<void> _loadUserStats() async {
+    try {
+      final auth = context.read<AuthProvider>();
+      final transactionProvider = context.read<TransactionProvider>();
+      
+      if (auth.isAuthenticated) {
+        await transactionProvider.loadTransactions(auth.userId);
+        
+        setState(() {
+          _totalIncome = transactionProvider.totalIncome;
+          _totalExpense = transactionProvider.totalExpense;
+          _balance = transactionProvider.balance;
+        });
+      }
+    } catch (e) {
+      print('❌ Error loading user stats: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
     final currencyProvider = context.watch<CurrencyProvider>();
     final modeProvider = context.watch<ModeProvider>();
+    final transactionProvider = context.watch<TransactionProvider>();
     final user = authProvider.user;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -59,6 +91,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
+    // ✅ FIXED: Use real stats from transaction provider
+    final balance = transactionProvider.balance;
+    final totalIncome = transactionProvider.totalIncome;
+    final totalExpense = transactionProvider.totalExpense;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
@@ -68,6 +105,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onPressed: () {
               Navigator.pushNamed(context, '/edit_profile');
             },
+          ),
+          IconButton(
+            icon: Icon(
+              transactionProvider.isLoading ? Icons.refresh : Icons.refresh,
+            ),
+            onPressed: _loadUserStats,
           ),
         ],
       ),
@@ -163,17 +206,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   _buildStatItem(
                     'Balance',
-                    '${currencyProvider.currentCurrency} ${user.balance?.toStringAsFixed(2) ?? '0.00'}',
+                    '${currencyProvider.currentCurrency} ${balance.toStringAsFixed(2)}',
                     Colors.blue,
                   ),
                   _buildStatItem(
                     'Income',
-                    '${currencyProvider.currentCurrency} ${user.totalIncome?.toStringAsFixed(2) ?? '0.00'}',
+                    '${currencyProvider.currentCurrency} ${totalIncome.toStringAsFixed(2)}',
                     Colors.green,
                   ),
                   _buildStatItem(
                     'Expense',
-                    '${currencyProvider.currentCurrency} ${user.totalExpense?.toStringAsFixed(2) ?? '0.00'}',
+                    '${currencyProvider.currentCurrency} ${totalExpense.toStringAsFixed(2)}',
                     Colors.red,
                   ),
                 ],
