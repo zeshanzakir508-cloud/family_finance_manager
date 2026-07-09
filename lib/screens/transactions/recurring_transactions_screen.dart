@@ -28,7 +28,8 @@ class _RecurringTransactionsScreenState extends State<RecurringTransactionsScree
   void _loadRecurringTransactions() {
     final transactionProvider = context.read<TransactionProvider>();
     _recurringTransactions = transactionProvider.allTransactions
-        .where((t) => t.isRecurring)
+        // ✅ FIXED: Null safety for isRecurring
+        .where((t) => t.isRecurring == true)
         .toList();
   }
 
