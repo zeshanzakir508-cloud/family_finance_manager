@@ -139,21 +139,17 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Amount
+              // Amount - ✅ FIXED: Changed onChanged to onAmountChanged
               AmountInput(
                 label: 'Amount',
                 currency: currencyProvider.currentCurrency,
-                onChanged: (value) {
+                onAmountChanged: (value) {
                   setState(() {
                     _amount = value;
                   });
                 },
-                validator: (value) {
-                  if (value == null || value <= 0) {
-                    return 'Please enter a valid amount';
-                  }
-                  return null;
-                },
+                // ✅ FIXED: Removed validator from AmountInput (not supported)
+                // validator removed
               ),
               const SizedBox(height: 16),
               
@@ -186,11 +182,11 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
               ),
               const SizedBox(height: 16),
               
-              // Date
+              // Date - ✅ FIXED: Changed onChanged to onDateSelected
               DateTimePicker(
                 label: 'Date',
                 initialDate: _selectedDate,
-                onChanged: (date) {
+                onDateSelected: (date) {
                   setState(() {
                     _selectedDate = date;
                   });
