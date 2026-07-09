@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart' as app_auth;
 import '../../providers/theme_provider.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -34,7 +34,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (auth != null) {
       // User is logged in
-      final authProvider = context.read<AuthProvider>();
+      final authProvider = context.read<app_auth.AuthProvider>();
       await authProvider.refreshUser();
 
       // Check if email is verified
