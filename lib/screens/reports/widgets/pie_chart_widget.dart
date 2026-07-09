@@ -51,16 +51,17 @@ class PieChartWidget extends StatelessWidget {
             height: 200,
             child: PieChart(
               PieChartData(
+                // ✅ FIXED: Proper iteration over sortedEntries
                 sections: sortedEntries.asMap().entries.map((entry) {
                   final index = entry.key;
-                  final value = entry.value;
-                  // ✅ FIXED: Proper division with total
+                  final valueEntry = entry.value;
+                  final value = valueEntry.value; // ✅ FIXED: Access value from MapEntry
                   final percentage = total > 0 ? (value / total * 100) : 0;
                   final color = colors[index % colors.length];
 
                   return PieChartSectionData(
                     color: color,
-                    value: value,
+                    value: value, // ✅ FIXED: value is now double, not MapEntry
                     title: percentage > 5 ? '${percentage.toStringAsFixed(0)}%' : '',
                     radius: 80,
                     titleStyle: const TextStyle(
@@ -68,7 +69,6 @@ class PieChartWidget extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
-                    // ✅ FIXED: Removed badgePosition parameter
                   );
                 }).toList(),
                 sectionsSpace: 2,
