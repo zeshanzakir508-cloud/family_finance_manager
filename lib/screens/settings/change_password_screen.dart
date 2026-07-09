@@ -1,6 +1,7 @@
 // lib/screens/settings/change_password_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // ✅ ADDED
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../widgets/common/custom_button.dart';
@@ -33,6 +34,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     super.dispose();
   }
 
+  // ✅ FIXED: Implement password change
   Future<void> _changePassword() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -40,27 +42,58 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
     try {
       final authProvider = context.read<AuthProvider>();
-      
-      // TODO: Implement password change
-      // await authProvider.changePassword(
-      //   _currentPasswordController.text,
-      //   _newPasswordController.text,
-      // );
-      
-      await Future.delayed(const Duration(seconds: 1));
-      
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user == null) {
+        throw Exception('User not logged in');
+      }
+
+      final currentPassword = _currentPasswordController.text;
+      final newPassword = _newPasswordController.text;
+
+      // Re-authenticate user
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: currentPassword,
+      );
+      await user.reauthenticateWithCredential(credential);
+
+      // Update password
+      await user.updatePassword(newPassword);
+
+      // Clear fields
+      _currentPasswordController.clear();
+      _newPasswordController.clear();
+      _confirmPasswordController.clear();
+
       if (mounted) {
         CustomSnackBar.show(
           context,
           'Password changed successfully! 🔒',
         );
-        
-        // Clear fields
-        _currentPasswordController.clear();
-        _newPasswordController.clear();
-        _confirmPasswordController.clear();
-        
         Navigator.pop(context, true);
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        String errorMessage = 'Failed to change password';
+        switch (e.code) {
+          case 'wrong-password':
+            errorMessage = 'Current password is incorrect. Please try again.';
+            break;
+          case 'requires-recent-login':
+            errorMessage = 'Please login again before changing password.';
+            break;
+          case 'weak-password':
+            errorMessage = 'Password is too weak. Please use at least 6 characters.';
+            break;
+          default:
+            errorMessage = 'Failed to change password: ${e.message}';
+        }
+        CustomSnackBar.show(
+          context,
+          errorMessage,
+          isError: true,
+        );
       }
     } catch (e) {
       if (mounted) {
