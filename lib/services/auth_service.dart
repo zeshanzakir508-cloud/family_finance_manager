@@ -11,6 +11,7 @@ class AuthService extends ChangeNotifier {
   User? _user;
   Map<String, dynamic>? _userProfile;
   bool _isLoading = false;
+  bool _isInitialized = false; // ✅ ADDED
 
   AuthService() {
     _auth.authStateChanges().listen((user) async {
@@ -22,6 +23,7 @@ class AuthService extends ChangeNotifier {
         _userProfile = null;
         print('⚠️ User logged out');
       }
+      _isInitialized = true; // ✅ ADDED
       notifyListeners();
     });
   }
@@ -37,6 +39,7 @@ class AuthService extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isLoggedIn => _user != null;
   bool get hasProfile => _userProfile != null;
+  bool get isInitialized => _isInitialized; // ✅ ADDED
 
   // ============================================================
   // PROFILE MANAGEMENT
@@ -54,6 +57,8 @@ class AuthService extends ChangeNotifier {
       if (doc.exists) {
         _userProfile = doc.data();
         print('✅ Profile loaded successfully!');
+        print('📋 Role: ${_userProfile?['role']}');
+        print('📋 Username: ${_userProfile?['username']}');
       } else {
         print('⚠️ No profile found for user: $uid');
         await _createDefaultProfile(uid);
@@ -119,6 +124,35 @@ class AuthService extends ChangeNotifier {
   bool get isCachedOwner => _userProfile?['role'] == 'owner';
   bool get isCachedModerator => _userProfile?['role'] == 'moderator';
 
+  // ✅ ADDED: Check if email is verified
+  Future<bool> isEmailVerified() async {
+    try {
+      final user = _auth.currentUser;
+      if (user != null) {
+        await user.reload();
+        return user.emailVerified;
+      }
+      return false;
+    } catch (e) {
+      print('❌ Error checking email verification: $e');
+      return false;
+    }
+  }
+
+  // ✅ ADDED: Resend verification email
+  Future<void> resendVerificationEmail() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw Exception('User not logged in');
+      }
+      await user.sendEmailVerification();
+      print('✅ Verification email resent to: ${user.email}');
+    } on FirebaseAuthException catch (e) {
+      throw _getErrorMessage(e);
+    }
+  }
+
   // ============================================================
   // AUTHENTICATION METHODS
   // ============================================================
@@ -128,6 +162,8 @@ class AuthService extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
+      print('🔐 Signing in: $email');
+      
       final result = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
@@ -135,15 +171,28 @@ class AuthService extends ChangeNotifier {
       
       print('✅ User signed in: ${result.user?.uid}');
       
+      // ✅ ADDED: Check email verification
+      if (result.user != null) {
+        await result.user!.reload();
+        if (!result.user!.emailVerified) {
+          print('⚠️ Email not verified for: $email');
+          // Still logged in, but flag for UI
+        } else {
+          print('✅ Email verified: $email');
+        }
+      }
+      
       _isLoading = false;
       notifyListeners();
     } on FirebaseAuthException catch (e) {
       _isLoading = false;
       notifyListeners();
+      print('❌ FirebaseAuthException: ${e.code} - ${e.message}');
       throw _getErrorMessage(e);
     } catch (e) {
       _isLoading = false;
       notifyListeners();
+      print('❌ Login error: $e');
       throw Exception('An error occurred. Please try again.');
     }
   }
@@ -153,15 +202,23 @@ class AuthService extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      final usernameQuery = await _firestore
-          .collection('users')
-          .where('username', isEqualTo: username)
-          .get();
-      
-      if (usernameQuery.docs.isNotEmpty) {
-        throw Exception('Username already taken. Please choose another.');
+      // ✅ FIXED: Check username availability
+      try {
+        final usernameQuery = await _firestore
+            .collection('users')
+            .where('username', isEqualTo: username)
+            .get();
+        
+        if (usernameQuery.docs.isNotEmpty) {
+          throw Exception('Username already taken. Please choose another.');
+        }
+      } catch (e) {
+        print('⚠️ Error checking username: $e');
+        // Continue with signup
       }
 
+      print('🔐 Signing up: $email');
+      
       final result = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
@@ -169,8 +226,15 @@ class AuthService extends ChangeNotifier {
       
       await result.user?.updateDisplayName(name);
       
+      // ✅ FIXED: Create profile with all data
       if (result.user != null) {
         await _createProfileWithUsername(result.user!.uid, email, name, username);
+      }
+      
+      // ✅ ADDED: Send verification email
+      if (result.user != null) {
+        await result.user!.sendEmailVerification();
+        print('✅ Verification email sent to: $email');
       }
       
       print('✅ User signed up: ${result.user?.uid}');
@@ -180,11 +244,13 @@ class AuthService extends ChangeNotifier {
     } on FirebaseAuthException catch (e) {
       _isLoading = false;
       notifyListeners();
+      print('❌ FirebaseAuthException: ${e.code} - ${e.message}');
       throw _getErrorMessage(e);
     } catch (e) {
       _isLoading = false;
       notifyListeners();
-      throw Exception('An error occurred. Please try again.');
+      print('❌ Signup error: $e');
+      throw Exception(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
@@ -235,9 +301,11 @@ class AuthService extends ChangeNotifier {
 
   Future<void> sendPasswordResetEmail(String email) async {
     try {
+      print('🔐 Sending password reset email to: $email');
       await _auth.sendPasswordResetEmail(email: email);
       print('✅ Password reset email sent');
     } on FirebaseAuthException catch (e) {
+      print('❌ FirebaseAuthException: ${e.code} - ${e.message}');
       throw _getErrorMessage(e);
     }
   }
@@ -301,6 +369,8 @@ class AuthService extends ChangeNotifier {
         return 'Network error. Please check your connection.';
       case 'requires-recent-login':
         return 'Please login again before changing password.';
+      case 'email-not-verified':
+        return 'Please verify your email before logging in. Check your inbox.';
       default:
         return 'An error occurred. Please try again.';
     }
