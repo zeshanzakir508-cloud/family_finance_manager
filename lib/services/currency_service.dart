@@ -105,6 +105,8 @@ class CurrencyService {
         code: code,
         name: _names[code] ?? code,
         symbol: _symbols[code] ?? code,
+        // ✅ FIXED: Added flag parameter (required by CurrencyModel)
+        flag: '🌍', // Default flag emoji
         isPopular: _popularCurrencies.contains(code),
       );
     }).toList();
