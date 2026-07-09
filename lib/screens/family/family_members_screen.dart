@@ -1,6 +1,7 @@
 // lib/screens/family/family_members_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // ✅ ADDED
 import '../../providers/family_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/common/empty_state_widget.dart';
@@ -31,6 +32,7 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
     await _loadData();
   }
 
+  // ✅ FIXED: Implement remove member
   void _showRemoveMemberDialog(String userId, String memberName) {
     showDialog(
       context: context,
@@ -48,17 +50,39 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
             onPressed: () async {
               Navigator.pop(context);
               try {
-                // TODO: Implement remove member
-                CustomSnackBar.show(
-                  context,
-                  '$memberName removed from family',
-                );
+                final familyProvider = context.read<FamilyProvider>();
+                final family = familyProvider.currentFamily;
+
+                if (family == null) throw Exception('No family found');
+
+                final updatedMembers = family.members
+                    .where((m) => m.userId != userId)
+                    .toList();
+
+                await FirebaseFirestore.instance
+                    .collection('families')
+                    .doc(family.id)
+                    .update({
+                  'members': updatedMembers.map((m) => m.toJson()).toList(),
+                  'memberIds': FieldValue.arrayRemove([userId]),
+                });
+
+                await familyProvider.refreshData();
+
+                if (mounted) {
+                  CustomSnackBar.show(
+                    context,
+                    '$memberName removed from family',
+                  );
+                }
               } catch (e) {
-                CustomSnackBar.show(
-                  context,
-                  'Failed to remove member: ${e.toString()}',
-                  isError: true,
-                );
+                if (mounted) {
+                  CustomSnackBar.show(
+                    context,
+                    'Failed to remove member: ${e.toString()}',
+                    isError: true,
+                  );
+                }
               }
             },
             style: TextButton.styleFrom(
@@ -71,6 +95,7 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
     );
   }
 
+  // ✅ FIXED: Implement promote member
   void _showPromoteDialog(String userId, String memberName) {
     showDialog(
       context: context,
@@ -88,17 +113,41 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
             onPressed: () async {
               Navigator.pop(context);
               try {
-                // TODO: Implement promote member
-                CustomSnackBar.show(
-                  context,
-                  '$memberName promoted to admin',
-                );
+                final familyProvider = context.read<FamilyProvider>();
+                final family = familyProvider.currentFamily;
+
+                if (family == null) throw Exception('No family found');
+
+                final updatedMembers = family.members.map((m) {
+                  if (m.userId == userId) {
+                    return m.copyWith(role: 'admin');
+                  }
+                  return m;
+                }).toList();
+
+                await FirebaseFirestore.instance
+                    .collection('families')
+                    .doc(family.id)
+                    .update({
+                  'members': updatedMembers.map((m) => m.toJson()).toList(),
+                });
+
+                await familyProvider.refreshData();
+
+                if (mounted) {
+                  CustomSnackBar.show(
+                    context,
+                    '$memberName promoted to admin',
+                  );
+                }
               } catch (e) {
-                CustomSnackBar.show(
-                  context,
-                  'Failed to promote: ${e.toString()}',
-                  isError: true,
-                );
+                if (mounted) {
+                  CustomSnackBar.show(
+                    context,
+                    'Failed to promote: ${e.toString()}',
+                    isError: true,
+                  );
+                }
               }
             },
             child: const Text('Promote'),
