@@ -345,7 +345,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
         // Pie chart
         if (categories != null && categories.isNotEmpty)
           PieChartWidget(
-            data: categories,
+            // ✅ FIXED: Cast to proper type
+            data: categories.cast<String, double>(),
             currency: currency,
             isDark: isDark,
           ),
@@ -361,8 +362,9 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
         ),
         const SizedBox(height: 8),
         ..._getTopCategories(categories, 5).map((entry) {
-          final percentage = data['totalExpense'] > 0
-              ? (entry.value / data['totalExpense'] * 100)
+          final totalExpense = (data['totalExpense'] as num?)?.toDouble() ?? 0.0;
+          final percentage = totalExpense > 0
+              ? (entry.value / totalExpense * 100)
               : 0.0;
           return Container(
             margin: const EdgeInsets.only(bottom: 8),
@@ -597,7 +599,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        ...monthlyData?.entries.toList() ?? [].map((entry) {
+        ...(monthlyData?.entries.toList() ?? <MapEntry<String, dynamic>>[]).map((entry) {
           final values = entry.value as Map<String, dynamic>;
           return Container(
             margin: const EdgeInsets.only(bottom: 4),
@@ -820,7 +822,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        ...monthlyData?.entries.toList() ?? [].map((entry) {
+        ...(monthlyData?.entries.toList() ?? <MapEntry<String, dynamic>>[]).map((entry) {
           final values = entry.value as Map<String, dynamic>;
           final net = (values['net'] ?? 0.0).toDouble();
           return Container(
