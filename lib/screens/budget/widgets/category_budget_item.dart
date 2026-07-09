@@ -1,8 +1,6 @@
 // lib/screens/budget/widgets/category_budget_item.dart
 import 'package:flutter/material.dart';
-import '../../../models/budget_model.dart';
 
-// ✅ FIXED: Created CategoryBudgetItem class since it was missing
 class CategoryBudgetItem {
   final String categoryId;
   final String categoryName;
