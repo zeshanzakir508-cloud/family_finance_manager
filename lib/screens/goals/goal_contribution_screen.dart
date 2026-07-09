@@ -170,7 +170,7 @@ class _GoalContributionScreenState extends State<GoalContributionScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      goal.name,
+                      goal.name ?? 'Goal', // ✅ FIXED: Null safety
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
