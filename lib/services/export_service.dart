@@ -418,7 +418,7 @@ class ExportService {
     final categories = data['categories'] as Map<String, dynamic>?;
     final children = <pw.Widget>[];
 
-    children.add(const pw.Text(
+    children.add(pw.Text(
       'Spending Breakdown',
       style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
     ));
