@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../models/currency_model.dart';
+// ✅ FIXED: Added missing import
+import '../../services/currency_service.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_snackbar.dart';
 
@@ -158,6 +160,7 @@ class _CurrencySettingsScreenState extends State<CurrencySettingsScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
+                    // ✅ FIXED: CurrencyService is now imported
                     CurrencyService.getSymbol(_selectedCurrency ?? 'PKR'),
                     style: const TextStyle(
                       fontSize: 20,
@@ -189,6 +192,7 @@ class _CurrencySettingsScreenState extends State<CurrencySettingsScreen> {
                   ),
                 ),
                 Text(
+                  // ✅ FIXED: CurrencyService is now imported
                   CurrencyService.getName(_selectedCurrency ?? 'PKR'),
                   style: TextStyle(
                     fontSize: 14,
