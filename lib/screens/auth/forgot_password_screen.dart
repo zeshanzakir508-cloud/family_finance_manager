@@ -1,8 +1,10 @@
 // lib/screens/auth/forgot_password_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // ✅ ADDED
 import '../../services/auth_service.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/common/custom_snackbar.dart'; // ✅ ADDED
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -32,20 +34,51 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       final authService = Provider.of<AuthService>(context, listen: false);
       await authService.sendPasswordResetEmail(_emailController.text.trim());
       
+      // ✅ FIXED: Use CustomSnackBar instead of ScaffoldMessenger
+      if (mounted) {
+        CustomSnackBar.showSuccess(
+          context,
+          'Password reset link sent to ${_emailController.text.trim()}!',
+        );
+      }
+      
       setState(() {
         _isEmailSent = true;
         _isLoading = false;
       });
-    } catch (e) {
+    } on FirebaseAuthException catch (e) {
+      // ✅ FIXED: Specific Firebase error handling
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: Colors.red,
-          ),
+        CustomSnackBar.showError(
+          context,
+          _getErrorMessage(e),
         );
       }
       setState(() => _isLoading = false);
+    } catch (e) {
+      if (mounted) {
+        CustomSnackBar.showError(
+          context,
+          e.toString().replaceFirst('Exception: ', ''),
+        );
+      }
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // ✅ ADDED: Specific error messages
+  String _getErrorMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'user-not-found':
+        return 'No account found with this email address.';
+      case 'invalid-email':
+        return 'Please enter a valid email address.';
+      case 'too-many-requests':
+        return 'Too many requests. Please try again later.';
+      case 'network-request-failed':
+        return 'Network error. Please check your connection.';
+      default:
+        return 'Failed to send reset email: ${e.message}';
     }
   }
 
