@@ -1,6 +1,7 @@
 // lib/screens/family/family_setup_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // ✅ ADDED
 import '../../providers/family_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/currency_provider.dart';
@@ -46,6 +47,16 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
     _selectedCurrency = currencyProvider.currentCurrency;
   }
 
+  // ✅ FIXED: Generate family code
+  String _generateFamilyCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    String code = '';
+    for (int i = 0; i < 6; i++) {
+      code += chars[DateTime.now().millisecondsSinceEpoch % chars.length];
+    }
+    return code;
+  }
+
   Future<void> _createFamily() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -53,29 +64,45 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
 
     try {
       final familyProvider = context.read<FamilyProvider>();
+      final auth = context.read<AuthProvider>();
+      
+      // ✅ FIXED: Generate family code
+      final familyCode = _generateFamilyCode();
       
       final family = FamilyModel(
         id: '',
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
-        createdBy: context.read<AuthProvider>().userId,
-        familyCode: '', // Will be generated
+        createdBy: auth.userId,
+        familyCode: familyCode,
         createdAt: DateTime.now(),
         settings: FamilySettings(currency: _selectedCurrency),
-        members: [],
-        memberIds: [],
+        members: [
+          FamilyMember(
+            userId: auth.userId,
+            displayName: auth.userName,
+            email: auth.userEmail,
+            role: 'admin',
+            joinedAt: DateTime.now(),
+            isActive: true,
+          ),
+        ],
+        memberIds: [auth.userId],
         totalBalance: 0.0,
         isActive: true,
       );
 
-      familyProvider.createFamily(family);
+      // ✅ FIXED: Await and handle result
+      final success = await familyProvider.createFamilyInFirestore(family);
       
-      if (mounted) {
+      if (success != null && mounted) {
         CustomSnackBar.show(
           context,
           'Family created successfully! 🎉',
         );
         Navigator.pop(context, true);
+      } else {
+        throw Exception('Failed to create family');
       }
     } catch (e) {
       if (mounted) {
