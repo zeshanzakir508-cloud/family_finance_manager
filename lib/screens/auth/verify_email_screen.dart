@@ -90,6 +90,15 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
           'Verification email resent! Check your inbox.',
         );
       }
+    } on FirebaseAuthException catch (e) {
+      // ✅ FIXED: Better error handling
+      if (mounted) {
+        CustomSnackBar.show(
+          context,
+          _getErrorMessage(e),
+          isError: true,
+        );
+      }
     } catch (e) {
       if (mounted) {
         CustomSnackBar.show(
@@ -100,6 +109,20 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // ✅ ADDED: Specific error messages
+  String _getErrorMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'too-many-requests':
+        return 'Too many resend attempts. Please try again later.';
+      case 'user-not-found':
+        return 'User not found. Please sign up again.';
+      case 'invalid-email':
+        return 'Invalid email address.';
+      default:
+        return 'Failed to resend: ${e.message}';
     }
   }
 
@@ -187,7 +210,6 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                   size: ButtonSize.large,
                 ),
               const SizedBox(height: 16),
-              // ✅ FIXED: Use alias for AuthProvider
               TextButton(
                 onPressed: () {
                   context.read<app_auth.AuthProvider>().logout();
