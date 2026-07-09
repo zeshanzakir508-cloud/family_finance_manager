@@ -62,3 +62,9 @@ class AppConstants {
   static const String successUpdated = 'Updated successfully!';
   static const String emptyMessage = 'No data available.';
 }
+
+// ✅ ADDED: Constants class for backward compatibility
+class Constants {
+  static const String appVersion = AppConstants.appVersion;
+  static const String appName = AppConstants.appName;
+}
