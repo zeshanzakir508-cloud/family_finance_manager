@@ -11,8 +11,8 @@ import '../models/transfer_model.dart';
 import '../models/notification_model.dart';
 import '../models/backup_model.dart';
 import 'database_service.dart';
-// ✅ FIXED: Removed unused import or kept for Constants
-import '../utils/constants.dart';
+// ✅ FIXED: Import AppConfig for appVersion
+import '../config/app_config.dart';
 import '../utils/helpers.dart';
 
 class BackupService {
@@ -33,7 +33,7 @@ class BackupService {
         'transfers': transfers.map((t) => t.toJson()).toList(),
         'notifications': notifications.map((n) => n.toJson()).toList(),
         'backupDate': DateTime.now().toIso8601String(),
-        'appVersion': Constants.appVersion,
+        'appVersion': AppConfig.appVersion, // ✅ FIXED: Using AppConfig instead of Constants
       };
 
       final jsonString = jsonEncode(backupData);
