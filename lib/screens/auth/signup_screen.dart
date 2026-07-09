@@ -1,6 +1,7 @@
 // lib/screens/auth/signup_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // ✅ ADDED
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../utils/validators.dart';
@@ -44,25 +45,38 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await context.read<AuthProvider>().signup(
+      final authProvider = context.read<AuthProvider>();
+      
+      await authProvider.signup(
         _emailController.text.trim(),
         _passwordController.text,
         _nameController.text.trim(),
         _usernameController.text.trim(),
       );
 
+      // ✅ FIXED: Send verification email after signup
+      await _sendVerificationEmail();
+
       if (mounted) {
         CustomSnackBar.show(
           context,
-          'Account created successfully! Please verify your email.',
+          'Account created successfully! Please check your email to verify your account.',
         );
         Navigator.pushReplacementNamed(context, '/verify_email');
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        CustomSnackBar.show(
+          context,
+          _getErrorMessage(e),
+          isError: true,
+        );
       }
     } catch (e) {
       if (mounted) {
         CustomSnackBar.show(
           context,
-          e.toString(),
+          e.toString().replaceFirst('Exception: ', ''),
           isError: true,
         );
       }
@@ -71,10 +85,39 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
+  // ✅ ADDED: Send verification email
+  Future<void> _sendVerificationEmail() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && !user.emailVerified) {
+        await user.sendEmailVerification();
+        print('✅ Verification email sent to: ${user.email}');
+      }
+    } catch (e) {
+      print('❌ Failed to send verification email: $e');
+    }
+  }
+
+  // ✅ ADDED: Get specific error messages
+  String _getErrorMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'email-already-in-use':
+        return 'An account already exists with this email address.';
+      case 'invalid-email':
+        return 'Please enter a valid email address.';
+      case 'weak-password':
+        return 'Password is too weak. Please use at least 6 characters.';
+      case 'operation-not-allowed':
+        return 'Email/password accounts are not enabled. Please contact support.';
+      case 'network-request-failed':
+        return 'Network error. Please check your internet connection.';
+      default:
+        return 'Signup failed: ${e.message}';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // ✅ FIXED: Removed unused theme variable or kept commented
-    // final theme = Theme.of(context);
     final isDark = context.watch<ThemeProvider>().isDarkMode;
 
     return Scaffold(
