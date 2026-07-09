@@ -94,7 +94,7 @@ class FamilyMemberCard extends StatelessWidget {
           ],
         ),
         subtitle: Text(
-          member.email,
+          member.email ?? '', // ✅ FIXED: Null safety
           style: TextStyle(
             fontSize: 12,
             color: Colors.grey[600],
