@@ -1,6 +1,7 @@
 // lib/screens/settings/edit_profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // ✅ ADDED
 import '../../providers/auth_provider.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
@@ -46,6 +47,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  // ✅ FIXED: Implement profile update
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -53,16 +55,60 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     try {
       final authProvider = context.read<AuthProvider>();
-      
-      // TODO: Implement profile update
-      // await authProvider.updateProfile({
-      //   'displayName': _nameController.text.trim(),
-      //   'username': _usernameController.text.trim(),
-      //   'phoneNumber': _phoneController.text.trim(),
-      // });
-      
-      await Future.delayed(const Duration(seconds: 1));
-      
+      final user = authProvider.user;
+
+      if (user == null) {
+        throw Exception('User not found');
+      }
+
+      final name = _nameController.text.trim();
+      final username = _usernameController.text.trim();
+      final phone = _phoneController.text.trim();
+
+      // Check if username is already taken (only if changed)
+      if (username != user.username) {
+        final existingUser = await FirebaseFirestore.instance
+            .collection('users')
+            .where('username', isEqualTo: username)
+            .where('id', isNotEqualTo: user.id)
+            .limit(1)
+            .get();
+
+        if (existingUser.docs.isNotEmpty) {
+          if (mounted) {
+            CustomSnackBar.show(
+              context,
+              'Username is already taken. Please choose another.',
+              isError: true,
+            );
+          }
+          setState(() => _isLoading = false);
+          return;
+        }
+      }
+
+      // Update Firestore
+      final updateData = {
+        'displayName': name,
+        'username': username,
+        'phoneNumber': phone,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.id)
+          .update(updateData);
+
+      // Update Firebase Auth display name
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+      if (firebaseUser != null) {
+        await firebaseUser.updateDisplayName(name);
+      }
+
+      // Refresh user data
+      await authProvider.refreshUser();
+
       if (mounted) {
         CustomSnackBar.show(
           context,
