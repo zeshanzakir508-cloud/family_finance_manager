@@ -8,11 +8,13 @@ class FamilyProvider extends ChangeNotifier {
   final List<TransactionModel> _personalTransactions = [];
   final List<TransactionModel> _familyTransactions = [];
   FamilyModel? _currentFamily;
+  bool _isLoading = false;
 
   List<FamilyModel> get families => _families;
   List<TransactionModel> get personalTransactions => _personalTransactions;
   List<TransactionModel> get familyTransactions => _familyTransactions;
   FamilyModel? get currentFamily => _currentFamily;
+  bool get isLoading => _isLoading;
 
   // ✅ ADDED: setFamilies method
   void setFamilies(List<FamilyModel> families) {
@@ -24,6 +26,11 @@ class FamilyProvider extends ChangeNotifier {
   }
 
   Future<void> refreshData() async {
+    notifyListeners();
+  }
+
+  void setLoading(bool loading) {
+    _isLoading = loading;
     notifyListeners();
   }
 
@@ -78,6 +85,7 @@ class FamilyProvider extends ChangeNotifier {
     _personalTransactions.clear();
     _familyTransactions.clear();
     _currentFamily = null;
+    _isLoading = false;
     notifyListeners();
   }
 }
