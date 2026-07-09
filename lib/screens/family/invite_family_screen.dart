@@ -248,8 +248,9 @@ class _InviteFamilyScreenState extends State<InviteFamilyScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  // ✅ FIXED: Changed Icons.whatsapp to Icons.chat
                   _buildShareButton(
-                    icon: Icons.whatsapp,
+                    icon: Icons.chat,
                     color: Colors.green,
                     onTap: () {
                       // TODO: Share via WhatsApp
