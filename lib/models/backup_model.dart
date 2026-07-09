@@ -130,8 +130,18 @@ class BackupModel extends HiveObject {
     return '${fileSize!.toStringAsFixed(2)} MB';
   }
 
+  // ✅ FIXED: Renamed to match expected getter name 'formattedDate'
+  String get formattedDate {
+    return '${backupDate.day}/${backupDate.month}/${backupDate.year} ${backupDate.hour.toString().padLeft(2, '0')}:${backupDate.minute.toString().padLeft(2, '0')}';
+  }
+
+  // ✅ FIXED: Renamed to match expected getter name 'formattedSize'
+  String get formattedSize {
+    return formattedFileSize;
+  }
+
   String get formattedBackupDate {
-    return '${backupDate.day}/${backupDate.month}/${backupDate.year} ${backupDate.hour}:${backupDate.minute.toString().padLeft(2, '0')}';
+    return '${backupDate.day}/${backupDate.month}/${backupDate.year} ${backupDate.hour.toString().padLeft(2, '0')}:${backupDate.minute.toString().padLeft(2, '0')}';
   }
 
   bool get isEmpty => transactionCount == 0 && familyCount == 0 && memberCount == 0;
