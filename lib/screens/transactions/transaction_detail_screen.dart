@@ -180,7 +180,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                 label: 'Tags',
                 value: transaction.tags!.join(', '),
               ),
-            if (transaction.isRecurring)
+            // ✅ FIXED: Null safety for isRecurring
+            if (transaction.isRecurring == true)
               _buildDetailItem(
                 icon: Icons.repeat,
                 label: 'Recurring',
