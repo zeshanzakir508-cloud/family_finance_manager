@@ -148,29 +148,29 @@ class RouteConfig {
       personalDashboard: (context) => const PersonalDashboard(),
       familyDashboard: (context) => const FamilyDashboard(),
 
-      // Transactions
+      // Transactions - ✅ FIXED: Removed const for screens with required params
       addIncome: (context) => const AddIncomeScreen(),
       addExpense: (context) => const AddExpenseScreen(),
       transactionList: (context) => const TransactionListScreen(),
-      transactionDetail: (context) => const TransactionDetailScreen(),
-      editTransaction: (context) => const EditTransactionScreen(),
+      transactionDetail: (context) => TransactionDetailScreen(transactionId: ''),
+      editTransaction: (context) => EditTransactionScreen(transactionId: ''),
       searchTransactions: (context) => const SearchTransactionsScreen(),
       recurringTransactions: (context) => const RecurringTransactionsScreen(),
-      splitTransaction: (context) => const SplitTransactionScreen(),
+      splitTransaction: (context) => SplitTransactionScreen(totalAmount: 0.0),
       transfer: (context) => const TransferScreen(),
 
-      // Budget
+      // Budget - ✅ FIXED: Removed const for screens with required params
       budget: (context) => const BudgetScreen(),
       addBudget: (context) => const AddBudgetScreen(),
-      budgetDetail: (context) => const BudgetDetailScreen(),
-      budgetRollover: (context) => const BudgetRolloverScreen(),
+      budgetDetail: (context) => BudgetDetailScreen(budgetId: ''),
+      budgetRollover: (context) => BudgetRolloverScreen(budgetId: ''),
       budgetTemplates: (context) => const BudgetTemplatesScreen(),
 
-      // Goals
+      // Goals - ✅ FIXED: Removed const for screens with required params
       goals: (context) => const GoalsScreen(),
       addGoal: (context) => const AddGoalScreen(),
-      goalDetail: (context) => const GoalDetailScreen(),
-      goalContribution: (context) => const GoalContributionScreen(),
+      goalDetail: (context) => GoalDetailScreen(goalId: ''),
+      goalContribution: (context) => GoalContributionScreen(goalId: ''),
 
       // Family
       familyManagement: (context) => const FamilyManagementScreen(),
@@ -181,9 +181,9 @@ class RouteConfig {
       addMember: (context) => const AddMemberScreen(),
       familyCreation: (context) => const FamilyCreationScreen(),
 
-      // Reports
+      // Reports - ✅ FIXED: Removed const for screens with required params
       reports: (context) => const ReportsScreen(),
-      reportDetail: (context) => const ReportDetailScreen(),
+      reportDetail: (context) => ReportDetailScreen(reportId: ''),
       spendingBreakdown: (context) => const SpendingBreakdownScreen(),
       incomeExpense: (context) => const IncomeExpenseScreen(),
       cashFlow: (context) => const CashFlowScreen(),
@@ -215,7 +215,6 @@ class RouteConfig {
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     // Handle routes with arguments
     
-    // ✅ FIXED: Added proper route handling with arguments
     if (settings.name == transactionDetail) {
       final args = settings.arguments as String?;
       return MaterialPageRoute(
@@ -227,6 +226,13 @@ class RouteConfig {
       final args = settings.arguments as String?;
       return MaterialPageRoute(
         builder: (context) => EditTransactionScreen(transactionId: args ?? ''),
+      );
+    }
+    
+    if (settings.name == splitTransaction) {
+      final args = settings.arguments as double?;
+      return MaterialPageRoute(
+        builder: (context) => SplitTransactionScreen(totalAmount: args ?? 0.0),
       );
     }
     
@@ -248,6 +254,13 @@ class RouteConfig {
       final args = settings.arguments as String?;
       return MaterialPageRoute(
         builder: (context) => GoalDetailScreen(goalId: args ?? ''),
+      );
+    }
+    
+    if (settings.name == goalContribution) {
+      final args = settings.arguments as String?;
+      return MaterialPageRoute(
+        builder: (context) => GoalContributionScreen(goalId: args ?? ''),
       );
     }
     
