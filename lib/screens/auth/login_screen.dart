@@ -5,9 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
 import '../../services/biometric_service.dart';
+import '../../providers/auth_provider.dart'; // ✅ ADDED
 import '../../utils/app_theme.dart';
-// ✅ FIXED: Removed unused import
-// import '../../utils/helpers.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -79,7 +78,9 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
       
-      await authService.signInWithEmail(email, password);
+      // ✅ FIXED: Use AuthProvider instead of AuthService directly
+      final authProvider = context.read<AuthProvider>();
+      await authProvider.login(email, password);
       
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/mode-selection');
@@ -90,14 +91,17 @@ class _LoginScreenState extends State<LoginScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      // ✅ FIXED: Show actual error message
+      final errorMsg = e.toString();
       setState(() {
-        _errorMessage = 'An error occurred. Please try again.';
+        _errorMessage = errorMsg.contains('FirebaseAuthException') 
+            ? _getErrorMessage(e as FirebaseAuthException)
+            : errorMsg.replaceFirst('Exception: ', '');
         _isLoading = false;
       });
     }
   }
 
-  // ✅ FIXED: Use BiometricService instead of AuthService
   Future<void> _loginWithFingerprint() async {
     setState(() {
       _isLoading = true;
@@ -105,6 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
+      final authProvider = context.read<AuthProvider>();
       final biometricService = BiometricService();
       
       if (!biometricService.isFingerprintEnabled) {
@@ -115,7 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      final authenticated = await biometricService.authenticateWithFingerprint();
+      final authenticated = await authProvider.authenticateWithBiometric();
       
       if (authenticated) {
         if (mounted) {
@@ -140,7 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
       case 'user-not-found':
         return 'No account found with this email.';
       case 'wrong-password':
-        return 'Incorrect password.';
+        return 'Incorrect password. Please try again.';
       case 'invalid-email':
         return 'Invalid email address.';
       case 'user-disabled':
@@ -149,14 +154,16 @@ class _LoginScreenState extends State<LoginScreen> {
         return 'Too many attempts. Please try again later.';
       case 'network-request-failed':
         return 'Network error. Please check your connection.';
+      case 'email-not-verified':
+        return 'Please verify your email before logging in. Check your inbox.';
       default:
-        return 'Login failed. Please try again.';
+        return 'Login failed: ${e.message}';
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // ✅ FIXED: Use BiometricService instead of AuthService
+    final authProvider = context.watch<AuthProvider>();
     final biometricService = BiometricService();
     final isFingerprintAvailable = biometricService.isFingerprintEnabled;
 
