@@ -1,10 +1,10 @@
 // lib/screens/dashboard/widgets/budget_progress_widget.dart
 import 'package:flutter/material.dart';
+// ✅ FIXED: Removed duplicate import
 import '../../../models/budget_model.dart';
-import '../../../models/budget_model.dart' as model;
 
 class BudgetProgressWidget extends StatelessWidget {
-  final model.BudgetModel budget;
+  final BudgetModel budget;
   final String currency;
 
   const BudgetProgressWidget({
