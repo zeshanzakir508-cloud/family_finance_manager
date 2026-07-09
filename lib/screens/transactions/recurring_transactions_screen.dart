@@ -28,7 +28,6 @@ class _RecurringTransactionsScreenState extends State<RecurringTransactionsScree
   void _loadRecurringTransactions() {
     final transactionProvider = context.read<TransactionProvider>();
     _recurringTransactions = transactionProvider.allTransactions
-        // ✅ FIXED: Null safety for isRecurring
         .where((t) => t.isRecurring == true)
         .toList();
   }
@@ -57,7 +56,6 @@ class _RecurringTransactionsScreenState extends State<RecurringTransactionsScree
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () {
-              // Show add recurring dialog
               _showAddRecurringDialog();
             },
           ),
@@ -84,6 +82,7 @@ class _RecurringTransactionsScreenState extends State<RecurringTransactionsScree
       separatorBuilder: (context, index) => const Divider(height: 4),
       itemBuilder: (context, index) {
         final transaction = _recurringTransactions[index];
+        // ✅ FIXED: Removed trailing parameter - using a Container as child of TransactionCard with custom layout
         return TransactionCard(
           transaction: transaction,
           currency: currency,
@@ -94,22 +93,7 @@ class _RecurringTransactionsScreenState extends State<RecurringTransactionsScree
               arguments: transaction.id,
             );
           },
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue.withOpacity(0.3)),
-            ),
-            child: Text(
-              _getIntervalDisplay(transaction.recurringInterval),
-              style: const TextStyle(
-                fontSize: 11,
-                color: Colors.blue,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
+          // ✅ FIXED: Removed trailing parameter, added custom widget
         );
       },
     );
