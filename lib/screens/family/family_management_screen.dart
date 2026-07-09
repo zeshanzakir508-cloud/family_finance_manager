@@ -1,6 +1,7 @@
 // lib/screens/family/family_management_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // ✅ ADDED
 import '../../providers/family_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/currency_provider.dart';
@@ -89,6 +90,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     );
   }
 
+  // ✅ FIXED: Implement leave family
   void _showLeaveFamilyDialog() {
     showDialog(
       context: context,
@@ -106,18 +108,45 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
             onPressed: () async {
               Navigator.pop(context);
               try {
-                // TODO: Implement leave family
-                CustomSnackBar.show(
-                  context,
-                  'You have left the family',
-                );
-                Navigator.pop(context);
+                final auth = context.read<AuthProvider>();
+                final familyProvider = context.read<FamilyProvider>();
+                final family = familyProvider.currentFamily;
+
+                if (family == null) {
+                  throw Exception('No family found');
+                }
+
+                // Remove user from family members
+                final updatedMembers = family.members
+                    .where((m) => m.userId != auth.userId)
+                    .toList();
+
+                await FirebaseFirestore.instance
+                    .collection('families')
+                    .doc(family.id)
+                    .update({
+                  'members': updatedMembers.map((m) => m.toJson()).toList(),
+                  'memberIds': FieldValue.arrayRemove([auth.userId]),
+                });
+
+                // Clear current family and navigate
+                familyProvider.clearData();
+
+                if (mounted) {
+                  CustomSnackBar.show(
+                    context,
+                    'You have left the family',
+                  );
+                  Navigator.pop(context);
+                }
               } catch (e) {
-                CustomSnackBar.show(
-                  context,
-                  'Failed to leave family: ${e.toString()}',
-                  isError: true,
-                );
+                if (mounted) {
+                  CustomSnackBar.show(
+                    context,
+                    'Failed to leave family: ${e.toString()}',
+                    isError: true,
+                  );
+                }
               }
             },
             style: TextButton.styleFrom(
@@ -187,6 +216,7 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
     }
 
     final members = provider.getFamilyMembers();
+    final auth = context.read<AuthProvider>();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -338,28 +368,16 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
           else
             ...members.map((member) {
               final isAdmin = member.isAdmin;
-              final isCurrentUser = member.userId == context.read<AuthProvider>().userId;
+              final isCurrentUser = member.userId == auth.userId;
               return FamilyMemberCard(
                 member: member,
                 isAdmin: isAdmin,
                 isCurrentUser: isCurrentUser,
                 onRemove: isAdmin && !isCurrentUser
-                    ? () {
-                        // TODO: Remove member
-                        CustomSnackBar.show(
-                          context,
-                          'Member removed',
-                        );
-                      }
+                    ? () => _removeMember(member)
                     : null,
                 onPromote: isAdmin && !isCurrentUser
-                    ? () {
-                        // TODO: Promote member
-                        CustomSnackBar.show(
-                          context,
-                          'Member promoted to admin',
-                        );
-                      }
+                    ? () => _promoteMember(member)
                     : null,
               );
             }),
@@ -377,5 +395,132 @@ class _FamilyManagementScreenState extends State<FamilyManagementScreen> {
         ],
       ),
     );
+  }
+
+  // ✅ ADDED: Remove member from family
+  Future<void> _removeMember(FamilyMember member) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Member'),
+        content: Text(
+          'Remove ${member.displayName} from the family?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final familyProvider = context.read<FamilyProvider>();
+      final family = familyProvider.currentFamily;
+
+      if (family == null) throw Exception('No family found');
+
+      final updatedMembers = family.members
+          .where((m) => m.userId != member.userId)
+          .toList();
+
+      await FirebaseFirestore.instance
+          .collection('families')
+          .doc(family.id)
+          .update({
+        'members': updatedMembers.map((m) => m.toJson()).toList(),
+        'memberIds': FieldValue.arrayRemove([member.userId]),
+      });
+
+      await familyProvider.refreshData();
+
+      if (mounted) {
+        CustomSnackBar.show(
+          context,
+          '${member.displayName} removed from family',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        CustomSnackBar.show(
+          context,
+          'Failed to remove member: ${e.toString()}',
+          isError: true,
+        );
+      }
+    }
+  }
+
+  // ✅ ADDED: Promote member to admin
+  Future<void> _promoteMember(FamilyMember member) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Promote to Admin'),
+        content: Text(
+          'Promote ${member.displayName} to family admin?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Promote'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final familyProvider = context.read<FamilyProvider>();
+      final family = familyProvider.currentFamily;
+
+      if (family == null) throw Exception('No family found');
+
+      final updatedMembers = family.members.map((m) {
+        if (m.userId == member.userId) {
+          return m.copyWith(role: 'admin');
+        }
+        return m;
+      }).toList();
+
+      await FirebaseFirestore.instance
+          .collection('families')
+          .doc(family.id)
+          .update({
+        'members': updatedMembers.map((m) => m.toJson()).toList(),
+      });
+
+      await familyProvider.refreshData();
+
+      if (mounted) {
+        CustomSnackBar.show(
+          context,
+          '${member.displayName} promoted to admin',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        CustomSnackBar.show(
+          context,
+          'Failed to promote member: ${e.toString()}',
+          isError: true,
+        );
+      }
+    }
   }
 }
