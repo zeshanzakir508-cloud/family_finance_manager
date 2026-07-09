@@ -233,9 +233,10 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.category),
                 ),
+                // ✅ FIXED: Changed DropdownMenuItem<Object> to DropdownMenuItem<String>
                 items: _categories.map((category) {
-                  return DropdownMenuItem<Object>(
-                    value: category['id'],
+                  return DropdownMenuItem<String>(
+                    value: category['id'] as String,
                     child: Row(
                       children: [
                         Icon(
