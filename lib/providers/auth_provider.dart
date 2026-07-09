@@ -1,5 +1,6 @@
 // lib/providers/auth_provider.dart
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // ✅ ADDED for FirebaseAuthException
 import '../services/auth_service.dart';
 import '../services/biometric_service.dart';
 import '../models/user_model.dart';
@@ -48,6 +49,12 @@ class AuthProvider extends ChangeNotifier {
       _isAuthenticated = true;
       _setLoading(false);
       notifyListeners();
+    } on FirebaseAuthException catch (e) {
+      // ✅ FIXED: Specific Firebase error handling
+      _error = _getFirebaseErrorMessage(e);
+      _setLoading(false);
+      notifyListeners();
+      rethrow;
     } catch (e) {
       _error = e.toString();
       _setLoading(false);
@@ -64,8 +71,17 @@ class AuthProvider extends ChangeNotifier {
       await _authService.signUpWithEmail(email, password, name, username);
       await _loadUser();
       _isAuthenticated = true;
+      
+      // ✅ FIXED: Send verification email after signup
+      await _sendVerificationEmail();
+      
       _setLoading(false);
       notifyListeners();
+    } on FirebaseAuthException catch (e) {
+      _error = _getFirebaseErrorMessage(e);
+      _setLoading(false);
+      notifyListeners();
+      rethrow;
     } catch (e) {
       _error = e.toString();
       _setLoading(false);
@@ -91,6 +107,77 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> refreshUser() async {
     await _loadUser();
+  }
+
+  // ✅ ADDED: Send verification email
+  Future<void> _sendVerificationEmail() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && !user.emailVerified) {
+        await user.sendEmailVerification();
+        print('✅ Verification email sent to: ${user.email}');
+      }
+    } catch (e) {
+      print('❌ Failed to send verification email: $e');
+    }
+  }
+
+  // ✅ ADDED: Check if email is verified
+  Future<bool> isEmailVerified() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await user.reload();
+        return user.emailVerified;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // ✅ ADDED: Resend verification email
+  Future<void> resendVerificationEmail() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await user.sendEmailVerification();
+        print('✅ Verification email resent to: ${user.email}');
+      }
+    } catch (e) {
+      print('❌ Failed to resend verification email: $e');
+      rethrow;
+    }
+  }
+
+  // ✅ ADDED: Get specific Firebase error messages
+  String _getFirebaseErrorMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'wrong-password':
+        return 'Incorrect password. Please try again.';
+      case 'user-not-found':
+        return 'No account found with this email address.';
+      case 'user-disabled':
+        return 'This account has been disabled. Please contact support.';
+      case 'too-many-requests':
+        return 'Too many unsuccessful attempts. Please try again later.';
+      case 'email-already-in-use':
+        return 'An account already exists with this email address.';
+      case 'invalid-email':
+        return 'Please enter a valid email address.';
+      case 'weak-password':
+        return 'Password is too weak. Please use at least 6 characters.';
+      case 'operation-not-allowed':
+        return 'Email/password accounts are not enabled. Please contact support.';
+      case 'network-request-failed':
+        return 'Network error. Please check your internet connection.';
+      case 'requires-recent-login':
+        return 'Please log in again to continue.';
+      case 'email-not-verified':
+        return 'Please verify your email address before logging in. Check your inbox for the verification link.';
+      default:
+        return 'Login failed: ${e.message}';
+    }
   }
 
   // ============================================================
