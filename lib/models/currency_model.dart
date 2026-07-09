@@ -5,6 +5,7 @@ class CurrencyModel {
   final String flag;
   final double? rate;
   final bool isFavorite;
+  final bool isPopular; // ✅ ADDED: Missing property
 
   CurrencyModel({
     required this.code,
@@ -13,6 +14,7 @@ class CurrencyModel {
     required this.flag,
     this.rate,
     this.isFavorite = false,
+    this.isPopular = false, // ✅ ADDED: Default value
   });
 
   factory CurrencyModel.fromMap(Map<String, dynamic> map) {
@@ -23,6 +25,7 @@ class CurrencyModel {
       flag: map['flag'] ?? '🌍',
       rate: map['rate']?.toDouble(),
       isFavorite: map['isFavorite'] ?? false,
+      isPopular: map['isPopular'] ?? false, // ✅ ADDED
     );
   }
 
@@ -34,6 +37,7 @@ class CurrencyModel {
       'flag': flag,
       'rate': rate,
       'isFavorite': isFavorite,
+      'isPopular': isPopular, // ✅ ADDED
     };
   }
 
@@ -44,6 +48,7 @@ class CurrencyModel {
     String? flag,
     double? rate,
     bool? isFavorite,
+    bool? isPopular, // ✅ ADDED
   }) {
     return CurrencyModel(
       code: code ?? this.code,
@@ -52,6 +57,7 @@ class CurrencyModel {
       flag: flag ?? this.flag,
       rate: rate ?? this.rate,
       isFavorite: isFavorite ?? this.isFavorite,
+      isPopular: isPopular ?? this.isPopular, // ✅ ADDED
     );
   }
 }
