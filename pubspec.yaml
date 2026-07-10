@@ -1,101 +1,97 @@
 name: family_finance_manager
-description: A Family Finance Manager app
+description: A family finance management application
 publish_to: 'none'
-version: 1.0.0+1
+version: 2.0.0+1
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
-  flutter: ">=3.10.0"
 
 dependencies:
   flutter:
     sdk: flutter
-
+  
   # Firebase
-  firebase_core: ^2.27.0
-  firebase_auth: ^4.17.8
-  cloud_firestore: ^4.15.8
-  firebase_storage: ^11.6.9
-  firebase_remote_config: ^4.3.17
-
-  # UI
-  fl_chart: ^0.66.2
-  google_fonts: ^6.1.0
-  cached_network_image: ^3.4.0
-  shimmer: ^3.0.0
-  flutter_svg: ^2.0.10
-
-  # State & Storage
-  provider: ^6.1.2
-  shared_preferences: ^2.2.3
+  firebase_core: ^3.1.0
+  firebase_auth: ^5.1.0
+  cloud_firestore: ^5.0.0
+  
+  # State Management
+  provider: ^6.1.0
+  
+  # Local Storage
+  shared_preferences: ^2.2.0
   hive: ^2.2.3
   hive_flutter: ^1.1.0
-  sqflite: ^2.3.3
-  path_provider: ^2.1.5
-
-  # Utilities
-  intl: ^0.18.1
-  http: ^1.2.0
-  equatable: ^2.0.8
-  connectivity_plus: ^5.0.2
-  device_info_plus: ^9.1.2
-  package_info_plus: ^5.0.1
-  permission_handler: ^11.0.0
-  image_picker: ^1.1.2
-  url_launcher: ^6.3.1
-  share_plus: ^7.2.2
-  local_auth: ^2.3.0
-  flutter_local_notifications: ^17.2.4
-  timezone: ^0.9.4
+  
+  # UI Components
+  fl_chart: ^0.66.0
+  flutter_svg: ^2.0.9
+  cupertino_icons: ^1.0.8
+  
+  # Biometric
+  local_auth: ^2.1.8
+  
+  # PDF & Export
+  pdf: ^3.10.0
+  printing: ^5.11.0
   csv: ^5.1.1
-  pdf: ^3.10.7
-  printing: ^5.11.1
-
-  # Optional
-  google_mobile_ads: ^4.0.0
-  in_app_purchase: ^3.0.0
-  webview_flutter: ^4.7.0
-  flutter_launcher_icons: ^0.13.1
+  share_plus: ^7.2.1
+  
+  # Network
+  http: ^1.1.0
+  
+  # File & Path
+  path_provider: ^2.1.0
+  
+  # Other
+  intl: ^0.18.1
+  flutter_local_notifications: ^17.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.2
-  build_runner: ^2.4.8
-  hive_generator: ^2.0.1
-  json_serializable: ^6.7.1
-  freezed: ^2.4.5
-  freezed_annotation: ^2.4.1
+  
+  flutter_lints: ^3.0.0
+  build_runner: ^2.4.0
+  hive_generator: ^2.0.0
 
 flutter:
   uses-material-design: true
-
+  
+  # ✅ App Icon & Assets
   assets:
     - assets/images/
-    - assets/images/empty_state/
-    - assets/icons/categories/
-    # ✅ FIXED: Removed translations if folder doesn't exist
-    # - assets/translations/
-    # ✅ FIXED: Commented out if files don't exist
-    # - assets/app_icon.png
-    # - assets/app_foreground.png
+    - assets/icons/
+    - assets/fonts/
+  
+  # ✅ App Icon Configuration
+  # To generate app icons, run:
+  # flutter pub run flutter_launcher_icons:main
+  flutter_launcher_icons:
+    android: true
+    ios: true
+    image_path: "assets/icons/app_icon.png"
+    min_sdk_android: 21
+    web:
+      generate: true
+      image_path: "assets/icons/app_icon.png"
+      background_color: "#2563EB"
+      theme_color: "#2563EB"
+    windows:
+      generate: true
+      image_path: "assets/icons/app_icon.png"
+      icon_size: 48
+    macos:
+      generate: true
+      image_path: "assets/icons/app_icon.png"
 
-  # Uncomment when fonts are added
-  # fonts:
-  #   - family: Poppins
-  #     fonts:
-  #       - asset: assets/fonts/Poppins-Regular.ttf
-  #       - asset: assets/fonts/Poppins-Medium.ttf
-  #         weight: 500
-  #       - asset: assets/fonts/Poppins-SemiBold.ttf
-  #         weight: 600
-  #       - asset: assets/fonts/Poppins-Bold.ttf
-  #         weight: 700
-
-flutter_launcher_icons:
-  android: true
-  ios: true
-  image_path: "assets/app_icon.png"
-  adaptive_icon_foreground: "assets/app_foreground.png"
-  adaptive_icon_background: "#1A73E8"
-  remove_alpha_ios: true
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
