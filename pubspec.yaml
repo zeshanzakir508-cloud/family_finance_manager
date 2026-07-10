@@ -58,32 +58,11 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   
-  # ✅ App Icon & Assets
+  # ✅ Assets
   assets:
     - assets/images/
     - assets/icons/
     - assets/fonts/
-  
-  # ✅ App Icon Configuration
-  # To generate app icons, run:
-  # flutter pub run flutter_launcher_icons:main
-  flutter_launcher_icons:
-    android: true
-    ios: true
-    image_path: "assets/icons/app_icon.png"
-    min_sdk_android: 21
-    web:
-      generate: true
-      image_path: "assets/icons/app_icon.png"
-      background_color: "#2563EB"
-      theme_color: "#2563EB"
-    windows:
-      generate: true
-      image_path: "assets/icons/app_icon.png"
-      icon_size: 48
-    macos:
-      generate: true
-      image_path: "assets/icons/app_icon.png"
 
   fonts:
     - family: Poppins
