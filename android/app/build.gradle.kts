@@ -31,13 +31,8 @@ android {
         multiDexEnabled = true
     }
 
+    // ✅ FIXED: Removed duplicate 'debug' signing config
     signingConfigs {
-        create("debug") {
-            storeFile = file("debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-        }
         create("release") {
             storeFile = file("debug.keystore")
             storePassword = "android"
@@ -53,7 +48,7 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         debug {
-            signingConfig = signingConfigs.getByName("debug")
+            // ✅ Uses default debug signing config automatically
             isMinifyEnabled = false
         }
     }
