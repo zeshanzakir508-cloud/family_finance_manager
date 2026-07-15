@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/budget_provider.dart';
 import '../../providers/currency_provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../models/budget_model.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_snackbar.dart';
@@ -46,8 +46,9 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
 
   Future<void> _refreshBudget() async {
     setState(() => _isLoading = true);
+    // ✅ FIXED: AuthProvider → AppAuthProvider
     await context.read<BudgetProvider>().refreshBudgets(
-          context.read<AuthProvider>().userId,
+          context.read<AppAuthProvider>().userId,
         );
     _loadBudget();
   }
@@ -115,7 +116,6 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Budget header
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -240,7 +240,6 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Category breakdown
               const Text(
                 'Category Breakdown',
                 style: TextStyle(
@@ -353,7 +352,6 @@ class _BudgetDetailScreenState extends State<BudgetDetailScreen> {
                 }),
               const SizedBox(height: 24),
 
-              // Actions
               Row(
                 children: [
                   Expanded(
