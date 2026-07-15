@@ -1,8 +1,8 @@
 // lib/screens/auth/signup_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // ✅ ADDED
-import '../../providers/auth_provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../providers/theme_provider.dart';
 import '../../utils/validators.dart';
 import '../../widgets/common/custom_button.dart';
@@ -45,7 +45,8 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final authProvider = context.read<AuthProvider>();
+      // ✅ FIXED: Using AppAuthProvider
+      final authProvider = context.read<AppAuthProvider>();
       
       await authProvider.signup(
         _emailController.text.trim(),
@@ -54,7 +55,6 @@ class _SignupScreenState extends State<SignupScreen> {
         _usernameController.text.trim(),
       );
 
-      // ✅ FIXED: Send verification email after signup
       await _sendVerificationEmail();
 
       if (mounted) {
@@ -85,7 +85,6 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  // ✅ ADDED: Send verification email
   Future<void> _sendVerificationEmail() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -98,7 +97,6 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  // ✅ ADDED: Get specific error messages
   String _getErrorMessage(FirebaseAuthException e) {
     switch (e.code) {
       case 'email-already-in-use':
@@ -137,13 +135,11 @@ class _SignupScreenState extends State<SignupScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const SizedBox(height: 16),
-                      // Header
                       AuthHeader(
                         title: 'Create Account',
                         subtitle: 'Join FinFam and manage your finances',
                       ),
                       const SizedBox(height: 32),
-                      // Name Field
                       CustomTextField(
                         controller: _nameController,
                         label: 'Full Name',
@@ -153,7 +149,6 @@ class _SignupScreenState extends State<SignupScreen> {
                         textInputAction: TextInputAction.next,
                       ),
                       const SizedBox(height: 16),
-                      // Username Field
                       CustomTextField(
                         controller: _usernameController,
                         label: 'Username',
@@ -163,7 +158,6 @@ class _SignupScreenState extends State<SignupScreen> {
                         textInputAction: TextInputAction.next,
                       ),
                       const SizedBox(height: 16),
-                      // Email Field
                       CustomTextField(
                         controller: _emailController,
                         label: 'Email',
@@ -174,7 +168,6 @@ class _SignupScreenState extends State<SignupScreen> {
                         textInputAction: TextInputAction.next,
                       ),
                       const SizedBox(height: 16),
-                      // Password Field
                       CustomTextField(
                         controller: _passwordController,
                         label: 'Password',
@@ -197,7 +190,6 @@ class _SignupScreenState extends State<SignupScreen> {
                         textInputAction: TextInputAction.next,
                       ),
                       const SizedBox(height: 16),
-                      // Confirm Password Field
                       CustomTextField(
                         controller: _confirmPasswordController,
                         label: 'Confirm Password',
@@ -224,7 +216,6 @@ class _SignupScreenState extends State<SignupScreen> {
                         onFieldSubmitted: (_) => _signUp(),
                       ),
                       const SizedBox(height: 8),
-                      // Password hint
                       Text(
                         'Password must be at least 6 characters',
                         style: TextStyle(
@@ -233,7 +224,6 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      // Signup Button
                       CustomButton(
                         onPressed: _signUp,
                         text: 'Sign Up',
@@ -242,7 +232,6 @@ class _SignupScreenState extends State<SignupScreen> {
                         size: ButtonSize.large,
                       ),
                       const SizedBox(height: 16),
-                      // Footer
                       AuthFooter(
                         text: 'Already have an account?',
                         buttonText: 'Login',
