@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
 import '../../services/biometric_service.dart';
-import '../../providers/auth_provider.dart'; // ✅ ADDED
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../utils/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -30,7 +30,6 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  /// ✅ Get email from username
   Future<String?> _getEmailFromUsername(String username) async {
     try {
       final query = await FirebaseFirestore.instance
@@ -57,14 +56,11 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      
       String input = _emailController.text.trim();
       String password = _passwordController.text.trim();
       
       String email = input;
       
-      // ✅ Check if input is username (no '@')
       if (!input.contains('@')) {
         final foundEmail = await _getEmailFromUsername(input);
         if (foundEmail != null) {
@@ -78,8 +74,8 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
       
-      // ✅ FIXED: Use AuthProvider instead of AuthService directly
-      final authProvider = context.read<AuthProvider>();
+      // ✅ FIXED: Using AppAuthProvider
+      final authProvider = context.read<AppAuthProvider>();
       await authProvider.login(email, password);
       
       if (mounted) {
@@ -91,7 +87,6 @@ class _LoginScreenState extends State<LoginScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      // ✅ FIXED: Show actual error message
       final errorMsg = e.toString();
       setState(() {
         _errorMessage = errorMsg.contains('FirebaseAuthException') 
@@ -109,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final authProvider = context.read<AuthProvider>();
+      final authProvider = context.read<AppAuthProvider>();
       final biometricService = BiometricService();
       
       if (!biometricService.isFingerprintEnabled) {
@@ -163,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
+    final authProvider = context.watch<AppAuthProvider>();
     final biometricService = BiometricService();
     final isFingerprintAvailable = biometricService.isFingerprintEnabled;
 
@@ -179,7 +174,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // App Logo
                   Container(
                     width: 80,
                     height: 80,
@@ -213,7 +207,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 32),
 
-                  // Error Message
                   if (_errorMessage != null)
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -240,7 +233,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   const SizedBox(height: 16),
 
-                  // Username/Email Field
                   TextFormField(
                     controller: _emailController,
                     decoration: const InputDecoration(
@@ -261,7 +253,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Password Field
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
@@ -296,7 +287,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
 
-                  // Forgot Password
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
@@ -308,7 +298,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Login Button
                   SizedBox(
                     height: 50,
                     child: ElevatedButton(
@@ -337,7 +326,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Fingerprint / Face ID Button
                   if (isFingerprintAvailable)
                     SizedBox(
                       height: 50,
@@ -362,7 +350,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   const SizedBox(height: 16),
 
-                  // Sign Up
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
