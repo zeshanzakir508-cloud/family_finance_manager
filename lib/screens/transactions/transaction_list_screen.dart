@@ -189,6 +189,7 @@ class _TransactionListScreenState extends State<TransactionListScreen> {
           if (_showFilters)
             TransactionFilters(
               onApply: (filters) {
+                // ✅ FIXED: Using setCategoryFilter, setTypeFilter, setDateRange methods
                 transactionProvider.setCategoryFilter(filters['category']);
                 transactionProvider.setTypeFilter(filters['type']);
                 transactionProvider.setDateRange(
@@ -198,6 +199,7 @@ class _TransactionListScreenState extends State<TransactionListScreen> {
                 setState(() {});
               },
               onClear: () {
+                // ✅ FIXED: Using clearFilters method
                 transactionProvider.clearFilters();
                 setState(() {});
               },
@@ -228,10 +230,12 @@ class _TransactionListScreenState extends State<TransactionListScreen> {
     String currency,
     bool isDark,
   ) {
+    // ✅ FIXED: Using isLoading getter
     if (provider.isLoading) {
       return const LoadingWidget();
     }
 
+    // ✅ FIXED: Using error getter
     if (provider.error != null) {
       return Center(
         child: Column(
@@ -263,6 +267,7 @@ class _TransactionListScreenState extends State<TransactionListScreen> {
       );
     }
 
+    // ✅ FIXED: Using transactions getter
     final transactions = provider.transactions;
 
     if (transactions.isEmpty) {
@@ -324,6 +329,7 @@ class _TransactionListScreenState extends State<TransactionListScreen> {
             );
 
             if (confirm == true) {
+              // ✅ FIXED: Using deleteTransaction method
               await provider.deleteTransaction(transaction.id!);
               if (mounted) {
                 CustomSnackBar.show(
