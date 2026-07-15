@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/family_provider.dart';
-import '../../providers/auth_provider.dart';
-import '../../models/family_model.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
+import '../../models/family_model.dart'; // ✅ FIXED: Changed from family_member_model.dart
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/custom_snackbar.dart';
@@ -20,27 +20,25 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _nameController = TextEditingController();
-  final _messageController = TextEditingController();
-  
+  String _selectedRole = 'member';
   bool _isLoading = false;
-  bool _isAdmin = false;
+
+  final List<String> _roles = ['member', 'admin', 'viewer'];
 
   @override
   void dispose() {
     _emailController.dispose();
     _nameController.dispose();
-    _messageController.dispose();
     super.dispose();
   }
 
-  // ✅ FIXED: Implement add member
   Future<void> _addMember() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final auth = context.read<AuthProvider>();
+      final auth = context.read<AppAuthProvider>(); // ✅ Fixed
       final familyProvider = context.read<FamilyProvider>();
       final family = familyProvider.currentFamily;
 
@@ -49,8 +47,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
       }
 
       final email = _emailController.text.trim();
-      final name = _nameController.text.trim();
-      final role = _isAdmin ? 'admin' : 'member';
+      final displayName = _nameController.text.trim();
 
       // Check if user exists
       final userQuery = await FirebaseFirestore.instance
@@ -59,39 +56,24 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
           .limit(1)
           .get();
 
-      String userId;
-      String displayName = name;
-
-      if (userQuery.docs.isNotEmpty) {
-        final userDoc = userQuery.docs.first;
-        userId = userDoc.id;
-        final userData = userDoc.data();
-        displayName = userData['displayName'] ?? name;
-      } else {
-        // Create new user profile
-        final newUserRef = FirebaseFirestore.instance.collection('users').doc();
-        userId = newUserRef.id;
-        
-        await newUserRef.set({
-          'uid': userId,
-          'email': email,
-          'displayName': name,
-          'username': email.split('@').first,
-          'role': 'member',
-          'familyId': family.id,
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-          'photoUrl': '',
-          'settings': {
-            'currency': 'USD',
-            'theme': 'system',
-            'notifications': true,
-          },
-        });
+      if (userQuery.docs.isEmpty) {
+        if (mounted) {
+          CustomSnackBar.show(
+            context,
+            'User not found with email: $email',
+            isError: true,
+          );
+        }
+        setState(() => _isLoading = false);
+        return;
       }
 
-      // Check if user already in family
-      if (family.memberIds.contains(userId)) {
+      final existingUser = userQuery.docs.first;
+      final existingUserId = existingUser.id;
+
+      // Check if already a member
+      final memberIds = List<String>.from(family.memberIds ?? []);
+      if (memberIds.contains(existingUserId)) {
         if (mounted) {
           CustomSnackBar.show(
             context,
@@ -103,12 +85,12 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
         return;
       }
 
-      // Add member to family
+      // ✅ FIXED: FamilyMember from family_model.dart
       final newMember = FamilyMember(
-        userId: userId,
-        displayName: displayName,
+        userId: existingUserId,
+        displayName: displayName.isNotEmpty ? displayName : existingUser.data()['displayName'] ?? email.split('@').first,
         email: email,
-        role: role,
+        role: _selectedRole,
         joinedAt: DateTime.now(),
         isActive: true,
       );
@@ -123,25 +105,15 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
           .doc(family.id)
           .update({
         'members': updatedMembers,
-        'memberIds': FieldValue.arrayUnion([userId]),
+        'memberIds': FieldValue.arrayUnion([existingUserId]),
       });
 
-      // Update user's familyId
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .update({
-        'familyId': family.id,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
-      // Refresh family data
       await familyProvider.refreshData();
 
       if (mounted) {
         CustomSnackBar.show(
           context,
-          '$displayName added to family as ${_isAdmin ? "Admin" : "Member"}! 🎉',
+          'Member added successfully! 🎉',
         );
         Navigator.pop(context, true);
       }
@@ -177,14 +149,13 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -196,12 +167,12 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
+                        color: Colors.green.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
                         Icons.person_add,
-                        color: Colors.blue,
+                        color: Colors.green,
                         size: 32,
                       ),
                     ),
@@ -218,7 +189,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                             ),
                           ),
                           Text(
-                            'Add a new member to your family',
+                            'Invite someone to join your family',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey[600],
@@ -232,23 +203,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Name
-              CustomTextField(
-                controller: _nameController,
-                label: 'Full Name',
-                hint: 'Enter member\'s full name',
-                prefixIcon: Icons.person,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a name';
-                  }
-                  return null;
-                },
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 16),
-
-              // Email
               CustomTextField(
                 controller: _emailController,
                 label: 'Email Address',
@@ -268,99 +222,58 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Role selection
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.grey[800] : Colors.grey[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Role',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: RadioListTile<bool>(
-                            title: const Text('Member'),
-                            value: false,
-                            groupValue: _isAdmin,
-                            onChanged: (value) {
-                              setState(() {
-                                _isAdmin = false;
-                              });
-                            },
-                            contentPadding: EdgeInsets.zero,
-                            dense: true,
-                          ),
-                        ),
-                        Expanded(
-                          child: RadioListTile<bool>(
-                            title: const Text('Admin'),
-                            value: true,
-                            groupValue: _isAdmin,
-                            onChanged: (value) {
-                              setState(() {
-                                _isAdmin = true;
-                              });
-                            },
-                            contentPadding: EdgeInsets.zero,
-                            dense: true,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+              CustomTextField(
+                controller: _nameController,
+                label: 'Display Name (Optional)',
+                hint: 'Enter a name for this member',
+                prefixIcon: Icons.person,
+                textInputAction: TextInputAction.next,
               ),
               const SizedBox(height: 16),
 
-              // Message
-              CustomTextField(
-                controller: _messageController,
-                label: 'Personal Message (Optional)',
-                hint: 'Add a welcome message',
-                prefixIcon: Icons.message,
-                maxLines: 3,
-                textInputAction: TextInputAction.done,
+              DropdownButtonFormField<String>(
+                value: _selectedRole,
+                decoration: const InputDecoration(
+                  labelText: 'Role',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.admin_panel_settings),
+                ),
+                items: _roles.map((role) {
+                  return DropdownMenuItem(
+                    value: role,
+                    child: Text(role.toUpperCase()),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedRole = value!;
+                  });
+                },
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 8),
 
-              // Info box
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.orange.withOpacity(0.3),
-                  ),
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       Icons.info_outline,
-                      color: Colors.orange[700],
+                      size: 16,
+                      color: Colors.blue[700],
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Admins can manage members and family settings. '
-                        'Members can view and add transactions.',
+                        'Admin: Can manage family settings and members\n'
+                        'Member: Can view and participate\n'
+                        'Viewer: Can only view',
                         style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.orange[700],
+                          fontSize: 12,
+                          color: Colors.blue[700],
                         ),
                       ),
                     ),
@@ -369,7 +282,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Add Button
               CustomButton(
                 onPressed: _isLoading ? null : _addMember,
                 text: 'Add Member',
