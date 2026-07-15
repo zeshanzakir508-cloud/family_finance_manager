@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/goal_provider.dart';
 import '../../providers/currency_provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../providers/category_provider.dart';
 import '../../models/goal_model.dart';
 import '../../widgets/common/custom_button.dart';
@@ -86,7 +86,8 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final auth = context.read<AuthProvider>();
+      // ✅ FIXED: AuthProvider → AppAuthProvider
+      final auth = context.read<AppAuthProvider>();
       final goalProvider = context.read<GoalProvider>();
       
       final category = _categories.firstWhere(
@@ -175,7 +176,6 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Name
               CustomTextField(
                 controller: _nameController,
                 label: 'Goal Name',
@@ -191,7 +191,6 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Description
               CustomTextField(
                 controller: _descriptionController,
                 label: 'Description (Optional)',
@@ -202,7 +201,6 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Target Amount
               CustomTextField(
                 controller: _targetController,
                 label: 'Target Amount',
@@ -225,7 +223,6 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Category
               DropdownButtonFormField<String>(
                 value: _selectedCategory,
                 decoration: const InputDecoration(
@@ -233,7 +230,6 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.category),
                 ),
-                // ✅ FIXED: Changed DropdownMenuItem<Object> to DropdownMenuItem<String>
                 items: _categories.map((category) {
                   return DropdownMenuItem<String>(
                     value: category['id'] as String,
@@ -264,7 +260,6 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Deadline
               GestureDetector(
                 onTap: _selectDate,
                 child: Container(
@@ -325,7 +320,6 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Notes
               CustomTextField(
                 controller: _notesController,
                 label: 'Notes (Optional)',
@@ -336,7 +330,6 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Preview
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -404,7 +397,6 @@ class _AddGoalScreenState extends State<AddGoalScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Save Button
               CustomButton(
                 onPressed: _isLoading ? null : _saveGoal,
                 text: 'Create Goal',
