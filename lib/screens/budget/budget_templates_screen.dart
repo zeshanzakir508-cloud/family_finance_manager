@@ -28,12 +28,11 @@ class _BudgetTemplatesScreenState extends State<BudgetTemplatesScreen> {
     _loadTemplates();
   }
 
-  // ✅ FIXED: Load templates from Firestore
   Future<void> _loadTemplates() async {
     setState(() => _isLoading = true);
 
     try {
-      final auth = context.read<AuthProvider>();
+      final auth = context.read<AppAuthProvider>(); // ✅ Fixed
       final query = await FirebaseFirestore.instance
           .collection('budget_templates')
           .where('userId', isEqualTo: auth.userId)
@@ -61,7 +60,6 @@ class _BudgetTemplatesScreenState extends State<BudgetTemplatesScreen> {
     }
   }
 
-  // ✅ FIXED: Apply template to create new budget
   Future<void> _applyTemplate(BudgetModel template) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -85,11 +83,10 @@ class _BudgetTemplatesScreenState extends State<BudgetTemplatesScreen> {
 
     if (confirm == true) {
       try {
-        final auth = context.read<AuthProvider>();
+        final auth = context.read<AppAuthProvider>(); // ✅ Fixed
         final budgetProvider = context.read<BudgetProvider>();
         final now = DateTime.now();
 
-        // Create new budget from template
         final newBudget = template.copyWith(
           id: '',
           userId: auth.userId,
@@ -127,7 +124,6 @@ class _BudgetTemplatesScreenState extends State<BudgetTemplatesScreen> {
     }
   }
 
-  // ✅ FIXED: Delete template from Firestore
   Future<void> _deleteTemplate(BudgetModel template) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -184,7 +180,7 @@ class _BudgetTemplatesScreenState extends State<BudgetTemplatesScreen> {
   // ✅ FIXED: Save current budget as template
   Future<void> _saveTemplate(String name, String description) async {
     try {
-      final auth = context.read<AuthProvider>();
+      final auth = context.read<AppAuthProvider>(); // ✅ Fixed
       final budgetProvider = context.read<BudgetProvider>();
       final currentBudget = budgetProvider.currentBudget;
 
@@ -203,8 +199,10 @@ class _BudgetTemplatesScreenState extends State<BudgetTemplatesScreen> {
       templateData['userId'] = auth.userId;
       templateData['createdAt'] = FieldValue.serverTimestamp();
       templateData['isTemplate'] = true;
-      templateData.pop('id');
-      templateData.pop('createdAt');
+      
+      // ✅ FIXED: Use remove() instead of pop()
+      templateData.remove('id');
+      templateData.remove('createdAt');
 
       final docRef = await FirebaseFirestore.instance
           .collection('budget_templates')
