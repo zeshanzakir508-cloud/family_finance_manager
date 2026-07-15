@@ -29,7 +29,6 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
     _loadData();
   }
 
-  // ✅ FIXED: Changed AuthProvider to AppAuthProvider
   Future<void> _loadData() async {
     final auth = context.read<AppAuthProvider>();
     final familyProvider = context.read<FamilyProvider>();
@@ -39,6 +38,7 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
       await familyProvider.refreshData();
       final family = familyProvider.currentFamily;
       if (family != null) {
+        // ✅ Using loadFamilyTransactions method
         await transactionProvider.loadFamilyTransactions(family.id);
       }
       await context.read<BudgetProvider>().loadCurrentMonthBudget(auth.userId);
@@ -56,6 +56,7 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
     final currencyProvider = context.watch<CurrencyProvider>();
     final budgetProvider = context.watch<BudgetProvider>();
 
+    // ✅ Using isLoading getter
     if (transactionProvider.isLoading) {
       return const LoadingWidget();
     }
@@ -116,6 +117,7 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
     }
 
     final family = familyProvider.currentFamily!;
+    // ✅ Using transactions, totalIncome, totalExpense, balance getters
     final transactions = transactionProvider.transactions;
     final totalIncome = transactionProvider.totalIncome;
     final totalExpense = transactionProvider.totalExpense;
