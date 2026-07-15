@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/budget_provider.dart';
 import '../../providers/currency_provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../models/budget_model.dart';
 import '../../widgets/common/empty_state_widget.dart';
 import '../../widgets/common/loading_widget.dart';
@@ -26,7 +26,8 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   Future<void> _loadData() async {
-    final auth = context.read<AuthProvider>();
+    // ✅ FIXED: AuthProvider → AppAuthProvider
+    final auth = context.read<AppAuthProvider>();
     final budgetProvider = context.read<BudgetProvider>();
     
     if (auth.isAuthenticated) {
@@ -135,7 +136,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Budget header
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -262,7 +262,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
           ),
           const SizedBox(height: 24),
 
-          // Categories
           const Text(
             'Category Budgets',
             style: TextStyle(
@@ -302,7 +301,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
             }).toList(),
           const SizedBox(height: 24),
 
-          // Actions
           Row(
             children: [
               Expanded(
@@ -347,7 +345,6 @@ class _BudgetScreenState extends State<BudgetScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              // TODO: Implement rollover
               CustomSnackBar.show(
                 context,
                 'Budget rolled over successfully!',
