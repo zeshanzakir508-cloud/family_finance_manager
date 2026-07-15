@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/family_provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../providers/currency_provider.dart';
 import '../../models/family_model.dart';
 import '../../widgets/common/custom_button.dart';
@@ -55,7 +55,8 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final auth = context.read<AuthProvider>();
+      // ✅ FIXED: Changed AuthProvider to AppAuthProvider
+      final auth = context.read<AppAuthProvider>();
       final familyProvider = context.read<FamilyProvider>();
       
       final family = FamilyModel(
@@ -63,7 +64,7 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
         createdBy: auth.userId,
-        familyCode: '', // Will be generated
+        familyCode: '',
         createdAt: DateTime.now(),
         settings: FamilySettings(currency: _selectedCurrency),
         members: [],
@@ -118,7 +119,6 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -156,7 +156,6 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Family Name
               CustomTextField(
                 controller: _nameController,
                 label: 'Family Name',
@@ -175,7 +174,6 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Description
               CustomTextField(
                 controller: _descriptionController,
                 label: 'Description (Optional)',
@@ -186,7 +184,6 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Currency
               DropdownButtonFormField<String>(
                 value: _selectedCurrency,
                 decoration: const InputDecoration(
@@ -208,7 +205,6 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Features preview
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -247,7 +243,6 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Create Button
               CustomButton(
                 onPressed: _isLoading ? null : _createFamily,
                 text: 'Create Family',
@@ -258,7 +253,6 @@ class _FamilyCreationScreenState extends State<FamilyCreationScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Alternative
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
