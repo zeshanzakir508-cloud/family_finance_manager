@@ -1,9 +1,9 @@
 // lib/screens/family/family_setup_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // ✅ ADDED
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/family_provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../providers/currency_provider.dart';
 import '../../models/family_model.dart';
 import '../../widgets/common/custom_button.dart';
@@ -47,7 +47,6 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
     _selectedCurrency = currencyProvider.currentCurrency;
   }
 
-  // ✅ FIXED: Generate family code
   String _generateFamilyCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     String code = '';
@@ -64,9 +63,9 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
 
     try {
       final familyProvider = context.read<FamilyProvider>();
-      final auth = context.read<AuthProvider>();
+      // ✅ FIXED: AuthProvider → AppAuthProvider
+      final auth = context.read<AppAuthProvider>();
       
-      // ✅ FIXED: Generate family code
       final familyCode = _generateFamilyCode();
       
       final family = FamilyModel(
@@ -92,7 +91,6 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
         isActive: true,
       );
 
-      // ✅ FIXED: Await and handle result
       final success = await familyProvider.createFamilyInFirestore(family);
       
       if (success != null && mounted) {
@@ -143,7 +141,6 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -191,7 +188,6 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Family Name
               CustomTextField(
                 controller: _nameController,
                 label: 'Family Name',
@@ -207,7 +203,6 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Description
               CustomTextField(
                 controller: _descriptionController,
                 label: 'Description (Optional)',
@@ -218,7 +213,6 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Currency
               DropdownButtonFormField<String>(
                 value: _selectedCurrency,
                 decoration: const InputDecoration(
@@ -240,7 +234,6 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Info box
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -271,7 +264,6 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Create Button
               CustomButton(
                 onPressed: _isLoading ? null : _createFamily,
                 text: 'Create Family',
@@ -282,7 +274,6 @@ class _FamilySetupScreenState extends State<FamilySetupScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Join Family link
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
