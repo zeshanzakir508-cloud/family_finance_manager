@@ -3,17 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/budget_provider.dart';
 import '../../providers/currency_provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../providers/category_provider.dart';
 import '../../models/budget_model.dart';
 import '../../models/category_model.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/custom_snackbar.dart';
-// ✅ FIXED: Added import for CategoryBudgetItem
 import 'widgets/category_budget_item.dart';
 
-// ✅ ADDED: CategoryBudgetItemWidget class since it was missing
 class CategoryBudgetItemWidget extends StatelessWidget {
   final CategoryBudgetItem item;
   final String currency;
@@ -122,7 +120,8 @@ class _AddBudgetScreenState extends State<AddBudgetScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final auth = context.read<AuthProvider>();
+      // ✅ FIXED: AuthProvider → AppAuthProvider
+      final auth = context.read<AppAuthProvider>();
       final categoryProvider = context.read<CategoryProvider>();
       
       await categoryProvider.loadCategories(auth.userId);
@@ -176,11 +175,11 @@ class _AddBudgetScreenState extends State<AddBudgetScreen> {
     setState(() => _isSaving = true);
 
     try {
-      final auth = context.read<AuthProvider>();
+      // ✅ FIXED: AuthProvider → AppAuthProvider
+      final auth = context.read<AppAuthProvider>();
       final budgetProvider = context.read<BudgetProvider>();
       final categoryProvider = context.read<CategoryProvider>();
       
-      // Create budget categories
       final budgetCategories = _categoryItems
           .where((item) => item.allocated > 0)
           .map((item) {
@@ -270,7 +269,6 @@ class _AddBudgetScreenState extends State<AddBudgetScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Month/Year picker
               Row(
                 children: [
                   Expanded(
@@ -332,7 +330,6 @@ class _AddBudgetScreenState extends State<AddBudgetScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Name
               CustomTextField(
                 controller: _nameController,
                 label: 'Budget Name',
@@ -347,7 +344,6 @@ class _AddBudgetScreenState extends State<AddBudgetScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Description
               CustomTextField(
                 controller: _descriptionController,
                 label: 'Description (Optional)',
@@ -357,7 +353,6 @@ class _AddBudgetScreenState extends State<AddBudgetScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Category budgets
               const Text(
                 'Category Allocations',
                 style: TextStyle(
@@ -390,7 +385,6 @@ class _AddBudgetScreenState extends State<AddBudgetScreen> {
 
               const SizedBox(height: 24),
 
-              // Total
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -419,7 +413,6 @@ class _AddBudgetScreenState extends State<AddBudgetScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Save Button
               CustomButton(
                 onPressed: _isSaving ? null : _saveBudget,
                 text: 'Create Budget',
