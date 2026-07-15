@@ -1,7 +1,7 @@
 // lib/screens/settings/export_data_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../providers/currency_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../services/export_service.dart';
@@ -67,7 +67,6 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Export options
                   const Text(
                     'Export Options',
                     style: TextStyle(
@@ -77,7 +76,6 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // CSV Export
                   _buildExportOption(
                     icon: Icons.table_chart,
                     title: 'Export as CSV',
@@ -89,7 +87,6 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
 
                   const SizedBox(height: 12),
 
-                  // PDF Export
                   _buildExportOption(
                     icon: Icons.picture_as_pdf,
                     title: 'Export as PDF',
@@ -101,7 +98,6 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
 
                   const SizedBox(height: 12),
 
-                  // Share
                   _buildExportOption(
                     icon: Icons.share,
                     title: 'Share Data',
@@ -113,7 +109,6 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
 
                   const SizedBox(height: 24),
 
-                  // Export history
                   if (_exportPath != null) ...[
                     const Text(
                       'Export History',
@@ -165,7 +160,6 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
 
                   const SizedBox(height: 24),
 
-                  // Info
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -268,7 +262,8 @@ class _ExportDataScreenState extends State<ExportDataScreen> {
     setState(() => _isExporting = true);
 
     try {
-      final auth = context.read<AuthProvider>();
+      // ✅ FIXED: AuthProvider → AppAuthProvider
+      final auth = context.read<AppAuthProvider>();
       final transactionProvider = context.read<TransactionProvider>();
       final currencyProvider = context.read<CurrencyProvider>();
       
