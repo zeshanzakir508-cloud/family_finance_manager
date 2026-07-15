@@ -5,8 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter/services.dart';
 import '../../providers/family_provider.dart';
-import '../../providers/auth_provider.dart';
-import '../../models/family_member_model.dart'; // ✅ ADDED: Import FamilyMember
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
+import '../../models/family_model.dart'; // ✅ FIXED: Changed from family_member_model.dart
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/custom_snackbar.dart';
@@ -72,7 +72,7 @@ class _InviteFamilyScreenState extends State<InviteFamilyScreen> {
           return;
         }
 
-        // ✅ FIXED: Correct FamilyMember constructor with proper parameters
+        // ✅ FIXED: FamilyMember from family_model.dart
         final newMember = FamilyMember(
           userId: existingUserId,
           displayName: existingUser.data()['displayName'] ?? email.split('@').first,
