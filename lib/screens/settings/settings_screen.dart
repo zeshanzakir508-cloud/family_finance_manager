@@ -1,11 +1,11 @@
 // lib/screens/settings/settings_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../providers/theme_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../providers/mode_provider.dart';
-import '../../services/biometric_service.dart'; // ✅ ADDED
+import '../../services/biometric_service.dart';
 import '../../services/remote_config_service.dart';
 import '../../widgets/common/custom_snackbar.dart';
 import 'widgets/settings_tile.dart';
@@ -29,7 +29,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadLanguage();
   }
 
-  // ✅ FIXED: Load biometric status
   Future<void> _loadBiometricStatus() async {
     try {
       final biometricService = BiometricService();
@@ -40,27 +39,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  // ✅ FIXED: Load language from SharedPreferences
   Future<void> _loadLanguage() async {
     try {
       // TODO: Load language from SharedPreferences
-      // final prefs = await SharedPreferences.getInstance();
-      // final lang = prefs.getString('language') ?? 'en';
-      // setState(() {
-      //   _currentLanguage = lang == 'en' ? 'English' : lang == 'ur' ? 'اردو' : 'العربية';
-      // });
     } catch (e) {
       print('❌ Error loading language: $e');
     }
   }
 
-  // ✅ FIXED: Toggle biometric
   Future<void> _toggleBiometric(bool value) async {
     try {
       final biometricService = BiometricService();
       
       if (value) {
-        // Enable biometric
         final isAvailable = await biometricService.checkAvailability();
         if (!isAvailable) {
           if (mounted) {
@@ -95,7 +86,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           }
         }
       } else {
-        // Disable biometric
         await biometricService.setFingerprintEnabled(false);
         setState(() {
           _isBiometricEnabled = false;
@@ -120,7 +110,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
+    // ✅ FIXED: Changed AuthProvider to AppAuthProvider
+    final authProvider = context.watch<AppAuthProvider>();
     final themeProvider = context.watch<ThemeProvider>();
     final currencyProvider = context.watch<CurrencyProvider>();
     final modeProvider = context.watch<ModeProvider>();
@@ -145,7 +136,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Profile Section
           SettingsSection(
             title: 'Profile',
             children: [
@@ -169,7 +159,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
 
-          // Mode Section
           SettingsSection(
             title: 'Mode',
             children: [
@@ -186,7 +175,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
 
-          // General Section
           SettingsSection(
             title: 'General',
             children: [
@@ -216,7 +204,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SettingsTile(
                 icon: Icons.language,
                 title: 'Language',
-                subtitle: _currentLanguage, // ✅ FIXED: Dynamic language
+                subtitle: _currentLanguage,
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
                   Navigator.pushNamed(context, '/language_settings');
@@ -226,7 +214,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
 
-          // Security Section
           SettingsSection(
             title: 'Security',
             children: [
@@ -235,8 +222,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: 'Fingerprint Login',
                 subtitle: 'Enable biometric authentication',
                 trailing: Switch(
-                  value: _isBiometricEnabled, // ✅ FIXED: Dynamic value
-                  onChanged: _toggleBiometric, // ✅ FIXED: Toggle function
+                  value: _isBiometricEnabled,
+                  onChanged: _toggleBiometric,
                 ),
                 onTap: () {
                   Navigator.pushNamed(context, '/security_settings');
@@ -255,7 +242,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
 
-          // App Section
           SettingsSection(
             title: 'App',
             children: [
@@ -290,7 +276,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
 
-          // About Section
           SettingsSection(
             title: 'About',
             children: [
@@ -315,7 +300,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Logout Button
           Card(
             color: isDark ? Colors.grey[800] : Colors.white,
             child: ListTile(
@@ -350,7 +334,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              await context.read<AuthProvider>().logout();
+              // ✅ FIXED: Changed AuthProvider to AppAuthProvider
+              await context.read<AppAuthProvider>().logout();
               if (mounted) {
                 Navigator.pushReplacementNamed(context, '/login');
               }
