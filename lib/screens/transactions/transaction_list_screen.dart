@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../providers/currency_provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../providers/mode_provider.dart';
 import '../../widgets/common/empty_state_widget.dart';
 import '../../widgets/common/loading_widget.dart';
@@ -37,7 +37,8 @@ class _TransactionListScreenState extends State<TransactionListScreen> {
   }
 
   Future<void> _loadTransactions() async {
-    final auth = context.read<AuthProvider>();
+    // ✅ FIXED: AuthProvider → AppAuthProvider
+    final auth = context.read<AppAuthProvider>();
     final mode = context.read<ModeProvider>();
     final transactionProvider = context.read<TransactionProvider>();
 
