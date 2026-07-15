@@ -31,6 +31,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
   void _loadTransaction() {
     final transactionProvider = context.read<TransactionProvider>();
+    // ✅ FIXED: Using allTransactions getter
     final transaction = transactionProvider.allTransactions
         .firstWhere((t) => t.id == widget.transactionId);
     
@@ -97,7 +98,6 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Type & Amount
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
@@ -141,7 +141,6 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Details
             _buildDetailItem(
               icon: Icons.category,
               label: 'Category',
@@ -180,7 +179,6 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                 label: 'Tags',
                 value: transaction.tags!.join(', '),
               ),
-            // ✅ FIXED: Null safety for isRecurring
             if (transaction.isRecurring == true)
               _buildDetailItem(
                 icon: Icons.repeat,
@@ -189,7 +187,6 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
               ),
 
             const SizedBox(height: 24),
-            // Actions
             Row(
               children: [
                 Expanded(
@@ -297,6 +294,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
               
               try {
                 final transactionProvider = context.read<TransactionProvider>();
+                // ✅ FIXED: Using deleteTransaction method
                 final success = await transactionProvider.deleteTransaction(
                   widget.transactionId,
                 );
