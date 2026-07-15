@@ -1,7 +1,7 @@
 // lib/screens/transactions/add_income_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../providers/currency_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/transaction_provider.dart';
@@ -38,13 +38,13 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
   }
 
   Future<void> _loadCategories() async {
-    final auth = context.read<AuthProvider>();
+    // ✅ FIXED: AuthProvider → AppAuthProvider
+    final auth = context.read<AppAuthProvider>();
     final categoryProvider = context.read<CategoryProvider>();
     
     if (auth.isAuthenticated) {
       await categoryProvider.loadCategories(auth.userId);
       
-      // Set default category
       final incomeCategories = categoryProvider.incomeCategories;
       if (incomeCategories.isNotEmpty) {
         setState(() {
@@ -68,7 +68,8 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final auth = context.read<AuthProvider>();
+      // ✅ FIXED: AuthProvider → AppAuthProvider
+      final auth = context.read<AppAuthProvider>();
       final mode = context.read<ModeProvider>();
       final transactionProvider = context.read<TransactionProvider>();
       final categoryProvider = context.read<CategoryProvider>();
@@ -139,7 +140,6 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Amount - ✅ FIXED: Changed onChanged to onAmountChanged
               AmountInput(
                 label: 'Amount',
                 currency: currencyProvider.currentCurrency,
@@ -148,12 +148,9 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
                     _amount = value;
                   });
                 },
-                // ✅ FIXED: Removed validator from AmountInput (not supported)
-                // validator removed
               ),
               const SizedBox(height: 16),
               
-              // Category
               CategoryPicker(
                 categories: categoryProvider.incomeCategories,
                 selectedId: _selectedCategory,
@@ -166,7 +163,6 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
               ),
               const SizedBox(height: 16),
               
-              // Description
               CustomTextField(
                 controller: _descriptionController,
                 label: 'Description',
@@ -182,7 +178,6 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
               ),
               const SizedBox(height: 16),
               
-              // Date - ✅ FIXED: Changed onChanged to onDateSelected
               DateTimePicker(
                 label: 'Date',
                 initialDate: _selectedDate,
@@ -194,7 +189,6 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
               ),
               const SizedBox(height: 16),
               
-              // Notes
               CustomTextField(
                 controller: _notesController,
                 label: 'Notes (Optional)',
@@ -205,7 +199,6 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
               ),
               const SizedBox(height: 24),
               
-              // Save Button
               CustomButton(
                 onPressed: _isLoading ? null : _saveIncome,
                 text: 'Add Income',
