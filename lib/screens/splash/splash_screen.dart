@@ -21,7 +21,6 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _navigate() async {
-    // Wait for 2 seconds
     await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
@@ -29,19 +28,16 @@ class _SplashScreenState extends State<SplashScreen> {
     final prefs = await SharedPreferences.getInstance();
     final onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
 
-    // Check auth state
     final auth = FirebaseAuth.instance.currentUser;
 
     if (auth != null) {
-      // User is logged in
-      final authProvider = context.read<app_auth.AuthProvider>();
+      // ✅ FIXED: Changed AuthProvider to AppAuthProvider
+      final authProvider = context.read<app_auth.AppAuthProvider>();
       await authProvider.refreshUser();
 
-      // Check if email is verified
       if (!auth.emailVerified) {
         Navigator.pushReplacementNamed(context, '/verify_email');
       } else {
-        // Check if mode is selected
         final modeSelected = prefs.getBool('mode_selected') ?? false;
         if (modeSelected) {
           Navigator.pushReplacementNamed(context, '/home');
@@ -50,7 +46,6 @@ class _SplashScreenState extends State<SplashScreen> {
         }
       }
     } else {
-      // User not logged in
       if (onboardingComplete) {
         Navigator.pushReplacementNamed(context, '/login');
       } else {
