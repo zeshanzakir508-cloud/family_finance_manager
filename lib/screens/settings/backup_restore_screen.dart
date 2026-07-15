@@ -1,7 +1,7 @@
 // lib/screens/settings/backup_restore_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../providers/theme_provider.dart';
 import '../../models/backup_model.dart';
 import '../../services/backup_service.dart';
@@ -32,9 +32,9 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final auth = context.read<AuthProvider>();
+      // ✅ FIXED: AuthProvider → AppAuthProvider
+      final auth = context.read<AppAuthProvider>();
       _backups = await BackupService.getBackups(auth.userId);
-      // Sort by date (newest first)
       _backups.sort((a, b) => b.backupDate!.compareTo(a.backupDate!));
     } catch (e) {
       print('Error loading backups: $e');
@@ -47,7 +47,8 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
     setState(() => _isCreating = true);
 
     try {
-      final auth = context.read<AuthProvider>();
+      // ✅ FIXED: AuthProvider → AppAuthProvider
+      final auth = context.read<AppAuthProvider>();
       final backup = await BackupService.createBackup(auth.userId);
       
       if (backup != null) {
@@ -104,7 +105,8 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
       setState(() => _isLoading = true);
 
       try {
-        final auth = context.read<AuthProvider>();
+        // ✅ FIXED: AuthProvider → AppAuthProvider
+        final auth = context.read<AppAuthProvider>();
         final success = await BackupService.restoreBackup(
           backup.filePath!,
           auth.userId,
@@ -115,7 +117,6 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
             context,
             'Backup restored successfully! 🔄',
           );
-          // Refresh data
           await _loadBackups();
         } else {
           CustomSnackBar.show(
@@ -223,7 +224,6 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
 
     return Column(
       children: [
-        // Info card
         Container(
           margin: const EdgeInsets.all(16),
           padding: const EdgeInsets.all(12),
@@ -255,7 +255,6 @@ class _BackupRestoreScreenState extends State<BackupRestoreScreen> {
           ),
         ),
 
-        // Backup list
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16),
