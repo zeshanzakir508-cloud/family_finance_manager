@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/report_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../providers/transaction_provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_snackbar.dart';
 import 'widgets/line_chart_widget.dart';
@@ -40,12 +40,12 @@ class _CashFlowScreenState extends State<CashFlowScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final auth = context.read<AuthProvider>();
+      // ✅ FIXED: AuthProvider → AppAuthProvider
+      final auth = context.read<AppAuthProvider>();
       final transactionProvider = context.read<TransactionProvider>();
       
       final allTransactions = transactionProvider.allTransactions;
       
-      // Filter by date range
       final filtered = allTransactions.where((t) {
         final date = t.date ?? DateTime.now();
         return date.isAfter(_selectedDateRange!.start) &&
@@ -73,7 +73,6 @@ class _CashFlowScreenState extends State<CashFlowScreen> {
         }
       }
 
-      // Calculate final balance
       for (var entry in _monthlyData.entries) {
         final values = entry.value;
         final net = (values['income'] ?? 0.0) - (values['expense'] ?? 0.0);
@@ -177,7 +176,6 @@ class _CashFlowScreenState extends State<CashFlowScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Date range
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -195,7 +193,6 @@ class _CashFlowScreenState extends State<CashFlowScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Final balance
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -240,7 +237,6 @@ class _CashFlowScreenState extends State<CashFlowScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Period summary
           Row(
             children: [
               Expanded(
@@ -264,7 +260,6 @@ class _CashFlowScreenState extends State<CashFlowScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Cash flow trend
           if (_monthlyData.isNotEmpty)
             LineChartWidget(
               data: _monthlyData,
@@ -275,7 +270,6 @@ class _CashFlowScreenState extends State<CashFlowScreen> {
             ),
           const SizedBox(height: 16),
 
-          // Monthly breakdown
           const Text(
             'Monthly Cash Flow',
             style: TextStyle(
