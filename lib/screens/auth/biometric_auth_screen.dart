@@ -2,8 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
-import '../../providers/auth_provider.dart';
-// ✅ FIXED: Removed ThemeProvider import
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 // import '../../providers/theme_provider.dart';
 import '../../services/biometric_service.dart';
 import '../../widgets/common/custom_button.dart';
@@ -34,7 +33,6 @@ class _BiometricAuthScreenState extends State<BiometricAuthScreen> {
     _isAvailable = await biometricService.checkAvailability();
     _isEnabled = await biometricService.isFingerprintAvailable();
     
-    // Check if fingerprint is supported
     final isFingerprintSupported = await biometricService.isFingerprintSupported();
     if (isFingerprintSupported) {
       _biometricType = 'Fingerprint';
@@ -63,11 +61,11 @@ class _BiometricAuthScreenState extends State<BiometricAuthScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final authProvider = context.read<AuthProvider>();
+      // ✅ FIXED: AuthProvider → AppAuthProvider
+      final authProvider = context.read<AppAuthProvider>();
       final success = await authProvider.authenticateWithBiometric();
       
       if (success) {
-        // Enable fingerprint if not already
         if (!_isEnabled) {
           await authProvider.setFingerprintEnabled(true);
         }
@@ -102,14 +100,12 @@ class _BiometricAuthScreenState extends State<BiometricAuthScreen> {
   }
 
   Future<void> _skipBiometric() async {
-    // Navigate to home without biometric
     Navigator.pushReplacementNamed(context, '/home');
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // ✅ REMOVED: isDark variable
 
     return Scaffold(
       body: SafeArea(
@@ -124,7 +120,6 @@ class _BiometricAuthScreenState extends State<BiometricAuthScreen> {
                 subtitle: 'Enable biometric authentication for quick access',
               ),
               const SizedBox(height: 48),
-              // Biometric Icon
               Container(
                 height: 100,
                 width: 100,
@@ -143,7 +138,6 @@ class _BiometricAuthScreenState extends State<BiometricAuthScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              // Status text
               Text(
                 _isAvailable
                     ? '$_biometricType Available'
