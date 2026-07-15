@@ -2,18 +2,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../providers/mode_provider.dart'; // ✅ Has AppMode enum
+import '../../providers/mode_provider.dart';
 import '../../providers/theme_provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_snackbar.dart';
 import 'widgets/mode_card.dart';
-
-// ❌ REMOVED: Duplicate AppMode enum - already exists in mode_provider.dart
-// enum AppMode {
-//   personal,
-//   family,
-// }
 
 class ModeSelectionScreen extends StatefulWidget {
   const ModeSelectionScreen({Key? key}) : super(key: key);
@@ -56,7 +50,8 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
       await prefs.setBool('mode_selected', true);
       await prefs.setString('selected_mode', _selectedMode == AppMode.personal ? 'personal' : 'family');
 
-      final authProvider = context.read<AuthProvider>();
+      // ✅ FIXED: AuthProvider → AppAuthProvider
+      final authProvider = context.read<AppAuthProvider>();
       if (!authProvider.isAuthenticated) {
         throw Exception('User not authenticated. Please login again.');
       }
@@ -85,7 +80,8 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = context.watch<ThemeProvider>().isDarkMode;
-    final authProvider = context.watch<AuthProvider>();
+    // ✅ FIXED: AuthProvider → AppAuthProvider
+    final authProvider = context.watch<AppAuthProvider>();
 
     if (authProvider.isLoading) {
       return Scaffold(
@@ -136,7 +132,8 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () {
-                  context.read<AuthProvider>().logout();
+                  // ✅ FIXED: AuthProvider → AppAuthProvider
+                  context.read<AppAuthProvider>().logout();
                   Navigator.pushReplacementNamed(context, '/login');
                 },
                 child: const Text('Go to Login'),
@@ -241,7 +238,8 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
               const SizedBox(height: 16),
               TextButton(
                 onPressed: () {
-                  context.read<AuthProvider>().logout();
+                  // ✅ FIXED: AuthProvider → AppAuthProvider
+                  context.read<AppAuthProvider>().logout();
                   Navigator.pushReplacementNamed(context, '/login');
                 },
                 child: const Text('Logout'),
