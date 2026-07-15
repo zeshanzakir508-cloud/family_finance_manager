@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:flutter/services.dart';
 import '../../providers/family_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../models/family_member_model.dart'; // ✅ ADDED: Import FamilyMember
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/custom_snackbar.dart';
@@ -31,14 +32,13 @@ class _InviteFamilyScreenState extends State<InviteFamilyScreen> {
     super.dispose();
   }
 
-  // ✅ FIXED: Implement send invite
   Future<void> _sendInvite() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final auth = context.read<AuthProvider>();
+      final auth = context.read<AppAuthProvider>(); // ✅ Fixed
       final familyProvider = context.read<FamilyProvider>();
       final family = familyProvider.currentFamily;
 
@@ -49,7 +49,6 @@ class _InviteFamilyScreenState extends State<InviteFamilyScreen> {
       final email = _emailController.text.trim();
       final message = _messageController.text.trim();
 
-      // Check if user already exists
       final userQuery = await FirebaseFirestore.instance
           .collection('users')
           .where('email', isEqualTo: email)
@@ -57,11 +56,9 @@ class _InviteFamilyScreenState extends State<InviteFamilyScreen> {
           .get();
 
       if (userQuery.docs.isNotEmpty) {
-        // User exists - send notification
         final existingUser = userQuery.docs.first;
         final existingUserId = existingUser.id;
 
-        // Check if already in family
         final memberIds = List<String>.from(family.memberIds ?? []);
         if (memberIds.contains(existingUserId)) {
           if (mounted) {
@@ -75,7 +72,7 @@ class _InviteFamilyScreenState extends State<InviteFamilyScreen> {
           return;
         }
 
-        // Add user to family
+        // ✅ FIXED: Correct FamilyMember constructor with proper parameters
         final newMember = FamilyMember(
           userId: existingUserId,
           displayName: existingUser.data()['displayName'] ?? email.split('@').first,
@@ -110,8 +107,6 @@ class _InviteFamilyScreenState extends State<InviteFamilyScreen> {
           Navigator.pop(context);
         }
       } else {
-        // User doesn't exist - send email invitation
-        // TODO: Implement email sending via Firebase Functions or Email service
         if (mounted) {
           CustomSnackBar.show(
             context,
@@ -134,7 +129,6 @@ class _InviteFamilyScreenState extends State<InviteFamilyScreen> {
     }
   }
 
-  // ✅ FIXED: Copy to clipboard
   void _copyToClipboard(String code) {
     Clipboard.setData(ClipboardData(text: code));
     if (mounted) {
@@ -145,52 +139,22 @@ class _InviteFamilyScreenState extends State<InviteFamilyScreen> {
     }
   }
 
-  // ✅ FIXED: Share via WhatsApp
   void _shareViaWhatsApp(String code, String familyName) {
     final message = 'Join my family "$familyName" on FinFam!\n\n'
         'Family Code: $code\n\n'
         'Download FinFam app to manage family finances together.';
     
-    // WhatsApp URL scheme
-    final url = 'https://wa.me/?text=${Uri.encodeComponent(message)}';
-    
-    // TODO: Launch URL
-    // import 'package:url_launcher/url_launcher.dart';
-    // launchUrl(Uri.parse(url));
-    
-    if (mounted) {
-      CustomSnackBar.show(
-        context,
-        'Sharing via WhatsApp...',
-      );
-      // Fallback: Share via share_plus
-      Share.share(message);
-    }
+    Share.share(message);
   }
 
-  // ✅ FIXED: Share via SMS
   void _shareViaSMS(String code, String familyName) {
     final message = 'Join my family "$familyName" on FinFam!\n\n'
         'Family Code: $code\n\n'
         'Download FinFam app to manage family finances together.';
     
-    final url = 'sms:?body=${Uri.encodeComponent(message)}';
-    
-    // TODO: Launch URL
-    // import 'package:url_launcher/url_launcher.dart';
-    // launchUrl(Uri.parse(url));
-    
-    if (mounted) {
-      CustomSnackBar.show(
-        context,
-        'Sharing via SMS...',
-      );
-      // Fallback: Share via share_plus
-      Share.share(message);
-    }
+    Share.share(message);
   }
 
-  // ✅ FIXED: Share via other apps
   void _shareViaOther(String code, String familyName) {
     final message = 'Join my family "$familyName" on FinFam!\n\n'
         'Family Code: $code\n\n'
@@ -236,7 +200,6 @@ class _InviteFamilyScreenState extends State<InviteFamilyScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Family info
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -279,7 +242,6 @@ class _InviteFamilyScreenState extends State<InviteFamilyScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Share invite code
               const Text(
                 'Share this code',
                 style: TextStyle(
@@ -317,7 +279,6 @@ class _InviteFamilyScreenState extends State<InviteFamilyScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Or send email invite
               const Divider(),
               const SizedBox(height: 16),
               const Text(
@@ -329,7 +290,6 @@ class _InviteFamilyScreenState extends State<InviteFamilyScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Email input
               CustomTextField(
                 controller: _emailController,
                 label: 'Email Address',
@@ -349,7 +309,6 @@ class _InviteFamilyScreenState extends State<InviteFamilyScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Personal message
               CustomTextField(
                 controller: _messageController,
                 label: 'Personal Message (Optional)',
@@ -360,7 +319,6 @@ class _InviteFamilyScreenState extends State<InviteFamilyScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Send button
               CustomButton(
                 onPressed: _isLoading ? null : _sendInvite,
                 text: 'Send Invitation',
@@ -371,7 +329,6 @@ class _InviteFamilyScreenState extends State<InviteFamilyScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Share via other apps
               const Text(
                 'Or share via',
                 style: TextStyle(
