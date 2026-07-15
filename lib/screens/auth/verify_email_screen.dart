@@ -56,7 +56,6 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       return;
     }
 
-    // Check every 3 seconds
     _timer = Timer.periodic(const Duration(seconds: 3), (timer) async {
       await user.reload();
       if (user.emailVerified && mounted) {
@@ -91,7 +90,6 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         );
       }
     } on FirebaseAuthException catch (e) {
-      // ✅ FIXED: Better error handling
       if (mounted) {
         CustomSnackBar.show(
           context,
@@ -112,7 +110,6 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     }
   }
 
-  // ✅ ADDED: Specific error messages
   String _getErrorMessage(FirebaseAuthException e) {
     switch (e.code) {
       case 'too-many-requests':
@@ -141,14 +138,12 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                 subtitle: 'We sent a verification link to your email',
               ),
               const SizedBox(height: 48),
-              // Icon
               Icon(
                 _isEmailVerified ? Icons.check_circle : Icons.email_outlined,
                 size: 80,
                 color: _isEmailVerified ? Colors.green : Colors.blue,
               ),
               const SizedBox(height: 24),
-              // Status text
               Text(
                 _isEmailVerified
                     ? 'Email Verified!'
@@ -212,7 +207,8 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
               const SizedBox(height: 16),
               TextButton(
                 onPressed: () {
-                  context.read<app_auth.AuthProvider>().logout();
+                  // ✅ FIXED: Changed AuthProvider to AppAuthProvider
+                  context.read<app_auth.AppAuthProvider>().logout();
                   Navigator.pushReplacementNamed(context, '/login');
                 },
                 child: const Text('Back to Login'),
