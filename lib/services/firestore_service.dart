@@ -41,16 +41,16 @@ class FirestoreService {
     }
   }
 
+  // ✅ FIXED: Cast to List<Map<String, dynamic>>
   Future<List<Map<String, dynamic>>> getAll(String collection) async {
     try {
       final snapshot = await _firestore.collection(collection).get();
-      return snapshot.docs.map((doc) => doc.data()).toList();
+      return snapshot.docs.map((doc) => doc.data()).whereType<Map<String, dynamic>>().toList();
     } catch (e) {
       throw Exception('Failed to get documents: $e');
     }
   }
 
-  // ✅ FIXED: Cast return type to Map<String, dynamic>
   Future<List<Map<String, dynamic>>> query(
     String collection, {
     String? field,
@@ -117,7 +117,8 @@ class FirestoreService {
       }
 
       final snapshot = await query.get();
-      return snapshot.docs.map((doc) => doc.data()).toList();
+      // ✅ FIXED: Cast to List<Map<String, dynamic>>
+      return snapshot.docs.map((doc) => doc.data()).whereType<Map<String, dynamic>>().toList();
     } catch (e) {
       throw Exception('Failed to query documents: $e');
     }
@@ -188,12 +189,14 @@ class FirestoreService {
     );
   }
 
+  // ✅ FIXED: Cast to List<Map<String, dynamic>>
   Stream<List<Map<String, dynamic>>> streamCollection(String collection) {
     return _firestore.collection(collection).snapshots().map(
-      (snapshot) => snapshot.docs.map((doc) => doc.data()).toList(),
+      (snapshot) => snapshot.docs.map((doc) => doc.data()).whereType<Map<String, dynamic>>().toList(),
     );
   }
 
+  // ✅ FIXED: Cast to List<Map<String, dynamic>>
   Stream<List<Map<String, dynamic>>> streamQuery(
     String collection, {
     String? field,
@@ -220,7 +223,7 @@ class FirestoreService {
     }
 
     return query.snapshots().map(
-      (snapshot) => snapshot.docs.map((doc) => doc.data()).toList(),
+      (snapshot) => snapshot.docs.map((doc) => doc.data()).whereType<Map<String, dynamic>>().toList(),
     );
   }
 
