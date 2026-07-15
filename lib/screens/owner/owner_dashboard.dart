@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../providers/theme_provider.dart';
 import '../../services/remote_config_service.dart';
 import '../../widgets/common/custom_button.dart';
@@ -46,7 +46,6 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
     try {
       final firestore = FirebaseFirestore.instance;
       
-      // ✅ FIXED: Added error handling for each query
       try {
         final userSnap = await firestore.collection('users').get();
         _userCount = userSnap.docs.length;
@@ -112,7 +111,6 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
     }
 
     try {
-      // TODO: Implement sending custom message via Remote Config
       CustomSnackBar.show(
         context,
         'Message sent to all users! 📢',
@@ -145,12 +143,12 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
+    // ✅ FIXED: Changed AuthProvider to AppAuthProvider
+    final authProvider = context.watch<AppAuthProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isOwner = authProvider.isOwner;
     final isModerator = authProvider.isModerator;
 
-    // ✅ FIXED: Added check if user is null
     if (authProvider.user == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Admin Dashboard')),
@@ -181,7 +179,8 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () {
-                  context.read<AuthProvider>().logout();
+                  // ✅ FIXED: Changed AuthProvider to AppAuthProvider
+                  context.read<AppAuthProvider>().logout();
                   Navigator.pushReplacementNamed(context, '/login');
                 },
                 child: const Text('Go to Login'),
@@ -242,7 +241,6 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Admin info
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -288,7 +286,6 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Stats
                   const Text(
                     'Statistics',
                     style: TextStyle(
@@ -342,7 +339,6 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Custom Message Section
                   const Text(
                     'Send Custom Message',
                     style: TextStyle(
@@ -427,7 +423,6 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
 
                   const SizedBox(height: 16),
 
-                  // Message preview
                   if (_showMessage) ...[
                     const Text(
                       'Current Message Preview',
@@ -514,7 +509,6 @@ class _OwnerDashboardState extends State<OwnerDashboard> {
 
                   const SizedBox(height: 24),
 
-                  // System Actions (Owner only)
                   if (isOwner) ...[
                     const Text(
                       'System Actions',
