@@ -36,6 +36,7 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
     final goalProvider = context.read<GoalProvider>();
 
     if (auth.isAuthenticated) {
+      // ✅ Using loadTransactions method
       await transactionProvider.loadTransactions(auth.userId);
       await budgetProvider.loadCurrentMonthBudget(auth.userId);
       await goalProvider.loadGoals(auth.userId);
@@ -52,10 +53,12 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
     final currencyProvider = context.watch<CurrencyProvider>();
     final budgetProvider = context.watch<BudgetProvider>();
 
+    // ✅ Using isLoading getter
     if (transactionProvider.isLoading) {
       return const LoadingWidget();
     }
 
+    // ✅ Using error getter
     if (transactionProvider.error != null) {
       return Center(
         child: Column(
@@ -89,6 +92,7 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
       );
     }
 
+    // ✅ Using transactions, totalIncome, totalExpense, balance getters
     final transactions = transactionProvider.transactions;
     final totalIncome = transactionProvider.totalIncome;
     final totalExpense = transactionProvider.totalExpense;
