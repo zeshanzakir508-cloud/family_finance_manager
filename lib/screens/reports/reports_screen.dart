@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/report_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../providers/transaction_provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../models/report_model.dart';
 import '../../widgets/common/empty_state_widget.dart';
 import '../../widgets/common/loading_widget.dart';
@@ -49,7 +49,8 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
 
   Future<void> _loadReports() async {
     setState(() => _isLoading = true);
-    final auth = context.read<AuthProvider>();
+    // ✅ FIXED: AuthProvider → AppAuthProvider
+    final auth = context.read<AppAuthProvider>();
     final reportProvider = context.read<ReportProvider>();
     await reportProvider.loadSavedReports(auth.userId);
     setState(() => _isLoading = false);
@@ -112,11 +113,11 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   }
 
   Future<void> _generateReport(ReportType type) async {
-    final auth = context.read<AuthProvider>();
+    // ✅ FIXED: AuthProvider → AppAuthProvider
+    final auth = context.read<AppAuthProvider>();
     final reportProvider = context.read<ReportProvider>();
     final transactionProvider = context.read<TransactionProvider>();
 
-    // Get date range (default: last 30 days)
     final endDate = DateTime.now();
     final startDate = endDate.subtract(const Duration(days: 30));
 
@@ -158,7 +159,6 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
         );
         break;
       default:
-        // TODO: Implement other report types
         CustomSnackBar.show(
           context,
           'Report type not implemented yet',
@@ -403,7 +403,6 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                       color: report.isFavorite ? Colors.amber : Colors.grey,
                     ),
                     onPressed: () {
-                      // ✅ FIXED: Using context.read<ReportProvider>()
                       context.read<ReportProvider>().toggleFavorite(report.id);
                     },
                   ),
@@ -455,7 +454,6 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                   Expanded(
                     child: CustomButton(
                       onPressed: () {
-                        // ✅ FIXED: Using context.read<ReportProvider>()
                         context.read<ReportProvider>().setCurrentReport(report);
                         Navigator.pushNamed(
                           context,
