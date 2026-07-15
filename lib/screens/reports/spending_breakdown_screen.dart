@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/report_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../providers/transaction_provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_snackbar.dart';
 import 'widgets/pie_chart_widget.dart';
@@ -39,10 +39,10 @@ class _SpendingBreakdownScreenState extends State<SpendingBreakdownScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final auth = context.read<AuthProvider>();
+      // ✅ FIXED: AuthProvider → AppAuthProvider
+      final auth = context.read<AppAuthProvider>();
       final transactionProvider = context.read<TransactionProvider>();
       
-      // Get expense transactions
       final allTransactions = transactionProvider.allTransactions;
       final expenses = allTransactions.where((t) {
         final date = t.date ?? DateTime.now();
@@ -53,7 +53,6 @@ class _SpendingBreakdownScreenState extends State<SpendingBreakdownScreen> {
 
       _transactionCount = expenses.length;
 
-      // Group by category
       final categoryMap = <String, double>{};
       for (var t in expenses) {
         final category = t.category ?? 'Other';
@@ -158,7 +157,6 @@ class _SpendingBreakdownScreenState extends State<SpendingBreakdownScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Date range
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -187,7 +185,6 @@ class _SpendingBreakdownScreenState extends State<SpendingBreakdownScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Total
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -225,7 +222,6 @@ class _SpendingBreakdownScreenState extends State<SpendingBreakdownScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Pie chart
           PieChartWidget(
             data: _categoryData!,
             currency: currency,
@@ -233,7 +229,6 @@ class _SpendingBreakdownScreenState extends State<SpendingBreakdownScreen> {
           ),
           const SizedBox(height: 24),
 
-          // Category list
           const Text(
             'Category Breakdown',
             style: TextStyle(
