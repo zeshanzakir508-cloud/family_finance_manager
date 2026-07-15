@@ -1,8 +1,8 @@
 // lib/screens/settings/change_password_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // ✅ ADDED
-import '../../providers/auth_provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../providers/theme_provider.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
@@ -34,14 +34,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     super.dispose();
   }
 
-  // ✅ FIXED: Implement password change
   Future<void> _changePassword() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final authProvider = context.read<AuthProvider>();
+      // ✅ FIXED: Using AppAuthProvider
+      final authProvider = context.read<AppAuthProvider>();
       final user = FirebaseAuth.instance.currentUser;
 
       if (user == null) {
@@ -134,7 +134,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -182,7 +181,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Current Password
               CustomTextField(
                 controller: _currentPasswordController,
                 label: 'Current Password',
@@ -211,7 +209,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               ),
               const SizedBox(height: 16),
 
-              // New Password
               CustomTextField(
                 controller: _newPasswordController,
                 label: 'New Password',
@@ -243,7 +240,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Confirm New Password
               CustomTextField(
                 controller: _confirmPasswordController,
                 label: 'Confirm New Password',
@@ -276,7 +272,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               ),
               const SizedBox(height: 8),
 
-              // Password requirements
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -311,7 +306,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Save Button
               CustomButton(
                 onPressed: _isLoading ? null : _changePassword,
                 text: 'Change Password',
