@@ -1,11 +1,11 @@
 // lib/screens/settings/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // ✅ ADDED
-import '../../providers/auth_provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../providers/currency_provider.dart';
 import '../../providers/mode_provider.dart';
-import '../../providers/transaction_provider.dart'; // ✅ ADDED
+import '../../providers/transaction_provider.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_snackbar.dart';
 
@@ -28,10 +28,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadUserStats();
   }
 
-  // ✅ ADDED: Load real user stats from transactions
   Future<void> _loadUserStats() async {
     try {
-      final auth = context.read<AuthProvider>();
+      // ✅ FIXED: AuthProvider → AppAuthProvider
+      final auth = context.read<AppAuthProvider>();
       final transactionProvider = context.read<TransactionProvider>();
       
       if (auth.isAuthenticated) {
@@ -50,7 +50,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
+    // ✅ FIXED: AuthProvider → AppAuthProvider
+    final authProvider = context.watch<AppAuthProvider>();
     final currencyProvider = context.watch<CurrencyProvider>();
     final modeProvider = context.watch<ModeProvider>();
     final transactionProvider = context.watch<TransactionProvider>();
@@ -91,7 +92,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
-    // ✅ FIXED: Use real stats from transaction provider
     final balance = transactionProvider.balance;
     final totalIncome = transactionProvider.totalIncome;
     final totalExpense = transactionProvider.totalExpense;
@@ -118,7 +118,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Profile header
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -134,7 +133,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               child: Column(
                 children: [
-                  // Avatar
                   CircleAvatar(
                     radius: 48,
                     backgroundColor: Colors.blue.withOpacity(0.1),
@@ -187,7 +185,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Stats
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -224,7 +221,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Personal info
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -296,7 +292,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Actions
             Row(
               children: [
                 Expanded(
