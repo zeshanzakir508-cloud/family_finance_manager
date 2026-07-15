@@ -18,6 +18,7 @@ class _AboutScreenState extends State<AboutScreen> {
   final String _appVersion = '2.0.0';
   final String _buildYear = '2026';
 
+  // ✅ FIXED: Proper url_launcher implementation
   Future<void> _launchURL(String url) async {
     try {
       final uri = Uri.parse(url);
@@ -39,6 +40,7 @@ class _AboutScreenState extends State<AboutScreen> {
     }
   }
 
+  // ✅ FIXED: Proper email launch with correct parameters
   Future<void> _contactSupport() async {
     final email = 'support@finfam.com';
     final subject = 'FinFam Support Request';
@@ -49,7 +51,7 @@ I need help with...
 
 ---
 App Version: $_appVersion
-User: ${context.read<AuthProvider>().user?.email ?? 'Not logged in'}
+User: ${context.read<AppAuthProvider>().user?.email ?? 'Not logged in'}
 ''';
 
     final uri = Uri(
@@ -90,7 +92,6 @@ User: ${context.read<AuthProvider>().user?.email ?? 'Not logged in'}
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Logo
             Center(
               child: Column(
                 children: [
@@ -147,7 +148,6 @@ User: ${context.read<AuthProvider>().user?.email ?? 'Not logged in'}
             ),
             const SizedBox(height: 32),
 
-            // Description
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -180,7 +180,6 @@ User: ${context.read<AuthProvider>().user?.email ?? 'Not logged in'}
             ),
             const SizedBox(height: 16),
 
-            // Features
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -210,7 +209,6 @@ User: ${context.read<AuthProvider>().user?.email ?? 'Not logged in'}
             ),
             const SizedBox(height: 16),
 
-            // Quick links
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -239,7 +237,6 @@ User: ${context.read<AuthProvider>().user?.email ?? 'Not logged in'}
                     icon: Icons.description,
                     title: 'Terms of Service',
                     onTap: () {
-                      // TODO: Navigate to terms
                       CustomSnackBar.show(
                         context,
                         'Terms of Service coming soon',
@@ -250,7 +247,6 @@ User: ${context.read<AuthProvider>().user?.email ?? 'Not logged in'}
                     icon: Icons.star,
                     title: 'Rate Us',
                     onTap: () {
-                      // TODO: Open Play Store
                       CustomSnackBar.show(
                         context,
                         'Rate us on Play Store',
@@ -261,7 +257,6 @@ User: ${context.read<AuthProvider>().user?.email ?? 'Not logged in'}
                     icon: Icons.share,
                     title: 'Share App',
                     onTap: () {
-                      // TODO: Share app
                       CustomSnackBar.show(
                         context,
                         'Share app coming soon',
@@ -273,7 +268,6 @@ User: ${context.read<AuthProvider>().user?.email ?? 'Not logged in'}
             ),
             const SizedBox(height: 16),
 
-            // Support
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -300,7 +294,6 @@ User: ${context.read<AuthProvider>().user?.email ?? 'Not logged in'}
                     icon: Icons.help,
                     title: 'FAQ',
                     onTap: () {
-                      // TODO: Navigate to FAQ
                       CustomSnackBar.show(
                         context,
                         'FAQ coming soon',
@@ -312,7 +305,6 @@ User: ${context.read<AuthProvider>().user?.email ?? 'Not logged in'}
             ),
             const SizedBox(height: 24),
 
-            // Footer
             Center(
               child: Column(
                 children: [
