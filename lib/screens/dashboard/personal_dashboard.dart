@@ -1,7 +1,7 @@
 // lib/screens/dashboard/personal_dashboard.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../providers/transaction_provider.dart';
 import '../../providers/budget_provider.dart';
 import '../../providers/currency_provider.dart';
@@ -28,8 +28,9 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
     _loadData();
   }
 
+  // ✅ FIXED: Changed AuthProvider to AppAuthProvider
   Future<void> _loadData() async {
-    final auth = context.read<AuthProvider>();
+    final auth = context.read<AppAuthProvider>();
     final transactionProvider = context.read<TransactionProvider>();
     final budgetProvider = context.read<BudgetProvider>();
     final goalProvider = context.read<GoalProvider>();
@@ -47,8 +48,6 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ FIXED: Removed unused auth variable or kept commented
-    // final auth = context.watch<AuthProvider>();
     final transactionProvider = context.watch<TransactionProvider>();
     final currencyProvider = context.watch<CurrencyProvider>();
     final budgetProvider = context.watch<BudgetProvider>();
@@ -103,7 +102,6 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Greeting
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -111,7 +109,7 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Hello, User', // ✅ FIXED: Removed auth dependency
+                      'Hello, User',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -142,7 +140,6 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
             ),
             const SizedBox(height: 16),
 
-            // Balance Card
             BalanceCard(
               balance: balance,
               income: totalIncome,
@@ -151,7 +148,6 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
             ),
             const SizedBox(height: 16),
 
-            // Budget Progress
             if (currentBudget != null)
               BudgetProgressWidget(
                 budget: currentBudget,
@@ -159,11 +155,9 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
               ),
             const SizedBox(height: 16),
 
-            // Quick Actions
             const QuickActionsWidget(),
             const SizedBox(height: 16),
 
-            // Spending Chart
             if (transactions.isNotEmpty) ...[
               const Text(
                 'Spending Breakdown',
@@ -177,7 +171,6 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
               const SizedBox(height: 16),
             ],
 
-            // Recent Transactions
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -212,7 +205,7 @@ class _PersonalDashboardState extends State<PersonalDashboard> {
                   // Navigate to add transaction
                 },
               ),
-            const SizedBox(height: 80), // Bottom padding for FAB
+            const SizedBox(height: 80),
           ],
         ),
       ),
