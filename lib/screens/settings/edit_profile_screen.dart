@@ -1,7 +1,8 @@
 // lib/screens/settings/edit_profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // ✅ ADDED
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // ✅ ADDED: FirebaseAuth import
 import '../../providers/auth_provider.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
@@ -37,7 +38,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   void _loadUserData() {
-    final authProvider = context.read<AuthProvider>();
+    final authProvider = context.read<AppAuthProvider>(); // ✅ Fixed
     final user = authProvider.user;
     
     if (user != null) {
@@ -47,14 +48,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  // ✅ FIXED: Implement profile update
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final authProvider = context.read<AuthProvider>();
+      final authProvider = context.read<AppAuthProvider>(); // ✅ Fixed
       final user = authProvider.user;
 
       if (user == null) {
@@ -65,7 +65,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final username = _usernameController.text.trim();
       final phone = _phoneController.text.trim();
 
-      // Check if username is already taken (only if changed)
       if (username != user.username) {
         final existingUser = await FirebaseFirestore.instance
             .collection('users')
@@ -87,7 +86,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         }
       }
 
-      // Update Firestore
       final updateData = {
         'displayName': name,
         'username': username,
@@ -100,13 +98,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           .doc(user.id)
           .update(updateData);
 
-      // Update Firebase Auth display name
+      // ✅ FIXED: FirebaseAuth import added
       final firebaseUser = FirebaseAuth.instance.currentUser;
       if (firebaseUser != null) {
         await firebaseUser.updateDisplayName(name);
       }
 
-      // Refresh user data
       await authProvider.refreshUser();
 
       if (mounted) {
@@ -155,7 +152,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Profile picture
               Center(
                 child: Stack(
                   children: [
@@ -194,7 +190,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Full Name
               CustomTextField(
                 controller: _nameController,
                 label: 'Full Name',
@@ -210,7 +205,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Username
               CustomTextField(
                 controller: _usernameController,
                 label: 'Username',
@@ -229,7 +223,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Phone
               CustomTextField(
                 controller: _phoneController,
                 label: 'Phone Number',
@@ -241,7 +234,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Info box
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -272,7 +264,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Save Button
               CustomButton(
                 onPressed: _isLoading ? null : _saveProfile,
                 text: 'Save Changes',
