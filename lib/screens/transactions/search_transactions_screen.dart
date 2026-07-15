@@ -40,6 +40,7 @@ class _SearchTransactionsScreenState extends State<SearchTransactionsScreen> {
 
   void _performSearch() {
     final transactionProvider = context.read<TransactionProvider>();
+    // ✅ FIXED: Using allTransactions getter
     final allTransactions = transactionProvider.allTransactions;
 
     if (_query.isEmpty) {
@@ -56,7 +57,6 @@ class _SearchTransactionsScreenState extends State<SearchTransactionsScreen> {
           t.amount?.toString().contains(queryLower) == true;
     }).toList();
 
-    // Sort by relevance (description match first, then date)
     _searchResults.sort((a, b) {
       final aDesc = a.description?.toLowerCase().contains(queryLower) ?? false;
       final bDesc = b.description?.toLowerCase().contains(queryLower) ?? false;
