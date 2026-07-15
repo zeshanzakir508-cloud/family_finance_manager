@@ -1,10 +1,10 @@
 // lib/screens/family/join_family_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // ✅ ADDED
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/family_provider.dart';
-import '../../providers/auth_provider.dart';
-import '../../models/family_model.dart'; // ✅ ADDED
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
+import '../../models/family_model.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
 import '../../widgets/common/custom_snackbar.dart';
@@ -27,17 +27,16 @@ class _JoinFamilyScreenState extends State<JoinFamilyScreen> {
     super.dispose();
   }
 
-  // ✅ FIXED: Implement join family with code
+  // ✅ FIXED: Changed AuthProvider to AppAuthProvider
   Future<void> _joinFamily() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final auth = context.read<AuthProvider>();
+      final auth = context.read<AppAuthProvider>();
       final familyCode = _codeController.text.trim().toUpperCase();
 
-      // Find family by code
       final query = await FirebaseFirestore.instance
           .collection('families')
           .where('familyCode', isEqualTo: familyCode)
@@ -60,7 +59,6 @@ class _JoinFamilyScreenState extends State<JoinFamilyScreen> {
       final familyData = familyDoc.data();
       final familyId = familyDoc.id;
 
-      // Check if user is already a member
       final memberIds = List<String>.from(familyData['memberIds'] ?? []);
       if (memberIds.contains(auth.userId)) {
         if (mounted) {
@@ -74,7 +72,6 @@ class _JoinFamilyScreenState extends State<JoinFamilyScreen> {
         return;
       }
 
-      // Add user to family
       final newMember = FamilyMember(
         userId: auth.userId,
         displayName: auth.userName,
@@ -95,7 +92,6 @@ class _JoinFamilyScreenState extends State<JoinFamilyScreen> {
         'memberIds': FieldValue.arrayUnion([auth.userId]),
       });
 
-      // Update family provider
       final familyProvider = context.read<FamilyProvider>();
       await familyProvider.refreshData();
 
@@ -145,7 +141,6 @@ class _JoinFamilyScreenState extends State<JoinFamilyScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -193,7 +188,6 @@ class _JoinFamilyScreenState extends State<JoinFamilyScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Family code input
               CustomTextField(
                 controller: _codeController,
                 label: 'Family Code',
@@ -221,7 +215,6 @@ class _JoinFamilyScreenState extends State<JoinFamilyScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Info box
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -253,7 +246,6 @@ class _JoinFamilyScreenState extends State<JoinFamilyScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Join Button
               CustomButton(
                 onPressed: _isLoading ? null : _joinFamily,
                 text: 'Join Family',
@@ -264,7 +256,6 @@ class _JoinFamilyScreenState extends State<JoinFamilyScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Create Family link
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
