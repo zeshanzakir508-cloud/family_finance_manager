@@ -4,8 +4,8 @@ import 'package:provider/provider.dart';
 import '../../providers/report_provider.dart';
 import '../../providers/currency_provider.dart';
 import '../../providers/transaction_provider.dart';
-import '../../providers/auth_provider.dart';
-import '../../models/transaction_model.dart'; // ✅ ADDED: Missing import
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
+import '../../models/transaction_model.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_snackbar.dart';
 import 'widgets/bar_chart_widget.dart';
@@ -38,20 +38,18 @@ class _YearOverYearScreenState extends State<YearOverYearScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final auth = context.read<AuthProvider>();
+      // ✅ FIXED: AuthProvider → AppAuthProvider
+      final auth = context.read<AppAuthProvider>();
       final transactionProvider = context.read<TransactionProvider>();
       
       final allTransactions = transactionProvider.allTransactions;
       
-      // Current year data
       _currentYearData = await _getYearlyData(allTransactions, _selectedYear);
       _currentYearTotal = _calculateTotal(_currentYearData);
       
-      // Compare year data
       _compareYearData = await _getYearlyData(allTransactions, _compareYear);
       _compareYearTotal = _calculateTotal(_compareYearData);
       
-      // Calculate year change
       if (_compareYearTotal != 0) {
         _yearChange = ((_currentYearTotal - _compareYearTotal) / _compareYearTotal) * 100;
       } else {
@@ -141,7 +139,6 @@ class _YearOverYearScreenState extends State<YearOverYearScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Year selector
           Row(
             children: [
               Expanded(
@@ -165,7 +162,6 @@ class _YearOverYearScreenState extends State<YearOverYearScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Summary
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -217,7 +213,6 @@ class _YearOverYearScreenState extends State<YearOverYearScreen> {
           const SizedBox(height: 16),
 
           if (hasData) ...[
-            // Bar chart comparison
             BarChartWidget(
               data: _currentYearData,
               compareData: _compareYearData,
@@ -227,7 +222,6 @@ class _YearOverYearScreenState extends State<YearOverYearScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Monthly comparison table
             const Text(
               'Monthly Comparison',
               style: TextStyle(
