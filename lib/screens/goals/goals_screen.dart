@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/goal_provider.dart';
 import '../../providers/currency_provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../models/goal_model.dart';
 import '../../widgets/common/empty_state_widget.dart';
 import '../../widgets/common/loading_widget.dart';
@@ -33,7 +33,8 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
   }
 
   Future<void> _loadData() async {
-    final auth = context.read<AuthProvider>();
+    // ✅ FIXED: AuthProvider → AppAuthProvider
+    final auth = context.read<AppAuthProvider>();
     final goalProvider = context.read<GoalProvider>();
     
     if (auth.isAuthenticated) {
@@ -155,7 +156,6 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
       );
     }
 
-    // Calculate total progress
     double totalTarget = 0.0;
     double totalCurrent = 0.0;
     for (var goal in goals) {
@@ -167,7 +167,6 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Summary card
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -266,7 +265,6 @@ class _GoalsScreenState extends State<GoalsScreen> with SingleTickerProviderStat
         ),
         const SizedBox(height: 16),
 
-        // Goal list
         ...goals.map((goal) {
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
