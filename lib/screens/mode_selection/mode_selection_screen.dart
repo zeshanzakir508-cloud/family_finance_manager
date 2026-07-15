@@ -2,18 +2,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../providers/mode_provider.dart';
+import '../../providers/mode_provider.dart'; // ✅ Has AppMode enum
 import '../../providers/theme_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_snackbar.dart';
 import 'widgets/mode_card.dart';
 
-// ✅ ADDED: AppMode enum if not defined elsewhere
-enum AppMode {
-  personal,
-  family,
-}
+// ❌ REMOVED: Duplicate AppMode enum - already exists in mode_provider.dart
+// enum AppMode {
+//   personal,
+//   family,
+// }
 
 class ModeSelectionScreen extends StatefulWidget {
   const ModeSelectionScreen({Key? key}) : super(key: key);
@@ -32,7 +32,6 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
     _loadSavedMode();
   }
 
-  // ✅ ADDED: Load saved mode from provider
   void _loadSavedMode() {
     final modeProvider = context.read<ModeProvider>();
     final currentMode = modeProvider.currentMode;
@@ -48,29 +47,24 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Save mode to provider
       final modeProvider = context.read<ModeProvider>();
       modeProvider.setMode(
         _selectedMode == AppMode.personal ? 'personal' : 'family',
       );
 
-      // Save mode to SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('mode_selected', true);
       await prefs.setString('selected_mode', _selectedMode == AppMode.personal ? 'personal' : 'family');
 
-      // ✅ ADDED: Check if user is authenticated
       final authProvider = context.read<AuthProvider>();
       if (!authProvider.isAuthenticated) {
         throw Exception('User not authenticated. Please login again.');
       }
 
-      // ✅ ADDED: Log the selected mode
       print('✅ Mode selected: ${_selectedMode == AppMode.personal ? 'Personal' : 'Family'}');
       print('✅ User: ${authProvider.user?.email ?? 'Unknown'}');
       print('✅ Role: ${authProvider.user?.role ?? 'Unknown'}');
 
-      // Navigate to home
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/home');
       }
@@ -93,7 +87,6 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
     final isDark = context.watch<ThemeProvider>().isDarkMode;
     final authProvider = context.watch<AuthProvider>();
 
-    // ✅ ADDED: Show loading if auth is loading
     if (authProvider.isLoading) {
       return Scaffold(
         body: Center(
@@ -114,7 +107,6 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
       );
     }
 
-    // ✅ ADDED: Show error if user is null
     if (authProvider.user == null && !authProvider.isLoading) {
       return Scaffold(
         body: Center(
@@ -163,7 +155,6 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 16),
-              // Header
               Column(
                 children: [
                   Container(
@@ -196,7 +187,6 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  // ✅ ADDED: Show user info
                   const SizedBox(height: 8),
                   Text(
                     'Welcome, ${authProvider.user?.displayName ?? 'User'}',
@@ -209,7 +199,6 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
                 ],
               ),
               const SizedBox(height: 40),
-              // Mode Cards
               Expanded(
                 child: Column(
                   children: [
@@ -242,7 +231,6 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              // Continue Button
               CustomButton(
                 onPressed: _continueWithMode,
                 text: 'Continue',
@@ -251,7 +239,6 @@ class _ModeSelectionScreenState extends State<ModeSelectionScreen> {
                 size: ButtonSize.large,
               ),
               const SizedBox(height: 16),
-              // Logout
               TextButton(
                 onPressed: () {
                   context.read<AuthProvider>().logout();
