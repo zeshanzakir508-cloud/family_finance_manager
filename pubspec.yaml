@@ -14,6 +14,8 @@ dependencies:
   firebase_core: ^3.1.0
   firebase_auth: ^5.1.0
   cloud_firestore: ^5.0.0
+  firebase_storage: ^12.0.0
+  firebase_remote_config: ^5.0.0
   
   # State Management
   provider: ^6.1.0
@@ -42,6 +44,10 @@ dependencies:
   
   # File & Path
   path_provider: ^2.1.0
+  
+  # Permissions & URLs
+  permission_handler: ^11.0.0
+  url_launcher: ^6.2.0
   
   # Other
   intl: ^0.18.1
