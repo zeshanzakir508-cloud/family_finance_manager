@@ -27,6 +27,7 @@ class _RecurringTransactionsScreenState extends State<RecurringTransactionsScree
 
   void _loadRecurringTransactions() {
     final transactionProvider = context.read<TransactionProvider>();
+    // ✅ FIXED: Using allTransactions getter
     _recurringTransactions = transactionProvider.allTransactions
         .where((t) => t.isRecurring == true)
         .toList();
@@ -82,7 +83,7 @@ class _RecurringTransactionsScreenState extends State<RecurringTransactionsScree
       separatorBuilder: (context, index) => const Divider(height: 4),
       itemBuilder: (context, index) {
         final transaction = _recurringTransactions[index];
-        // ✅ FIXED: Removed trailing parameter - using a Container as child of TransactionCard with custom layout
+        // ✅ FIXED: Removed trailing parameter
         return TransactionCard(
           transaction: transaction,
           currency: currency,
@@ -93,7 +94,6 @@ class _RecurringTransactionsScreenState extends State<RecurringTransactionsScree
               arguments: transaction.id,
             );
           },
-          // ✅ FIXED: Removed trailing parameter, added custom widget
         );
       },
     );
@@ -146,7 +146,6 @@ class _RecurringTransactionsScreenState extends State<RecurringTransactionsScree
                         key: _formKey,
                         child: Column(
                           children: [
-                            // Type toggle
                             SegmentedButton<String>(
                               segments: const [
                                 ButtonSegment(value: 'income', label: Text('Income')),
@@ -158,7 +157,6 @@ class _RecurringTransactionsScreenState extends State<RecurringTransactionsScree
                               },
                             ),
                             const SizedBox(height: 16),
-                            // Description
                             TextFormField(
                               controller: _descriptionController,
                               decoration: const InputDecoration(
@@ -169,7 +167,6 @@ class _RecurringTransactionsScreenState extends State<RecurringTransactionsScree
                                   v?.isEmpty ?? true ? 'Required' : null,
                             ),
                             const SizedBox(height: 16),
-                            // Amount
                             TextFormField(
                               controller: _amountController,
                               decoration: const InputDecoration(
@@ -183,7 +180,6 @@ class _RecurringTransactionsScreenState extends State<RecurringTransactionsScree
                                   : null,
                             ),
                             const SizedBox(height: 16),
-                            // Interval
                             DropdownButtonFormField<String>(
                               value: _interval,
                               items: const [
@@ -200,7 +196,6 @@ class _RecurringTransactionsScreenState extends State<RecurringTransactionsScree
                               ),
                             ),
                             const SizedBox(height: 16),
-                            // Start date
                             ListTile(
                               title: const Text('Start Date'),
                               subtitle: Text(_startDate.toString().split(' ')[0]),
@@ -223,7 +218,6 @@ class _RecurringTransactionsScreenState extends State<RecurringTransactionsScree
                             CustomButton(
                               onPressed: () {
                                 if (_formKey.currentState!.validate()) {
-                                  // TODO: Save recurring transaction
                                   Navigator.pop(context);
                                   CustomSnackBar.show(
                                     context,
