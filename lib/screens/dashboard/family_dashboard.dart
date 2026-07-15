@@ -1,7 +1,7 @@
 // lib/screens/dashboard/family_dashboard.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../providers/family_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../providers/currency_provider.dart';
@@ -29,8 +29,9 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
     _loadData();
   }
 
+  // ✅ FIXED: Changed AuthProvider to AppAuthProvider
   Future<void> _loadData() async {
-    final auth = context.read<AuthProvider>();
+    final auth = context.read<AppAuthProvider>();
     final familyProvider = context.read<FamilyProvider>();
     final transactionProvider = context.read<TransactionProvider>();
 
@@ -50,8 +51,6 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ FIXED: Removed unused auth variable or kept commented
-    // final auth = context.watch<AuthProvider>();
     final familyProvider = context.watch<FamilyProvider>();
     final transactionProvider = context.watch<TransactionProvider>();
     final currencyProvider = context.watch<CurrencyProvider>();
@@ -131,7 +130,6 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Family Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -194,7 +192,6 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
             ),
             const SizedBox(height: 16),
 
-            // Balance Card
             BalanceCard(
               balance: balance,
               income: totalIncome,
@@ -204,7 +201,6 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
             ),
             const SizedBox(height: 16),
 
-            // Budget Progress
             if (currentBudget != null)
               BudgetProgressWidget(
                 budget: currentBudget,
@@ -212,11 +208,9 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
               ),
             const SizedBox(height: 16),
 
-            // Quick Actions
             const QuickActionsWidget(),
             const SizedBox(height: 16),
 
-            // Spending Chart
             if (transactions.isNotEmpty) ...[
               const Text(
                 'Family Spending Breakdown',
@@ -230,7 +224,6 @@ class _FamilyDashboardState extends State<FamilyDashboard> {
               const SizedBox(height: 16),
             ],
 
-            // Recent Transactions
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
