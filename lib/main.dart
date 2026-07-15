@@ -12,7 +12,8 @@ import 'config/theme_config.dart';
 
 // Providers
 import 'providers/auth_provider.dart';
-import 'providers/theme_provider.dart';
+// ✅ REMOVED: ThemeProvider (not needed in providers list)
+// import 'providers/theme_provider.dart';
 import 'providers/currency_provider.dart';
 import 'providers/family_provider.dart';
 import 'providers/transaction_provider.dart';
@@ -44,9 +45,9 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        // ✅ FIXED: Changed AuthProvider to AppAuthProvider
         ChangeNotifierProvider(create: (_) => AppAuthProvider()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider(prefs)),
+        // ✅ REMOVED: ThemeProvider
+        // ChangeNotifierProvider(create: (_) => ThemeProvider(prefs)),
         ChangeNotifierProvider(create: (_) => CurrencyProvider(prefs)),
         ChangeNotifierProvider(create: (_) => ModeProvider()),
         ChangeNotifierProvider(create: (_) => FamilyProvider()),
@@ -87,7 +88,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
-      SystemUiOverlayStyle(
+      const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
         systemNavigationBarColor: Colors.black,
@@ -95,34 +96,31 @@ class MyApp extends StatelessWidget {
       ),
     );
 
-    return Consumer<ThemeProvider>(
-      builder: (context, themeProvider, child) {
-        return MaterialApp(
-          title: AppConfig.appName,
-          debugShowCheckedModeBanner: false,
-          theme: ThemeConfig.lightTheme,
-          darkTheme: ThemeConfig.darkTheme,
-          themeMode: themeProvider.themeMode,
-          
-          initialRoute: RouteConfig.splash,
-          routes: RouteConfig.routes,
-          onGenerateRoute: RouteConfig.onGenerateRoute,
-          
-          supportedLocales: const [
-            Locale('en', 'US'),
-            Locale('ur', 'PK'),
-            Locale('ar', 'SA'),
-          ],
-          localeResolutionCallback: (locale, supportedLocales) {
-            if (locale == null) return supportedLocales.first;
-            for (var supportedLocale in supportedLocales) {
-              if (supportedLocale.languageCode == locale.languageCode) {
-                return supportedLocale;
-              }
-            }
-            return supportedLocales.first;
-          },
-        );
+    // ✅ FIXED: Removed Consumer<ThemeProvider>
+    return MaterialApp(
+      title: AppConfig.appName,
+      debugShowCheckedModeBanner: false,
+      theme: ThemeConfig.lightTheme,
+      // ✅ REMOVED: darkTheme: ThemeConfig.darkTheme,
+      // ✅ REMOVED: themeMode: themeProvider.themeMode,
+      
+      initialRoute: RouteConfig.splash,
+      routes: RouteConfig.routes,
+      onGenerateRoute: RouteConfig.onGenerateRoute,
+      
+      supportedLocales: const [
+        Locale('en', 'US'),
+        Locale('ur', 'PK'),
+        Locale('ar', 'SA'),
+      ],
+      localeResolutionCallback: (locale, supportedLocales) {
+        if (locale == null) return supportedLocales.first;
+        for (var supportedLocale in supportedLocales) {
+          if (supportedLocale.languageCode == locale.languageCode) {
+            return supportedLocale;
+          }
+        }
+        return supportedLocales.first;
       },
     );
   }
