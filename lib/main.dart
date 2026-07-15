@@ -31,26 +31,21 @@ import 'services/local_storage_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize Firebase
   await FirebaseConfig.initialize();
   
-  // Initialize SharedPreferences
   final prefs = await SharedPreferences.getInstance();
   
-  // Initialize Local Storage (Hive)
   await LocalStorageService.init();
   
-  // Initialize Notifications
   await NotificationService.init();
   
-  // Request Permissions
   await _requestPermissions();
   
-  // Run App
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        // ✅ FIXED: Changed AuthProvider to AppAuthProvider
+        ChangeNotifierProvider(create: (_) => AppAuthProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider(prefs)),
         ChangeNotifierProvider(create: (_) => CurrencyProvider(prefs)),
         ChangeNotifierProvider(create: (_) => ModeProvider()),
@@ -69,7 +64,6 @@ void main() async {
 }
 
 Future<void> _requestPermissions() async {
-  // Request all required permissions
   final permissions = [
     Permission.notification,
     Permission.camera,
@@ -77,7 +71,6 @@ Future<void> _requestPermissions() async {
     Permission.contacts,
   ];
   
-  // Request permissions
   for (var permission in permissions) {
     final status = await permission.request();
     if (status.isDenied) {
@@ -93,7 +86,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Set status bar and navigation bar colors
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -112,12 +104,10 @@ class MyApp extends StatelessWidget {
           darkTheme: ThemeConfig.darkTheme,
           themeMode: themeProvider.themeMode,
           
-          // Routes
           initialRoute: RouteConfig.splash,
           routes: RouteConfig.routes,
           onGenerateRoute: RouteConfig.onGenerateRoute,
           
-          // Localization
           supportedLocales: const [
             Locale('en', 'US'),
             Locale('ur', 'PK'),
@@ -132,12 +122,6 @@ class MyApp extends StatelessWidget {
             }
             return supportedLocales.first;
           },
-          // Uncomment when localization is ready
-          // localizationsDelegates: [
-          //   AppLocalizations.delegate,
-          //   GlobalMaterialLocalizations.delegate,
-          //   GlobalWidgetsLocalizations.delegate,
-          // ],
         );
       },
     );
