@@ -49,7 +49,6 @@ class _TransferScreenState extends State<TransferScreen> {
     final familyProvider = context.read<FamilyProvider>();
     _members = familyProvider.getFamilyMembers();
     
-    // ✅ FIXED: AuthProvider → AppAuthProvider
     final auth = context.read<AppAuthProvider>();
     if (_members.isNotEmpty) {
       final currentMember = _members.firstWhere(
@@ -83,7 +82,6 @@ class _TransferScreenState extends State<TransferScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // ✅ FIXED: AuthProvider → AppAuthProvider
       final auth = context.read<AppAuthProvider>();
       final familyProvider = context.read<FamilyProvider>();
       final transactionProvider = context.read<TransactionProvider>();
@@ -111,6 +109,7 @@ class _TransferScreenState extends State<TransferScreen> {
         transferStatus: 'pending',
       );
 
+      // ✅ Using addTransaction method
       final success = await transactionProvider.addTransaction(transaction);
       
       if (success && mounted) {
