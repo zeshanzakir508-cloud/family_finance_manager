@@ -30,14 +30,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadUserStats() async {
     try {
-      // ✅ FIXED: AuthProvider → AppAuthProvider
       final auth = context.read<AppAuthProvider>();
       final transactionProvider = context.read<TransactionProvider>();
       
       if (auth.isAuthenticated) {
+        // ✅ Using loadTransactions method
         await transactionProvider.loadTransactions(auth.userId);
         
         setState(() {
+          // ✅ Using totalIncome, totalExpense, balance getters
           _totalIncome = transactionProvider.totalIncome;
           _totalExpense = transactionProvider.totalExpense;
           _balance = transactionProvider.balance;
@@ -50,7 +51,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ FIXED: AuthProvider → AppAuthProvider
     final authProvider = context.watch<AppAuthProvider>();
     final currencyProvider = context.watch<CurrencyProvider>();
     final modeProvider = context.watch<ModeProvider>();
@@ -92,6 +92,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
+    // ✅ Using totalIncome, totalExpense, balance getters
     final balance = transactionProvider.balance;
     final totalIncome = transactionProvider.totalIncome;
     final totalExpense = transactionProvider.totalExpense;
@@ -108,6 +109,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           IconButton(
             icon: Icon(
+              // ✅ Using isLoading getter
               transactionProvider.isLoading ? Icons.refresh : Icons.refresh,
             ),
             onPressed: _loadUserStats,
