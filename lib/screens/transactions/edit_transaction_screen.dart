@@ -1,7 +1,7 @@
 // lib/screens/transactions/edit_transaction_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../providers/currency_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/transaction_provider.dart';
@@ -59,7 +59,7 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
       final transactionProvider = context.read<TransactionProvider>();
       final categoryProvider = context.read<CategoryProvider>();
       
-      // Find transaction in provider
+      // ✅ FIXED: Using allTransactions getter
       final transaction = transactionProvider.allTransactions
           .firstWhere((t) => t.id == widget.transactionId);
       
@@ -72,7 +72,6 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
         _descriptionController.text = transaction.description ?? '';
         _notesController.text = transaction.notes ?? '';
         
-        // Find category id
         final category = categoryProvider.getCategoryByName(transaction.category ?? '');
         if (category != null) {
           _selectedCategory = category.id;
@@ -119,6 +118,7 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
         'notes': _notesController.text.trim(),
       };
 
+      // ✅ FIXED: Using updateTransaction method
       final success = await transactionProvider.updateTransaction(
         widget.transactionId,
         updates,
@@ -183,7 +183,6 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Transaction Type Indicator
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                 decoration: BoxDecoration(
@@ -217,7 +216,6 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
               ),
               const SizedBox(height: 16),
               
-              // Amount - ✅ FIXED: Changed initialValue to initialAmount, onChanged to onAmountChanged
               AmountInput(
                 label: 'Amount',
                 currency: currencyProvider.currentCurrency,
@@ -227,11 +225,9 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
                     _amount = value;
                   });
                 },
-                // ✅ FIXED: Removed validator from AmountInput (not supported)
               ),
               const SizedBox(height: 16),
               
-              // Category
               CategoryPicker(
                 categories: categories,
                 selectedId: _selectedCategory,
@@ -244,7 +240,6 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
               ),
               const SizedBox(height: 16),
               
-              // Description
               CustomTextField(
                 controller: _descriptionController,
                 label: 'Description',
@@ -259,7 +254,6 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
               ),
               const SizedBox(height: 16),
               
-              // Date - ✅ FIXED: Changed onChanged to onDateSelected
               DateTimePicker(
                 label: 'Date',
                 initialDate: _selectedDate,
@@ -271,7 +265,6 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
               ),
               const SizedBox(height: 16),
               
-              // Notes
               CustomTextField(
                 controller: _notesController,
                 label: 'Notes (Optional)',
@@ -281,7 +274,6 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
               ),
               const SizedBox(height: 24),
               
-              // Save Button
               CustomButton(
                 onPressed: _isSaving ? null : _saveChanges,
                 text: 'Save Changes',
@@ -292,7 +284,6 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
               ),
               const SizedBox(height: 12),
               
-              // Delete Button
               CustomButton(
                 onPressed: () {
                   _showDeleteConfirmation();
@@ -329,6 +320,7 @@ class _EditTransactionScreenState extends State<EditTransactionScreen> {
               
               try {
                 final transactionProvider = context.read<TransactionProvider>();
+                // ✅ FIXED: Using deleteTransaction method
                 final success = await transactionProvider.deleteTransaction(
                   widget.transactionId,
                 );
