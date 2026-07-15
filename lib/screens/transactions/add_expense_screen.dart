@@ -38,7 +38,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   }
 
   Future<void> _loadCategories() async {
-    // ✅ FIXED: AuthProvider → AppAuthProvider
     final auth = context.read<AppAuthProvider>();
     final categoryProvider = context.read<CategoryProvider>();
     
@@ -68,7 +67,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // ✅ FIXED: AuthProvider → AppAuthProvider
       final auth = context.read<AppAuthProvider>();
       final mode = context.read<ModeProvider>();
       final transactionProvider = context.read<TransactionProvider>();
@@ -90,6 +88,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         isFamilyTransaction: mode.isFamilyMode,
       );
 
+      // ✅ Using addTransaction method
       final success = await transactionProvider.addTransaction(transaction);
       
       if (success && mounted) {
