@@ -1,7 +1,8 @@
 // lib/providers/theme_provider.dart
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../utils/theme.dart';
+// ✅ FIXED: Use ThemeConfig instead of AppTheme
+import '../config/theme_config.dart';
 
 class ThemeProvider extends ChangeNotifier {
   static const String _themeKey = 'theme_mode';
@@ -21,11 +22,8 @@ class ThemeProvider extends ChangeNotifier {
   ThemeMode get themeMode => _themeMode;
   bool get useSystemTheme => _useSystemTheme;
   
-  // ✅ FIXED: Use MediaQuery instead of deprecated window
   bool get isDarkMode {
     if (_themeMode == ThemeMode.system) {
-      // Use MediaQuery or View.of(context) instead of window
-      // This getter doesn't have context, so we'll use a different approach
       return WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
     }
     return _themeMode == ThemeMode.dark;
@@ -91,13 +89,10 @@ class ThemeProvider extends ChangeNotifier {
 
   Future<void> toggleTheme() async {
     if (_useSystemTheme) {
-      // If using system theme, switch to opposite of current system brightness
-      // ✅ FIXED: Use platformDispatcher instead of deprecated window
       final isDark = WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
       _useSystemTheme = false;
       _themeMode = isDark ? ThemeMode.light : ThemeMode.dark;
     } else {
-      // Toggle between light and dark
       _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
     }
     await _saveTheme();
@@ -110,14 +105,14 @@ class ThemeProvider extends ChangeNotifier {
 
   ThemeData get currentTheme {
     if (_themeMode == ThemeMode.system) {
-      // ✅ FIXED: Use platformDispatcher instead of deprecated window
       final isDark = WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
-      return isDark ? AppTheme.darkTheme : AppTheme.lightTheme;
+      // ✅ FIXED: Use ThemeConfig
+      return isDark ? ThemeConfig.darkTheme : ThemeConfig.lightTheme;
     }
-    return _themeMode == ThemeMode.dark ? AppTheme.darkTheme : AppTheme.lightTheme;
+    // ✅ FIXED: Use ThemeConfig
+    return _themeMode == ThemeMode.dark ? ThemeConfig.darkTheme : ThemeConfig.lightTheme;
   }
 
-  // ✅ ADDED: Method to get dark mode with BuildContext
   bool isDarkModeWithContext(BuildContext context) {
     if (_themeMode == ThemeMode.system) {
       return MediaQuery.platformBrightnessOf(context) == Brightness.dark;
