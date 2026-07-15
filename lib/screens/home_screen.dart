@@ -12,7 +12,7 @@ import 'transactions/transaction_list_screen.dart';
 import 'budget/budget_screen.dart';
 import 'reports/reports_screen.dart';
 import 'settings/settings_screen.dart';
-import 'owner/owner_dashboard.dart'; // ✅ ADDED for owner role
+import 'owner/owner_dashboard.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -26,16 +26,25 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   String? _error;
 
+  // ✅ FIXED: Define _tabs list
+  late final List<Widget> _tabs;
+
   @override
   void initState() {
     super.initState();
+    _tabs = const [
+      DashboardTab(),
+      TransactionListScreen(),
+      BudgetScreen(),
+      ReportsScreen(),
+      SettingsScreen(),
+    ];
     _initializeData();
   }
 
-  // ✅ ADDED: Proper initialization with error handling
   Future<void> _initializeData() async {
     try {
-      final authProvider = context.read<AuthProvider>();
+      final authProvider = context.read<AppAuthProvider>();
       final modeProvider = context.read<ModeProvider>();
 
       if (authProvider.isAuthenticated) {
@@ -43,7 +52,6 @@ class _HomeScreenState extends State<HomeScreen> {
         print('✅ HomeScreen: Role: ${authProvider.user?.role}');
         print('✅ HomeScreen: Mode: ${modeProvider.isPersonalMode ? "Personal" : "Family"}');
 
-        // Load data based on mode
         if (modeProvider.isPersonalMode) {
           await context.read<TransactionProvider>().loadTransactions(authProvider.userId);
         } else {
@@ -75,18 +83,15 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ✅ ADDED: Get the correct dashboard based on role and mode
   Widget _getDashboard() {
-    final authProvider = context.watch<AuthProvider>();
+    final authProvider = context.watch<AppAuthProvider>();
     final modeProvider = context.watch<ModeProvider>();
 
-    // If user is owner, show owner dashboard
     if (authProvider.isOwner) {
       print('✅ HomeScreen: Showing Owner Dashboard');
       return const OwnerDashboard();
     }
 
-    // Otherwise show mode-based dashboard
     if (modeProvider.isFamilyMode) {
       print('✅ HomeScreen: Showing Family Dashboard');
       return const FamilyDashboard();
@@ -98,9 +103,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
+    final authProvider = context.watch<AppAuthProvider>();
 
-    // ✅ ADDED: Check authentication
     if (!authProvider.isAuthenticated) {
       return Scaffold(
         body: Center(
@@ -133,7 +137,6 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    // ✅ ADDED: Loading state
     if (_isLoading) {
       return Scaffold(
         body: Center(
@@ -154,7 +157,6 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    // ✅ ADDED: Error state
     if (_error != null) {
       return Scaffold(
         body: Center(
@@ -250,10 +252,9 @@ class DashboardTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
+    final authProvider = context.watch<AppAuthProvider>();
     final modeProvider = context.watch<ModeProvider>();
 
-    // ✅ FIXED: Show owner dashboard if user is owner
     if (authProvider.isOwner) {
       return const OwnerDashboard();
     }
