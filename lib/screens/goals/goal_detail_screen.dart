@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/goal_provider.dart';
 import '../../providers/currency_provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../models/goal_model.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_snackbar.dart';
@@ -60,7 +60,8 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
 
   Future<void> _refreshGoal() async {
     setState(() => _isLoading = true);
-    final auth = context.read<AuthProvider>();
+    // ✅ FIXED: AuthProvider → AppAuthProvider
+    final auth = context.read<AppAuthProvider>();
     await context.read<GoalProvider>().loadGoals(auth.userId);
     _loadGoal();
   }
@@ -244,7 +245,6 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Goal header
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -309,7 +309,7 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                goal.name ?? 'Goal', // ✅ FIXED: Null safety
+                                goal.name ?? 'Goal',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 24,
@@ -434,7 +434,6 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Contributions section
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -510,7 +509,6 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
                 ),
               const SizedBox(height: 24),
 
-              // Milestones
               if (!isCompleted && progress > 0) ...[
                 const Text(
                   'Milestones',
@@ -528,7 +526,6 @@ class _GoalDetailScreenState extends State<GoalDetailScreen> {
                 const SizedBox(height: 24),
               ],
 
-              // Delete button (if completed)
               if (isCompleted)
                 CustomButton(
                   onPressed: _deleteGoal,
