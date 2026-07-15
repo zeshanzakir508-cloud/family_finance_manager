@@ -1,7 +1,7 @@
 // lib/screens/transactions/transfer_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/auth_provider.dart'; // ✅ Uses AppAuthProvider
 import '../../providers/currency_provider.dart';
 import '../../providers/family_provider.dart';
 import '../../providers/transaction_provider.dart';
@@ -49,8 +49,8 @@ class _TransferScreenState extends State<TransferScreen> {
     final familyProvider = context.read<FamilyProvider>();
     _members = familyProvider.getFamilyMembers();
     
-    // Auto-select current user as from
-    final auth = context.read<AuthProvider>();
+    // ✅ FIXED: AuthProvider → AppAuthProvider
+    final auth = context.read<AppAuthProvider>();
     if (_members.isNotEmpty) {
       final currentMember = _members.firstWhere(
         (m) => m.userId == auth.userId,
@@ -58,7 +58,6 @@ class _TransferScreenState extends State<TransferScreen> {
       );
       setState(() {
         _fromMemberId = currentMember.userId;
-        // Select first different member as to
         final toMember = _members.firstWhere(
           (m) => m.userId != _fromMemberId,
           orElse: () => _members.first,
@@ -84,7 +83,8 @@ class _TransferScreenState extends State<TransferScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final auth = context.read<AuthProvider>();
+      // ✅ FIXED: AuthProvider → AppAuthProvider
+      final auth = context.read<AppAuthProvider>();
       final familyProvider = context.read<FamilyProvider>();
       final transactionProvider = context.read<TransactionProvider>();
       
@@ -160,7 +160,6 @@ class _TransferScreenState extends State<TransferScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Amount - ✅ FIXED: Changed onChanged to onAmountChanged
               AmountInput(
                 label: 'Amount',
                 currency: currencyProvider.currentCurrency,
@@ -169,11 +168,9 @@ class _TransferScreenState extends State<TransferScreen> {
                     _amount = value;
                   });
                 },
-                // ✅ FIXED: Removed validator from AmountInput (not supported)
               ),
               const SizedBox(height: 16),
               
-              // From Member
               DropdownButtonFormField<String>(
                 value: _fromMemberId,
                 decoration: const InputDecoration(
@@ -190,7 +187,6 @@ class _TransferScreenState extends State<TransferScreen> {
                 onChanged: (value) {
                   setState(() {
                     _fromMemberId = value;
-                    // Reset to if same as from
                     if (_toMemberId == value) {
                       final toMember = _members.firstWhere(
                         (m) => m.userId != value,
@@ -209,7 +205,6 @@ class _TransferScreenState extends State<TransferScreen> {
               ),
               const SizedBox(height: 16),
               
-              // To Member
               DropdownButtonFormField<String>(
                 value: _toMemberId,
                 decoration: const InputDecoration(
@@ -239,7 +234,6 @@ class _TransferScreenState extends State<TransferScreen> {
               ),
               const SizedBox(height: 16),
               
-              // Description
               CustomTextField(
                 controller: _descriptionController,
                 label: 'Description',
@@ -255,7 +249,6 @@ class _TransferScreenState extends State<TransferScreen> {
               ),
               const SizedBox(height: 16),
               
-              // Date - ✅ FIXED: Changed onChanged to onDateSelected
               DateTimePicker(
                 label: 'Date',
                 initialDate: _selectedDate,
@@ -267,7 +260,6 @@ class _TransferScreenState extends State<TransferScreen> {
               ),
               const SizedBox(height: 16),
               
-              // Notes
               CustomTextField(
                 controller: _notesController,
                 label: 'Notes (Optional)',
@@ -278,7 +270,6 @@ class _TransferScreenState extends State<TransferScreen> {
               ),
               const SizedBox(height: 24),
               
-              // Transfer Button
               CustomButton(
                 onPressed: _isLoading ? null : _submitTransfer,
                 text: 'Send Money',
