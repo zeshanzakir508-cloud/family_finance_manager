@@ -1,11 +1,12 @@
 // lib/providers/auth_provider.dart
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // ✅ ADDED for FirebaseAuthException
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../services/biometric_service.dart';
 import '../models/user_model.dart';
 
-class AuthProvider extends ChangeNotifier {
+// ✅ FIXED: Renamed to AppAuthProvider to avoid conflict with Firebase's AuthProvider
+class AppAuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
   final BiometricService _biometricService = BiometricService();
   
@@ -14,7 +15,7 @@ class AuthProvider extends ChangeNotifier {
   String? _error;
   bool _isAuthenticated = false;
 
-  AuthProvider() {
+  AppAuthProvider() {
     _authService.addListener(_onAuthChanged);
     _loadUser();
   }
@@ -50,7 +51,6 @@ class AuthProvider extends ChangeNotifier {
       _setLoading(false);
       notifyListeners();
     } on FirebaseAuthException catch (e) {
-      // ✅ FIXED: Specific Firebase error handling
       _error = _getFirebaseErrorMessage(e);
       _setLoading(false);
       notifyListeners();
@@ -72,7 +72,6 @@ class AuthProvider extends ChangeNotifier {
       await _loadUser();
       _isAuthenticated = true;
       
-      // ✅ FIXED: Send verification email after signup
       await _sendVerificationEmail();
       
       _setLoading(false);
@@ -109,7 +108,6 @@ class AuthProvider extends ChangeNotifier {
     await _loadUser();
   }
 
-  // ✅ ADDED: Send verification email
   Future<void> _sendVerificationEmail() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -122,7 +120,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ✅ ADDED: Check if email is verified
   Future<bool> isEmailVerified() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -136,7 +133,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ✅ ADDED: Resend verification email
   Future<void> resendVerificationEmail() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -150,7 +146,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ✅ ADDED: Get specific Firebase error messages
   String _getFirebaseErrorMessage(FirebaseAuthException e) {
     switch (e.code) {
       case 'wrong-password':
